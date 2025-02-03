@@ -1,6 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-
+import 'main.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -29,7 +30,6 @@ class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
-
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final List<Widget> _screens = [
@@ -45,55 +45,76 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // Sign out the user
+  Future<void> _signOut() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      // Optionally, you can navigate the user to the login screen after signing out
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const SignInPage()), // Assuming you have a LoginScreen
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
-  preferredSize: Size.fromHeight(50.0), // Adjust height if needed
-  child: AppBar(
-    backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-    elevation: 0,
-    title: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10.0), // Add padding to the title
-      child: const Text(
-        "UNI-verse",
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.black,
+        preferredSize: const Size.fromHeight(50.0), // Adjust height if needed
+        child: AppBar(
+          backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+          elevation: 0,
+          title: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10.0), // Add padding to the title
+            child: Text(
+              "UNI-verse",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 9.0), // Add padding here
+              child: IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.search, color: Colors.black),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 0.0), // Add padding here
+              child: IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.notifications, color: Colors.black),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 9.0), // Add padding here
+              child: IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.person, color: Colors.black),
+              ),
+            ),
+            // Logout Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 9.0),
+              child: IconButton(
+                onPressed: _signOut, // Call the sign-out function
+                icon: const Icon(Icons.exit_to_app, color: Colors.black),
+              ),
+            ),
+          ],
         ),
       ),
-    ),
-    actions: [
-      Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 9.0), // Add padding here
-      child: IconButton(
-        onPressed: () {},
-        icon: const Icon(Icons.search, color: Colors.black),
-      ),
-    ),
-    Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 0.0), // Add padding here
-      child: IconButton(
-        onPressed: () {},
-        icon: const Icon(Icons.notifications, color: Colors.black),
-      ),
-    ),
-    Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 9.0), // Add padding here
-      child: IconButton(
-        onPressed: () {},
-        icon: const Icon(Icons.person, color: Colors.black),
-      ),
-    ),
-    ],
-  ),
-  
-),
-
       body: _screens[_selectedIndex],
-      
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.white,
@@ -177,7 +198,7 @@ class CreateNewPostScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color.fromARGB(255, 0, 58, 92), // Background color for the AppBar
+        backgroundColor: const Color.fromARGB(255, 0, 58, 92), // Background color for the AppBar
         leading: IconButton(
           icon: const Icon(Icons.arrow_back,color: Colors.white),
           
@@ -195,7 +216,7 @@ class CreateNewPostScreen extends StatelessWidget {
         ),
       ),
       body: Container(
-        color: Color.fromARGB(255, 255, 255, 255), // Set background color for the body
+        color: const Color.fromARGB(255, 255, 255, 255), // Set background color for the body
         child: Padding(
           padding: const EdgeInsets.all(26.0),
           child: Column(
@@ -204,14 +225,14 @@ class CreateNewPostScreen extends StatelessWidget {
               const SizedBox(height: 40.0),
 
               // User Information Section
-              Row(
+              const Row(
                 children: [
                   CircleAvatar(
                     radius: 20.0,
                     backgroundImage: NetworkImage('https://example.com/avatar.jpg'), // Replace with actual avatar URL
                   ),
-                  const SizedBox(width: 10.0),
-                  const Text(
+                  SizedBox(width: 10.0),
+                  Text(
                     'Ardito Saputra',
                     style: TextStyle(
                       fontSize: 16.0,
@@ -223,16 +244,16 @@ class CreateNewPostScreen extends StatelessWidget {
               const SizedBox(height: 20.0),
 
               // Post Content Area
-              TextField(
+              const TextField(
                 maxLines: null,
                 textAlignVertical: TextAlignVertical.top,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'What\'s on your mind?',
                   isDense: true,
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 14.0),
                 ),
-                style: const TextStyle(fontSize: 18.0),
+                style: TextStyle(fontSize: 18.0),
               ),
               const SizedBox(height: 20.0),
 
@@ -245,7 +266,7 @@ class CreateNewPostScreen extends StatelessWidget {
                       Navigator.of(context).pop(); // Cancel action
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color.fromARGB(255, 80, 80, 80),
+                      backgroundColor: const Color.fromARGB(255, 80, 80, 80),
                       minimumSize: const Size(160, 50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0), // Set border radius for rounded corners
@@ -260,7 +281,7 @@ class CreateNewPostScreen extends StatelessWidget {
                       Navigator.of(context).pop(); // Close the modal after posting
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color.fromARGB(255, 0, 58, 92),
+                      backgroundColor: const Color.fromARGB(255, 0, 58, 92),
                       minimumSize: const Size(160, 50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0), // Set border radius for rounded corners
@@ -393,12 +414,12 @@ class CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: const [
+          children: [
             CategoryChip(label: "General"),
             CategoryChip(label: "Electronics"),
             CategoryChip(label: "Books"),

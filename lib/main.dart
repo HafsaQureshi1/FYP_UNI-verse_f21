@@ -2,8 +2,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'Home.dart';
-
+import 'package:flutter/foundation.dart' show kIsWeb;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -18,12 +20,109 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false, 
+      debugShowCheckedModeBanner: false,
       title: 'UNI-verse',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const HomeScreen(),
+      home: const SignUpPage(),
+    );
+  }
+}
+
+class GoogleSignInButton extends StatefulWidget {
+  final Function(UserCredential) onSuccess;
+
+  const GoogleSignInButton({
+    Key? key,
+    required this.onSuccess,
+  }) : super(key: key);
+
+  @override
+  State<GoogleSignInButton> createState() => _GoogleSignInButtonState();
+}
+
+class _GoogleSignInButtonState extends State<GoogleSignInButton> {
+  bool _isLoading = false;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
+    scopes: ['email', 'profile'],
+  );
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      setState(() => _isLoading = true);
+
+      if (kIsWeb) {
+        // Web-specific sign-in with popup
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
+
+        final userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+
+        if (userCredential.user != null) {
+          if (userCredential.user?.emailVerified ?? false) {
+            widget.onSuccess(userCredential);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please verify your email first.')),
+            );
+          }
+        }
+      } else {
+        // Mobile sign-in
+        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+        if (googleUser == null) return;
+
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        
+        if (userCredential.user != null) {
+          if (userCredential.user?.emailVerified ?? false) {
+            widget.onSuccess(userCredential);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please verify your email first.')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Google Sign In Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: _isLoading ? null : _handleGoogleSignIn,
+      icon: _isLoading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Image.asset('assets/images/google_logo.png', height: 24),
+      label: Text(
+        _isLoading ? 'Signing in...' : 'Continue with Google',
+        style: const TextStyle(fontSize: 16),
+      ),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        side: const BorderSide(color: Colors.grey),
+      ),
     );
   }
 }
@@ -42,42 +141,38 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _isLoading = false;
 
   Future<void> _signUp() async {
-    setState(() {
-      _isLoading = true;
-    });
+  setState(() {
+    _isLoading = true;
+  });
 
-    try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-      User? user = userCredential.user;
+  try {
+    UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      email: _emailController.text,
+      password: _passwordController.text,
+    );
+    User? user = userCredential.user;
 
-      if (user != null) {
-        // Send verification email
-        await user.sendEmailVerification();
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Verification email sent. Please verify your email.')),
-        );
-
-        // Start checking email verification
-        _startEmailVerificationCheck();
-      }
-    } catch (e) {
+    if (user != null) {
+      await user.sendEmailVerification();
       setState(() {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
+        const SnackBar(content: Text('Verification email sent. Please verify your email.')),
       );
+      _startEmailVerificationCheck();
     }
+  } catch (e) {
+    setState(() {
+      _isLoading = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: ${e.toString()}')),
+    );
   }
+}
 
   void _startEmailVerificationCheck() {
-    // Show a dialog while checking for verification
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -101,12 +196,10 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
             TextButton(
               onPressed: () async {
-                // Reload the user to get the latest verification status
                 await FirebaseAuth.instance.currentUser?.reload();
                 final user = FirebaseAuth.instance.currentUser;
                 if (user?.emailVerified ?? false) {
-                  // If verified, close the dialog and navigate to HomeScreen
-                  Navigator.of(context).pop(); // Close dialog
+                  Navigator.of(context).pop();
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (context) => const HomeScreen()),
                   );
@@ -160,63 +253,50 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
                 const SizedBox(height: 10),
 
-                // Email Field
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    labelStyle: const TextStyle(
-                      color: Colors.grey,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20.0),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.0)),
                     prefixIcon: const Icon(Icons.email, color: Colors.grey),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 10),
 
-                // Password Field
                 TextField(
                   controller: _passwordController,
                   decoration: InputDecoration(
                     labelText: 'Password',
-                    labelStyle: const TextStyle(
-                      color: Colors.grey,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20.0),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.0)),
                     prefixIcon: const Icon(Icons.lock, color: Colors.grey),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
                   ),
                   obscureText: true,
                 ),
                 const SizedBox(height: 10),
 
-                // Sign Up Button
                 ElevatedButton(
                   onPressed: _isLoading ? null : _signUp,
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.0),
-                      side: const BorderSide(color: Color.fromARGB(255, 1, 38, 100)),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
                     backgroundColor: const Color(0xFF01214E),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Sign Up',
-                          style: TextStyle(fontSize: 18, color: Colors.white),
-                        ),
+                      : const Text('Sign Up', style: TextStyle(fontSize: 18, color: Colors.white)),
                 ),
                 const SizedBox(height: 10),
 
-                // Already have an account?
+                GoogleSignInButton(
+                  onSuccess: (UserCredential userCredential) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (context) => const HomeScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
