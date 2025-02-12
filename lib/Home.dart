@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+
+import 'package:google_sign_in/google_sign_in.dart';
 import 'main.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,21 +47,29 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // Sign out the user
   Future<void> _signOut() async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      // Optionally, you can navigate the user to the login screen after signing out
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const SignInPage()), // Assuming you have a LoginScreen
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    }
+  try {
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+    clientId: '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
+    
+  );
+    // Sign out from Google Sign-In
+    await googleSignIn.signOut();
+
+    // Sign out from Firebase
+    await FirebaseAuth.instance.signOut();
+
+    // Navigate to Sign In Page
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const SignInPage()),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: ${e.toString()}')),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

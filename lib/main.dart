@@ -5,7 +5,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'Home.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -34,9 +33,9 @@ class GoogleSignInButton extends StatefulWidget {
   final Function(UserCredential) onSuccess;
 
   const GoogleSignInButton({
-    Key? key,
+    super.key,
     required this.onSuccess,
-  }) : super(key: key);
+  });
 
   @override
   State<GoogleSignInButton> createState() => _GoogleSignInButtonState();
@@ -50,58 +49,61 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   );
 
   Future<void> _handleGoogleSignIn() async {
-    try {
-      setState(() => _isLoading = true);
+  try {
+    setState(() => _isLoading = true);
 
-      if (kIsWeb) {
-        // Web-specific sign-in with popup
-        GoogleAuthProvider googleProvider = GoogleAuthProvider();
-        googleProvider.addScope('email');
-        googleProvider.addScope('profile');
+    // Ensure sign out before signing in again
+    await _googleSignIn.signOut();
 
-        final userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+    if (kIsWeb) {
+      // Web-specific sign-in with popup
+      GoogleAuthProvider googleProvider = GoogleAuthProvider();
+      googleProvider.addScope('email');
+      googleProvider.addScope('profile');
 
-        if (userCredential.user != null) {
-          if (userCredential.user?.emailVerified ?? false) {
-            widget.onSuccess(userCredential);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Please verify your email first.')),
-            );
-          }
-        }
-      } else {
-        // Mobile sign-in
-        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-        if (googleUser == null) return;
+      final userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
 
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-
-        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-        
-        if (userCredential.user != null) {
-          if (userCredential.user?.emailVerified ?? false) {
-            widget.onSuccess(userCredential);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Please verify your email first.')),
-            );
-          }
+      if (userCredential.user != null) {
+        if (userCredential.user?.emailVerified ?? false) {
+          widget.onSuccess(userCredential);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please verify your email first.')),
+          );
         }
       }
-    } catch (e) {
-      debugPrint('Google Sign In Error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
+    } else {
+      // Mobile sign-in
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
-    } finally {
-      setState(() => _isLoading = false);
+
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      
+      if (userCredential.user != null) {
+        if (userCredential.user?.emailVerified ?? false) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please verify your email first.')),
+          );
+        } else {
+          widget.onSuccess(userCredential);
+        }
+      }
     }
+  } catch (e) {
+    debugPrint('Google Sign In Error: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: ${e.toString()}')),
+    );
+  } finally {
+    setState(() => _isLoading = false);
   }
+}
 
   @override
   Widget build(BuildContext context) {
