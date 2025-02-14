@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'main.dart';
 void main() async {
@@ -160,149 +161,422 @@ class LostFoundScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Column(
-          children: [
-            Divider(
-  color: Colors.grey[300], // Set the color of the line
-  thickness: 1, // Thickness of the line
-),
-            
-            const CategoryChips(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16.0),
-                children: const [
-                  PostCard(content: "Lost my phone in the cafeteria."),
-                ],
+    return Scaffold(
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              Divider(color: Colors.grey[300], thickness: 1), // Grey divider
+              const CategoryChips(),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('posts')
+                      .orderBy('timestamp', descending: true)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(child: Text('No posts found'));
+                    }
+
+                    var posts = snapshot.data!.docs;
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: posts.length,
+                      itemBuilder: (context, index) {
+                        var post = posts[index];
+                        String username = post['userName'] ?? 'Anonymous';
+                        String content = post['postContent'] ?? '';
+                       
+                        return PostCard(
+                          username: username,
+                          content: content,
+                         // userProfilePic: userProfilePic,
+                          postId: post.id,
+                          likes: post['likes'] ?? 0,
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
-        Positioned(
-          bottom: 16.0,
-          right: 16.0,
-          child: FloatingActionButton(
-            onPressed: () {
-              // Show the 'Create New Post' screen as a modal when the button is pressed
-              showModalBottomSheet(
-                context: context,
-                 isScrollControlled: true, 
-                builder: (context) {
-                  return const CreateNewPostScreen();
-                },
-              );
-            },
-            child: const Icon(Icons.add),
+            ],
           ),
-        ),
-      ],
+          Positioned(
+            bottom: 16.0,
+            right: 16.0,
+            child: FloatingActionButton(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  builder: (context) {
+                    return const CreateNewPostScreen();
+                  },
+                );
+              },
+              child: const Icon(Icons.add),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
-class CreateNewPostScreen extends StatelessWidget {
+
+class PostCard extends StatefulWidget {
+  final String username;
+  final String content;
+  final String postId;
+  final int likes;
+
+  const PostCard({
+    super.key,
+    required this.username,
+    required this.content,
+    required this.postId,
+    required this.likes,
+  });
+
+  @override
+  _PostCardState createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> {
+  int likeCount = 0;
+  bool isLiked = false;
+  final TextEditingController _commentController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    likeCount = widget.likes;
+  }
+
+  void _toggleLike() {
+    setState(() {
+      isLiked = !isLiked;
+      likeCount += isLiked ? 1 : -1;
+    });
+
+    FirebaseFirestore.instance.collection('posts').doc(widget.postId).update({
+      'likes': likeCount,
+    });
+  }
+
+  void _addComment(String commentText) {
+    if (commentText.trim().isEmpty) return;
+
+    FirebaseFirestore.instance
+        .collection('posts')
+        .doc(widget.postId)
+        .collection('comments')
+        .add({
+      'username': widget.username, // Update with logged-in user's name
+      'comment': commentText,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    _commentController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      elevation: 3.0,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // User Info
+            Row(
+              children: [
+                const CircleAvatar(radius: 20.0), // Add profile picture if available
+                const SizedBox(width: 10.0),
+                Text(widget.username, style: const TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 10.0),
+
+            // Post Content
+            Text(widget.content, style: const TextStyle(fontSize: 16.0)),
+
+            // Action Buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton.icon(
+                  onPressed: _toggleLike,
+                  icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+                  label: Text('$likeCount Likes'),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (context) => CommentSection(postId: widget.postId),
+                    );
+                  },
+                  icon: const Icon(Icons.comment, color: Colors.blue),
+                  label: const Text('Comment'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CommentSection extends StatelessWidget {
+  final String postId;
+  final TextEditingController _commentController = TextEditingController();
+
+  CommentSection({super.key, required this.postId});
+
+  void _addComment(String commentText) {
+    if (commentText.trim().isEmpty) return;
+
+    FirebaseFirestore.instance.collection('posts').doc(postId).collection('comments').add({
+      'username': 'Current User', // Replace with logged-in user’s username
+      'comment': commentText,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    _commentController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        height: 400,
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            const Text("Comments", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('posts')
+                    .doc(postId)
+                    .collection('comments')
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text("No comments yet"));
+                  }
+
+                  var comments = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    itemCount: comments.length,
+                    itemBuilder: (context, index) {
+                      var comment = comments[index];
+                      return ListTile(
+                        leading: const CircleAvatar(radius: 18.0), // Add user profile pic if available
+                        title: Text(comment['username'] ?? 'Unknown User', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(comment['comment'] ?? ''),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    decoration: const InputDecoration(
+                      hintText: "Write a comment...",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send, color: Colors.blue),
+                  onPressed: () {
+                    _addComment(_commentController.text);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CreateNewPostScreen extends StatefulWidget {
   const CreateNewPostScreen({super.key});
+
+  @override
+  _CreateNewPostScreenState createState() => _CreateNewPostScreenState();
+}
+
+class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
+  final TextEditingController _postController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isPosting = false;
+
+  Future<void> _createPost() async {
+    String postContent = _postController.text.trim();
+    if (postContent.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post cannot be empty!')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isPosting = true;
+    });
+
+    try {
+      User? user = _auth.currentUser;
+
+      if (user != null) {
+        DocumentSnapshot userDoc =
+            await _firestore.collection('users').doc(user.uid).get();
+        String username = userDoc.exists ? userDoc['username'] : 'Anonymous';
+
+        await _firestore.collection('posts').add({
+          'userId': user.uid,
+          'userName': username,
+          'userEmail': user.email,
+          'likes': 0,
+          'postContent': postContent,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post created successfully!')),
+        );
+
+        Navigator.of(context).pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not logged in!')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() {
+        _isPosting = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 0, 58, 92), // Background color for the AppBar
+        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back,color: Colors.white),
-          
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.of(context).pop(); // Back action
+            Navigator.of(context).pop();
           },
         ),
         title: const Text(
           'Create New Post',
-          style: TextStyle(
-            fontSize: 20.0,
-            fontWeight: FontWeight.bold,
-            color: Colors.white
-          ),
+          style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
-      body: Container(
-        color: const Color.fromARGB(255, 255, 255, 255), // Set background color for the body
-        child: Padding(
-          padding: const EdgeInsets.all(26.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 40.0),
-
-              // User Information Section
-              const Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20.0,
-                    backgroundImage: NetworkImage('https://example.com/avatar.jpg'), // Replace with actual avatar URL
-                  ),
-                  SizedBox(width: 10.0),
-                  Text(
-                    'Ardito Saputra',
-                    style: TextStyle(
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.bold,
+      body: Padding(
+        padding: const EdgeInsets.all(26.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 40.0),
+            FutureBuilder<DocumentSnapshot>(
+              future: _firestore.collection('users').doc(_auth.currentUser?.uid).get(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator();
+                }
+                if (!snapshot.hasData || snapshot.data == null || !snapshot.data!.exists) {
+                  return const Text("Not logged in");
+                }
+                String username = snapshot.data!['username'] ?? 'Anonymous';
+                //String profilePic = snapshot.data!['profilePic'] ?? '';
+                return Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20.0,
+                      //backgroundImage: profilePic.isNotEmpty
+                     //     ? NetworkImage(profilePic)
+                      //    : const AssetImage('assets/images/hi.png') as ImageProvider,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 10.0),
+                    Text(
+                      username,
+                      style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 20.0),
+            TextField(
+              controller: _postController,
+              maxLines: null,
+              decoration: const InputDecoration(
+                hintText: "What's on your mind?",
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 14.0),
               ),
-              const SizedBox(height: 20.0),
-
-              // Post Content Area
-              const TextField(
-                maxLines: null,
-                textAlignVertical: TextAlignVertical.top,
-                decoration: InputDecoration(
-                  hintText: 'What\'s on your mind?',
-                  isDense: true,
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 14.0),
+              style: const TextStyle(fontSize: 18.0),
+            ),
+            const SizedBox(height: 20.0),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey,
+                    minimumSize: const Size(160, 50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                  ),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white, fontSize: 18)),
                 ),
-                style: TextStyle(fontSize: 18.0),
-              ),
-              const SizedBox(height: 20.0),
-
-              // Action Buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(); // Cancel action
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 80, 80, 80),
-                      minimumSize: const Size(160, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0), // Set border radius for rounded corners
-                      ),
-                    ),
-                    child: const Text('Cancel', style: TextStyle(color: Colors.white, fontSize: 18)),
+                const SizedBox(width: 10.0),
+                ElevatedButton(
+                  onPressed: _isPosting ? null : _createPost,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+                    minimumSize: const Size(160, 50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
                   ),
-                  const SizedBox(width: 10.0),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Implement the post creation logic
-                      Navigator.of(context).pop(); // Close the modal after posting
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-                      minimumSize: const Size(160, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0), // Set border radius for rounded corners
-                      ),
-                    ),
-                    child: const Text('Post Now', style: TextStyle(color: Colors.white, fontSize: 18)),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                  child: _isPosting
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Post Now', style: TextStyle(color: Colors.white, fontSize: 18)),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -327,7 +601,7 @@ class PeerAssistanceScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: const [
-                PostCard(content: "Lost my phone in the cafeteria."),
+            //    PostCard(content: "Lost my phone in the cafeteria."),
               ],
             ),
           ),
@@ -365,7 +639,7 @@ class EventsJobsScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: const [
-                PostCard(content: "Lost my phone in the cafeteria."),
+               // PostCard(content: "Lost my phone in the cafeteria."),
               ],
             ),
           ),
@@ -399,7 +673,7 @@ class SurveysScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: const [
-                PostCard(content: "Lost my phone in the cafeteria."),
+            //    PostCard(content: "Lost my phone in the cafeteria."),
               ],
             ),
           ),
@@ -456,22 +730,6 @@ class CategoryChip extends StatelessWidget {
           side: const BorderSide(color: Colors.grey, width: 1.2),
           borderRadius: BorderRadius.circular(20),
         ),
-      ),
-    );
-  }
-}
-
-class PostCard extends StatelessWidget {
-  final String content;
-
-  const PostCard({super.key, required this.content});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Text(content),
       ),
     );
   }

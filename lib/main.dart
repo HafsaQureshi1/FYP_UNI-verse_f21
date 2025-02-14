@@ -1,9 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'Home.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,45 +56,32 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
 
     // Ensure sign out before signing in again
     await _googleSignIn.signOut();
+    await FirebaseAuth.instance.signOut();
 
-    if (kIsWeb) {
-      // Web-specific sign-in with popup
-      GoogleAuthProvider googleProvider = GoogleAuthProvider();
-      googleProvider.addScope('email');
-      googleProvider.addScope('profile');
+    // Force Google to prompt for account selection
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
+    if (googleUser != null) {
+      await _googleSignIn.disconnect();  // Clear cached account
+    }
 
-      final userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+    final GoogleSignInAccount? newGoogleUser = await _googleSignIn.signIn();
+    if (newGoogleUser == null) return;
 
-      if (userCredential.user != null) {
-        if (userCredential.user?.emailVerified ?? false) {
-          widget.onSuccess(userCredential);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please verify your email first.')),
-          );
-        }
-      }
-    } else {
-      // Mobile sign-in
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return;
+    final GoogleSignInAuthentication googleAuth = await newGoogleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-      
-      if (userCredential.user != null) {
-        if (userCredential.user?.emailVerified ?? false) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please verify your email first.')),
-          );
-        } else {
-          widget.onSuccess(userCredential);
-        }
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    
+    if (userCredential.user != null) {
+      if (userCredential.user?.emailVerified ?? false) {
+        widget.onSuccess(userCredential);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please verify your email first.')),
+        );
       }
     }
   } catch (e) {
@@ -141,6 +130,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isLoading = false;
+final TextEditingController _usernameController = TextEditingController();
 
   Future<void> _signUp() async {
   setState(() {
@@ -149,19 +139,30 @@ class _SignUpPageState extends State<SignUpPage> {
 
   try {
     UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-      email: _emailController.text,
-      password: _passwordController.text,
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
     );
     User? user = userCredential.user;
 
     if (user != null) {
       await user.sendEmailVerification();
+
+      // Save username to Firestore
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'uid': user.uid,
+        'username': _usernameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
       setState(() {
         _isLoading = false;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Verification email sent. Please verify your email.')),
       );
+
       _startEmailVerificationCheck();
     }
   } catch (e) {
@@ -173,6 +174,7 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 }
+
 
   void _startEmailVerificationCheck() {
     showDialog(
@@ -254,6 +256,15 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
+TextField(
+  controller: _usernameController,
+  decoration: InputDecoration(
+    labelText: 'Username',
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.0)),
+    prefixIcon: const Icon(Icons.person, color: Colors.grey),
+  ),
+),
+const SizedBox(height: 10),
 
                 TextField(
                   controller: _emailController,
