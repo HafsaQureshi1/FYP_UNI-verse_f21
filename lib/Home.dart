@@ -1,10 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/intl.dart'; // For formatting timestamps
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'main.dart';
+import 'PeerScreen.dart';
+import 'SurveyScreen.dart';
+import 'EventScreen.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -171,7 +176,7 @@ class LostFoundScreen extends StatelessWidget {
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
-                      .collection('posts')
+                      .collection('lostfoundposts')
                       .orderBy('timestamp', descending: true)
                       .snapshots(),
                   builder: (context, snapshot) {
@@ -249,39 +254,81 @@ class PostCard extends StatefulWidget {
 class _PostCardState extends State<PostCard> {
   int likeCount = 0;
   bool isLiked = false;
-  final TextEditingController _commentController = TextEditingController();
+  String? currentUserId;
+  String postTime = "";
 
   @override
   void initState() {
     super.initState();
+    currentUserId = FirebaseAuth.instance.currentUser?.uid;
     likeCount = widget.likes;
+    _checkIfUserLiked();
+    _fetchPostTime();
   }
 
-  void _toggleLike() {
-    setState(() {
-      isLiked = !isLiked;
-      likeCount += isLiked ? 1 : -1;
-    });
+  Future<void> _checkIfUserLiked() async {
+    if (currentUserId == null) return;
 
-    FirebaseFirestore.instance.collection('posts').doc(widget.postId).update({
-      'likes': likeCount,
-    });
-  }
-
-  void _addComment(String commentText) {
-    if (commentText.trim().isEmpty) return;
-
-    FirebaseFirestore.instance
-        .collection('posts')
+    final likeDoc = await FirebaseFirestore.instance
+        .collection('lostfoundposts')
         .doc(widget.postId)
-        .collection('comments')
-        .add({
-      'username': widget.username, // Update with logged-in user's name
-      'comment': commentText,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+        .collection('likes')
+        .doc(currentUserId)
+        .get();
 
-    _commentController.clear();
+    setState(() {
+      isLiked = likeDoc.exists;
+    });
+  }
+
+  Future<void> _fetchPostTime() async {
+    final postDoc = await FirebaseFirestore.instance
+        .collection('lostfoundposts')
+        .doc(widget.postId)
+        .get();
+
+    if (postDoc.exists) {
+      Timestamp? timestamp = postDoc['timestamp']; // Firestore timestamp
+      if (timestamp != null) {
+        DateTime date = timestamp.toDate();
+        String formattedTime = DateFormat('MMM d, yyyy • h:mm a').format(date);
+        setState(() {
+          postTime = formattedTime;
+        });
+      }
+    }
+  }
+
+  void _toggleLike() async {
+    if (currentUserId == null) return;
+
+    final likeRef = FirebaseFirestore.instance
+        .collection('lostfoundposts')
+        .doc(widget.postId)
+        .collection('likes')
+        .doc(currentUserId);
+
+    if (isLiked) {
+      await likeRef.delete();
+      setState(() {
+        isLiked = false;
+        likeCount--;
+      });
+    } else {
+      await likeRef.set({
+        'userId': currentUserId,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      setState(() {
+        isLiked = true;
+        likeCount++;
+      });
+    }
+
+    await FirebaseFirestore.instance
+        .collection('lostfoundposts')
+        .doc(widget.postId)
+        .update({'likes': likeCount});
   }
 
   @override
@@ -294,12 +341,23 @@ class _PostCardState extends State<PostCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // User Info
+            // User Info & Timestamp
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const CircleAvatar(radius: 20.0), // Add profile picture if available
-                const SizedBox(width: 10.0),
-                Text(widget.username, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Row(
+                  children: [
+                    const CircleAvatar(radius: 20.0), // Profile picture placeholder
+                    const SizedBox(width: 10.0),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.username, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(postTime, style: const TextStyle(fontSize: 12.0, color: Colors.grey)),
+                      ],
+                    ),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 10.0),
@@ -313,7 +371,10 @@ class _PostCardState extends State<PostCard> {
               children: [
                 TextButton.icon(
                   onPressed: _toggleLike,
-                  icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+                  icon: Icon(
+                    isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: Colors.red,
+                  ),
                   label: Text('$likeCount Likes'),
                 ),
                 TextButton.icon(
@@ -335,18 +396,44 @@ class _PostCardState extends State<PostCard> {
     );
   }
 }
-
-class CommentSection extends StatelessWidget {
+class CommentSection extends StatefulWidget {
   final String postId;
-  final TextEditingController _commentController = TextEditingController();
 
-  CommentSection({super.key, required this.postId});
+  const CommentSection({super.key, required this.postId});
+
+  @override
+  _CommentSectionState createState() => _CommentSectionState();
+}
+
+class _CommentSectionState extends State<CommentSection> {
+  final TextEditingController _commentController = TextEditingController();
+  String? _username;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsername();
+  }
+
+  Future<void> _fetchUsername() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      setState(() {
+        _username = userDoc.data()?['username'] ?? 'Unknown User';
+      });
+    }
+  }
 
   void _addComment(String commentText) {
-    if (commentText.trim().isEmpty) return;
+    if (commentText.trim().isEmpty || _username == null) return;
 
-    FirebaseFirestore.instance.collection('posts').doc(postId).collection('comments').add({
-      'username': 'Current User', // Replace with logged-in user’s username
+    FirebaseFirestore.instance
+        .collection('lostfoundposts')
+        .doc(widget.postId)
+        .collection('comments')
+        .add({
+      'username': _username,
       'comment': commentText,
       'timestamp': FieldValue.serverTimestamp(),
     });
@@ -367,8 +454,8 @@ class CommentSection extends StatelessWidget {
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection('posts')
-                    .doc(postId)
+                    .collection('lostfoundposts')
+                    .doc(widget.postId)
                     .collection('comments')
                     .orderBy('timestamp', descending: true)
                     .snapshots(),
@@ -388,7 +475,8 @@ class CommentSection extends StatelessWidget {
                       var comment = comments[index];
                       return ListTile(
                         leading: const CircleAvatar(radius: 18.0), // Add user profile pic if available
-                        title: Text(comment['username'] ?? 'Unknown User', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text(comment['username'] ?? 'Unknown User',
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(comment['comment'] ?? ''),
                       );
                     },
@@ -456,7 +544,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
             await _firestore.collection('users').doc(user.uid).get();
         String username = userDoc.exists ? userDoc['username'] : 'Anonymous';
 
-        await _firestore.collection('posts').add({
+        await _firestore.collection('lostfoundposts').add({
           'userId': user.uid,
           'userName': username,
           'userEmail': user.email,
@@ -521,7 +609,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                 //String profilePic = snapshot.data!['profilePic'] ?? '';
                 return Row(
                   children: [
-                    CircleAvatar(
+                    const CircleAvatar(
                       radius: 20.0,
                       //backgroundImage: profilePic.isNotEmpty
                      //     ? NetworkImage(profilePic)
@@ -583,115 +671,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
   }
 }
 
-class PeerAssistanceScreen extends StatelessWidget {
-  const PeerAssistanceScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-  return Stack(
-    children: [
-      Column(
-        children: [
-          Divider(
-  color: Colors.grey[300], // Set the color of the line
-  thickness: 1, // Thickness of the line
-),
-          const CategoryChips(),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: const [
-            //    PostCard(content: "Lost my phone in the cafeteria."),
-              ],
-            ),
-          ),
-        ],
-      ),
-      Positioned(
-        bottom: 16.0,
-        right: 16.0,
-        child: FloatingActionButton(
-          onPressed: () {},
-          child: const Icon(Icons.add),
-        ),
-      ),
-    ],
-  );
-}
-
-}
-
-class EventsJobsScreen extends StatelessWidget {
-  const EventsJobsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-  return Stack(
-    children: [
-      Column(
-        children: [
-          Divider(
-  color: Colors.grey[300], // Set the color of the line
-  thickness: 1, // Thickness of the line
-),
-          const CategoryChips(),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: const [
-               // PostCard(content: "Lost my phone in the cafeteria."),
-              ],
-            ),
-          ),
-        ],
-      ),
-      Positioned(
-        bottom: 16.0,
-        right: 16.0,
-        child: FloatingActionButton(
-          onPressed: () {},
-          child: const Icon(Icons.add),
-        ),
-      ),
-    ],
-  );
-}
-
-}
-
-class SurveysScreen extends StatelessWidget {
-  const SurveysScreen({super.key});
-
-  @override
- Widget build(BuildContext context) {
-  return Stack(
-    children: [
-      Column(
-        children: [
-          const CategoryChips(),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: const [
-            //    PostCard(content: "Lost my phone in the cafeteria."),
-              ],
-            ),
-          ),
-        ],
-      ),
-      Positioned(
-        bottom: 16.0,
-        right: 16.0,
-        child: FloatingActionButton(
-          onPressed: () {},
-          child: const Icon(Icons.add),
-        ),
-      ),
-    ],
-  );
-}
-
-}
 
 class CategoryChips extends StatelessWidget {
   const CategoryChips({super.key});
