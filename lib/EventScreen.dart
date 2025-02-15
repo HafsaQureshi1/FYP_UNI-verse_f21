@@ -17,7 +17,7 @@ class EventsJobsScreen extends StatelessWidget {
           Column(
             children: [
               Divider(color: Colors.grey[300], thickness: 1), // Grey divider
-              const CategoryChips(),
+              
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -385,6 +385,7 @@ class _PostCardState extends State<PostCard> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12.0),
       elevation: 3.0,
+       color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -444,8 +445,7 @@ class _PostCardState extends State<PostCard> {
       ),
     );
   }
-}
-class CommentSection extends StatefulWidget {
+}class CommentSection extends StatefulWidget {
   final String postId;
 
   const CommentSection({super.key, required this.postId});
@@ -453,7 +453,6 @@ class CommentSection extends StatefulWidget {
   @override
   _CommentSectionState createState() => _CommentSectionState();
 }
-
 class _CommentSectionState extends State<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
   String? _username;
@@ -522,11 +521,29 @@ class _CommentSectionState extends State<CommentSection> {
                     itemCount: comments.length,
                     itemBuilder: (context, index) {
                       var comment = comments[index];
+                      Timestamp? timestamp = comment['timestamp'];
+                      String formattedTime = "Just now";
+
+                      if (timestamp != null) {
+                        DateTime date = timestamp.toDate();
+                        formattedTime = DateFormat('MMM d, yyyy • h:mm a').format(date);
+                      }
+
                       return ListTile(
                         leading: const CircleAvatar(radius: 18.0), // Add user profile pic if available
                         title: Text(comment['username'] ?? 'Unknown User',
                             style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(comment['comment'] ?? ''),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              formattedTime,
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                            Text(comment['comment'] ?? ''),
+                            
+                          ],
+                        ),
                       );
                     },
                   );

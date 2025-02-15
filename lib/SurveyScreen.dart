@@ -319,7 +319,7 @@ class _PostCardState extends State<PostCard> {
     if (currentUserId == null) return;
 
     final likeDoc = await FirebaseFirestore.instance
-        .collection('Peerposts')
+        .collection('Surveyposts')
         .doc(widget.postId)
         .collection('likes')
         .doc(currentUserId)
@@ -332,7 +332,7 @@ class _PostCardState extends State<PostCard> {
 
   Future<void> _fetchPostTime() async {
     final postDoc = await FirebaseFirestore.instance
-        .collection('Peerposts')
+        .collection('Surveyposts')
         .doc(widget.postId)
         .get();
 
@@ -352,7 +352,7 @@ class _PostCardState extends State<PostCard> {
     if (currentUserId == null) return;
 
     final likeRef = FirebaseFirestore.instance
-        .collection('Peerposts')
+        .collection('Surveyposts')
         .doc(widget.postId)
         .collection('likes')
         .doc(currentUserId);
@@ -375,7 +375,7 @@ class _PostCardState extends State<PostCard> {
     }
 
     await FirebaseFirestore.instance
-        .collection('Peerposts')
+        .collection('Surveyposts')
         .doc(widget.postId)
         .update({'likes': likeCount});
   }
@@ -385,6 +385,7 @@ class _PostCardState extends State<PostCard> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12.0),
       elevation: 3.0,
+       color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
