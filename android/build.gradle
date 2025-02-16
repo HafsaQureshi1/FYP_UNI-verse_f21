@@ -1,25 +1,55 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-        jcenter() // Optional, only if needed
-    }
-    dependencies {
-        classpath "com.android.tools.build:gradle:8.0.0"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.10"
-        classpath "com.google.gms:google-services:4.3.15" // Firebase
-    }
+plugins {
+  // Apply the Google services Gradle plugin
+  id("com.google.gms.google-services") version "4.3.15" apply false
 }
 
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
 allprojects {
     repositories {
         google()
         mavenCentral()
     }
+plugins {
+  // Apply the Google services Gradle plugin
+  id("com.google.gms.google-services") version "4.3.15" apply false
+  id 'com.android.application'
+  id 'kotlin-android'
+  id 'kotlin-kapt'
 }
 
-// Remove duplicate clean task
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        jcenter()
+    }
+}
+
+rootProject.buildDir = "../build"
+
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}}
+
+rootProject.buildDir = "../build"
+
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
