@@ -1,12 +1,9 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/intl.dart'; // For formatting timestamps
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'main.dart';
 class SurveysScreen extends StatelessWidget {
   const SurveysScreen({super.key});
 
@@ -18,7 +15,7 @@ class SurveysScreen extends StatelessWidget {
           Column(
             children: [
               Divider(color: Colors.grey[300], thickness: 1), // Grey divider
-              const CategoryChips(),
+              
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -454,7 +451,6 @@ class CommentSection extends StatefulWidget {
   @override
   _CommentSectionState createState() => _CommentSectionState();
 }
-
 class _CommentSectionState extends State<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
   String? _username;
@@ -523,11 +519,29 @@ class _CommentSectionState extends State<CommentSection> {
                     itemCount: comments.length,
                     itemBuilder: (context, index) {
                       var comment = comments[index];
+                      Timestamp? timestamp = comment['timestamp'];
+                      String formattedTime = "Just now";
+
+                      if (timestamp != null) {
+                        DateTime date = timestamp.toDate();
+                        formattedTime = DateFormat('MMM d, yyyy • h:mm a').format(date);
+                      }
+
                       return ListTile(
                         leading: const CircleAvatar(radius: 18.0), // Add user profile pic if available
                         title: Text(comment['username'] ?? 'Unknown User',
                             style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(comment['comment'] ?? ''),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              formattedTime,
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                            Text(comment['comment'] ?? ''),
+                            
+                          ],
+                        ),
                       );
                     },
                   );
