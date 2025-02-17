@@ -88,11 +88,141 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     }
   }
 
+  void _navigateToPost(BuildContext context, Map<String, dynamic> post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+            title: Text(_getCollectionDisplayName(post['collection'])),
+            leading: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Post content
+                Card(
+                  margin: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ListTile(
+                        leading: const CircleAvatar(),
+                        title: Text(
+                          post['userName'] ?? 'Anonymous',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          DateFormat('MMM d, yyyy • h:mm a').format(
+                              (post['timestamp'] as Timestamp).toDate()),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          post['postContent'] ?? '',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                      // Like and Comment buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () {
+                              // Implement like functionality
+                            },
+                            icon: Icon(
+                              post['isLiked'] ?? false
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: Colors.red,
+                            ),
+                            label: Text('${post['likes'] ?? 0} Likes'),
+                          ),
+                          TextButton.icon(
+                            onPressed: () {
+                              // Show comments section
+                              _showComments(context, post);
+                            },
+                            icon: const Icon(Icons.comment, color: Colors.blue),
+                            label: const Text('Comments'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showComments(BuildContext context, Map<String, dynamic> post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            const Text(
+              'Comments',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection(post['collection'])
+                    .doc(post['id'])
+                    .collection('comments')
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final comments = snapshot.data!.docs;
+                  if (comments.isEmpty) {
+                    return const Center(child: Text('No comments yet'));
+                  }
+
+                  return ListView.builder(
+                    itemCount: comments.length,
+                    itemBuilder: (context, index) {
+                      final comment =
+                          comments[index].data() as Map<String, dynamic>;
+                      return ListTile(
+                        title: Text(comment['username'] ?? 'Anonymous'),
+                        subtitle: Text(comment['comment'] ?? ''),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
         title: Text('Results for "${widget.query}"'),
         elevation: 0,
       ),
@@ -113,38 +243,41 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                         horizontal: 8.0,
                         vertical: 4.0,
                       ),
-                      child: ListTile(
-                        title: Text(
-                          result['userName'] ?? 'Anonymous',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(result['postContent'] ?? ''),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Text(
-                                  _getCollectionDisplayName(
-                                      result['collection']),
-                                  style: TextStyle(
-                                    color: Theme.of(context).primaryColor,
-                                    fontWeight: FontWeight.bold,
+                      child: InkWell(
+                        onTap: () => _navigateToPost(context, result),
+                        child: ListTile(
+                          title: Text(
+                            result['userName'] ?? 'Anonymous',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text(result['postContent'] ?? ''),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text(
+                                    _getCollectionDisplayName(
+                                        result['collection']),
+                                    style: TextStyle(
+                                      color: Theme.of(context).primaryColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                const Text(' • '),
-                                Text(
-                                  formattedDate,
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
+                                  const Text(' • '),
+                                  Text(
+                                    formattedDate,
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
