@@ -92,7 +92,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
         title: Text('Results for "${widget.query}"'),
         elevation: 0,
       ),
