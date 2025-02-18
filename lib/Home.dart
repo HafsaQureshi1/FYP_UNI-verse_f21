@@ -2,7 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/intl.dart'; // For formatting timestamps
-
+import 'search.dart';
+import 'search_results.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'main.dart';
@@ -38,8 +39,12 @@ class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
+
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   final List<Widget> _screens = [
     const LostFoundScreen(),
     const PeerAssistanceScreen(),
@@ -54,82 +59,125 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _signOut() async {
-  try {
-    final GoogleSignIn googleSignIn = GoogleSignIn(
-    clientId: '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
-    
-  );
-    // Sign out from Google Sign-In
-    await googleSignIn.signOut();
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId:
+            '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
+      );
+      // Sign out from Google Sign-In
+      await googleSignIn.signOut();
 
-    // Sign out from Firebase
-    await FirebaseAuth.instance.signOut();
+      // Sign out from Firebase
+      await FirebaseAuth.instance.signOut();
 
-    // Navigate to Sign In Page
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const SignInPage()),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: ${e.toString()}')),
+      // Navigate to Sign In Page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const SignInPage()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(50.0),
+      child: AppBar(
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        elevation: 0,
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                decoration: const InputDecoration(
+                  hintText: 'Search posts...',
+                  border: InputBorder.none,
+                ),
+                onSubmitted: (value) {
+                  if (value.trim().isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SearchResultsScreen(query: value),
+                      ),
+                    );
+                  }
+                },
+              )
+            : const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10.0),
+                child: Text(
+                  "UNI-verse",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+        leading: _isSearching
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () {
+                  setState(() {
+                    _isSearching = false;
+                    _searchController.clear();
+                  });
+                },
+              )
+            : null,
+        actions: [
+          IconButton(
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (_isSearching) {
+                  _searchFocusNode.requestFocus();
+                }
+              });
+            },
+            icon: Icon(
+              _isSearching ? Icons.close : Icons.search,
+              color: Colors.black,
+            ),
+          ),
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 0.0), // Add padding here
+            child: IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.notifications, color: Colors.black),
+            ),
+          ),
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 9.0), // Add padding here
+            child: IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.person, color: Colors.black),
+            ),
+          ),
+          // Logout Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 9.0),
+            child: IconButton(
+              onPressed: _signOut, // Call the sign-out function
+              icon: const Icon(Icons.exit_to_app, color: Colors.black),
+            ),
+          ),
+        ],
+      ),
     );
   }
-}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(50.0), // Adjust height if needed
-        child: AppBar(
-          backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-          elevation: 0,
-          title: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10.0), // Add padding to the title
-            child: Text(
-              "UNI-verse",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 9.0), // Add padding here
-              child: IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.search, color: Colors.black),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 0.0), // Add padding here
-              child: IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.notifications, color: Colors.black),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 9.0), // Add padding here
-              child: IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.person, color: Colors.black),
-              ),
-            ),
-            // Logout Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 9.0),
-              child: IconButton(
-                onPressed: _signOut, // Call the sign-out function
-                icon: const Icon(Icons.exit_to_app, color: Colors.black),
-              ),
-            ),
-          ],
-        ),
-      ),
+      appBar: _buildAppBar(),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -159,6 +207,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
 }
 
 class LostFoundScreen extends StatelessWidget {
@@ -186,7 +241,6 @@ class LostFoundScreen extends StatelessWidget {
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return const Center(child: Text('No posts found'));
                     }
-
                     var posts = snapshot.data!.docs;
 
                     return ListView.builder(
@@ -196,11 +250,11 @@ class LostFoundScreen extends StatelessWidget {
                         var post = posts[index];
                         String username = post['userName'] ?? 'Anonymous';
                         String content = post['postContent'] ?? '';
-                       
+
                         return PostCard(
                           username: username,
                           content: content,
-                         // userProfilePic: userProfilePic,
+                          // userProfilePic: userProfilePic,
                           postId: post.id,
                           likes: post['likes'] ?? 0,
                         );
@@ -336,7 +390,7 @@ class _PostCardState extends State<PostCard> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12.0),
       elevation: 3.0,
-       color: Colors.white,
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -348,13 +402,18 @@ class _PostCardState extends State<PostCard> {
               children: [
                 Row(
                   children: [
-                    const CircleAvatar(radius: 20.0), // Profile picture placeholder
+                    const CircleAvatar(
+                        radius: 20.0), // Profile picture placeholder
                     const SizedBox(width: 10.0),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.username, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        Text(postTime, style: const TextStyle(fontSize: 12.0, color: Colors.grey)),
+                        Text(widget.username,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(postTime,
+                            style: const TextStyle(
+                                fontSize: 12.0, color: Colors.grey)),
                       ],
                     ),
                   ],
@@ -383,7 +442,8 @@ class _PostCardState extends State<PostCard> {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
-                      builder: (context) => CommentSection(postId: widget.postId),
+                      builder: (context) =>
+                          CommentSection(postId: widget.postId),
                     );
                   },
                   icon: const Icon(Icons.comment, color: Colors.blue),
@@ -397,6 +457,7 @@ class _PostCardState extends State<PostCard> {
     );
   }
 }
+
 class CommentSection extends StatefulWidget {
   final String postId;
 
@@ -405,6 +466,7 @@ class CommentSection extends StatefulWidget {
   @override
   _CommentSectionState createState() => _CommentSectionState();
 }
+
 class _CommentSectionState extends State<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
   String? _username;
@@ -418,7 +480,10 @@ class _CommentSectionState extends State<CommentSection> {
   Future<void> _fetchUsername() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
       setState(() {
         _username = userDoc.data()?['username'] ?? 'Unknown User';
       });
@@ -444,13 +509,15 @@ class _CommentSectionState extends State<CommentSection> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: 400,
         padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
-            const Text("Comments", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text("Comments",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
@@ -466,7 +533,6 @@ class _CommentSectionState extends State<CommentSection> {
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return const Center(child: Text("No comments yet"));
                   }
-
                   var comments = snapshot.data!.docs;
 
                   return ListView.builder(
@@ -478,22 +544,25 @@ class _CommentSectionState extends State<CommentSection> {
 
                       if (timestamp != null) {
                         DateTime date = timestamp.toDate();
-                        formattedTime = DateFormat('MMM d, yyyy • h:mm a').format(date);
+                        formattedTime =
+                            DateFormat('MMM d, yyyy • h:mm a').format(date);
                       }
 
                       return ListTile(
-                        leading: const CircleAvatar(radius: 18.0), // Add user profile pic if available
+                        leading: const CircleAvatar(
+                            radius: 18.0), // Add user profile pic if available
                         title: Text(comment['username'] ?? 'Unknown User',
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               formattedTime,
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey),
                             ),
                             Text(comment['comment'] ?? ''),
-                            
                           ],
                         ),
                       );
@@ -605,7 +674,8 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
         ),
         title: const Text(
           'Create New Post',
-          style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+              fontSize: 20.0, fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
       body: Padding(
@@ -615,12 +685,17 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
           children: [
             const SizedBox(height: 40.0),
             FutureBuilder<DocumentSnapshot>(
-              future: _firestore.collection('users').doc(_auth.currentUser?.uid).get(),
+              future: _firestore
+                  .collection('users')
+                  .doc(_auth.currentUser?.uid)
+                  .get(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const CircularProgressIndicator();
                 }
-                if (!snapshot.hasData || snapshot.data == null || !snapshot.data!.exists) {
+                if (!snapshot.hasData ||
+                    snapshot.data == null ||
+                    !snapshot.data!.exists) {
                   return const Text("Not logged in");
                 }
                 String username = snapshot.data!['username'] ?? 'Anonymous';
@@ -630,13 +705,14 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                     const CircleAvatar(
                       radius: 20.0,
                       //backgroundImage: profilePic.isNotEmpty
-                     //     ? NetworkImage(profilePic)
+                      //     ? NetworkImage(profilePic)
                       //    : const AssetImage('assets/images/hi.png') as ImageProvider,
                     ),
                     const SizedBox(width: 10.0),
                     Text(
                       username,
-                      style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 16.0, fontWeight: FontWeight.bold),
                     ),
                   ],
                 );
@@ -649,7 +725,8 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
               decoration: const InputDecoration(
                 hintText: "What's on your mind?",
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 14.0),
+                contentPadding:
+                    EdgeInsets.symmetric(vertical: 20.0, horizontal: 14.0),
               ),
               style: const TextStyle(fontSize: 18.0),
             ),
@@ -664,9 +741,11 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey,
                     minimumSize: const Size(160, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0)),
                   ),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.white, fontSize: 18)),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: Colors.white, fontSize: 18)),
                 ),
                 const SizedBox(width: 10.0),
                 ElevatedButton(
@@ -674,11 +753,13 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromARGB(255, 0, 58, 92),
                     minimumSize: const Size(160, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.0)),
                   ),
                   child: _isPosting
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Post Now', style: TextStyle(color: Colors.white, fontSize: 18)),
+                      : const Text('Post Now',
+                          style: TextStyle(color: Colors.white, fontSize: 18)),
                 ),
               ],
             ),
@@ -688,7 +769,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
     );
   }
 }
-
 
 class CategoryChips extends StatelessWidget {
   const CategoryChips({super.key});
