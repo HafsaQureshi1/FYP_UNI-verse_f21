@@ -49,7 +49,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
     scopes: ['email', 'profile'],
   );
 
-  Future<void> _handleGoogleSignIn() async {
+ Future<void> _handleGoogleSignIn() async {
   try {
     setState(() => _isLoading = true);
 
@@ -75,6 +75,28 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
     final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
     
     if (userCredential.user != null) {
+      // Check if this is a new user and add default fields if needed
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
+      
+      if (!userDoc.exists) {
+        // New user with Google Sign In - create profile with defaults
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
+              'uid': userCredential.user!.uid,
+              'username': userCredential.user!.displayName ?? 'User',
+              'email': userCredential.user!.email ?? '',
+              'role': 'student', // Default role
+              'profilePicture': userCredential.user!.photoURL ?? 
+                'https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/default_profile.png?alt=media', // Use Google profile pic or default
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+      }
+      
       if (userCredential.user?.emailVerified ?? false) {
         widget.onSuccess(userCredential);
       } else {
@@ -131,7 +153,7 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _isLoading = false;
 final TextEditingController _usernameController = TextEditingController();
 
-  Future<void> _signUp() async {
+ Future<void> _signUp() async {
   setState(() {
     _isLoading = true;
   });
@@ -146,11 +168,13 @@ final TextEditingController _usernameController = TextEditingController();
     if (user != null) {
       await user.sendEmailVerification();
 
-      // Save username to Firestore
+      // Save username to Firestore with default role and profile picture
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'uid': user.uid,
         'username': _usernameController.text.trim(),
         'email': _emailController.text.trim(),
+        'role': 'student', // Default role
+        'profilePicture': 'https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/default_profile.png?alt=media', // Default profile picture URL
         'createdAt': FieldValue.serverTimestamp(),
       });
 

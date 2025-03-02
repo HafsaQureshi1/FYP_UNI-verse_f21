@@ -92,7 +92,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Container(
+      builder: (context) => SizedBox(
         height: MediaQuery.of(context).size.height * 0.9,
         child: Scaffold(
           appBar: AppBar(
