@@ -1,0 +1,2 @@
+D:/hafsa/FYP_UNI-verse_f21/android/app/.cxx/Debug/5z3c232z/x86/CMakeFiles/edit_cache.dir
+D:/hafsa/FYP_UNI-verse_f21/android/app/.cxx/Debug/5z3c232z/x86/CMakeFiles/rebuild_cache.dir
