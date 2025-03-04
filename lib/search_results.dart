@@ -223,7 +223,10 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-        title: Text('Results for "${widget.query}"'),
+        title: Text(
+          'Results for "${widget.query}"',
+          style: const TextStyle(color: Colors.white),
+        ),
         elevation: 0,
       ),
       body: _isLoading
