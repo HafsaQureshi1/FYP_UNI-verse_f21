@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_application_1/fcm-service.dart';
 import 'package:intl/intl.dart'; // For formatting timestamps
 import 'search_results.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,6 +11,8 @@ import 'PeerScreen.dart';
 import 'SurveyScreen.dart';
 import 'EventScreen.dart';
 import 'profile_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -159,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ProfilePage(),
+                        builder: (context) => const ProfilePage(),
                       ),
                     );},
               icon: const Icon(Icons.person, color: Colors.black),
@@ -292,6 +295,7 @@ class LostFoundScreen extends StatelessWidget {
   }
 }
 
+
 class PostCard extends StatefulWidget {
   final String username;
   final String content;
@@ -311,10 +315,11 @@ class PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<PostCard> {
-  int likeCount = 0;
+  String postTime = "";
+int likeCount = 0;
   bool isLiked = false;
   String? currentUserId;
-  String postTime = "";
+  final FCMService _fcmService = FCMService();
 
   @override
   void initState() {
@@ -322,7 +327,6 @@ class _PostCardState extends State<PostCard> {
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
     likeCount = widget.likes;
     _checkIfUserLiked();
-    _fetchPostTime();
   }
 
   Future<void> _checkIfUserLiked() async {
@@ -340,54 +344,35 @@ class _PostCardState extends State<PostCard> {
     });
   }
 
-  Future<void> _fetchPostTime() async {
-    final postDoc = await FirebaseFirestore.instance
-        .collection('lostfoundposts')
-        .doc(widget.postId)
-        .get();
-
-    if (postDoc.exists) {
-      Timestamp? timestamp = postDoc['timestamp']; // Firestore timestamp
-      if (timestamp != null) {
-        DateTime date = timestamp.toDate();
-        String formattedTime = DateFormat('MMM d, yyyy • h:mm a').format(date);
-        setState(() {
-          postTime = formattedTime;
-        });
-      }
-    }
-  }
-
   void _toggleLike() async {
     if (currentUserId == null) return;
 
-    final likeRef = FirebaseFirestore.instance
-        .collection('lostfoundposts')
-        .doc(widget.postId)
-        .collection('likes')
-        .doc(currentUserId);
+    final postRef = FirebaseFirestore.instance.collection('lostfoundposts').doc(widget.postId);
+    final postDoc = await postRef.get();
+    final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
     if (isLiked) {
-      await likeRef.delete();
+      await postRef.collection('likes').doc(currentUserId).delete();
       setState(() {
         isLiked = false;
         likeCount--;
       });
     } else {
-      await likeRef.set({
+      await postRef.collection('likes').doc(currentUserId).set({
         'userId': currentUserId,
         'timestamp': FieldValue.serverTimestamp(),
       });
+
       setState(() {
         isLiked = true;
         likeCount++;
       });
+
+      // Send FCM notification to the post owner
+      _fcmService.sendNotificationToUser(postAuthorId, "Someone liked your post!");
     }
 
-    await FirebaseFirestore.instance
-        .collection('lostfoundposts')
-        .doc(widget.postId)
-        .update({'likes': likeCount});
+    await postRef.update({'likes': likeCount});
   }
 
   @override
@@ -401,21 +386,18 @@ class _PostCardState extends State<PostCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // User Info & Timestamp
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    const CircleAvatar(
-                        radius: 20.0), // Profile picture placeholder
+                    const CircleAvatar(radius: 20.0),
                     const SizedBox(width: 10.0),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(widget.username,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
                         Text(postTime,
                             style: const TextStyle(
                                 fontSize: 12.0, color: Colors.grey)),
@@ -427,10 +409,8 @@ class _PostCardState extends State<PostCard> {
             ),
             const SizedBox(height: 10.0),
 
-            // Post Content
             Text(widget.content, style: const TextStyle(fontSize: 16.0)),
 
-            // Action Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -462,7 +442,6 @@ class _PostCardState extends State<PostCard> {
     );
   }
 }
-
 class CommentSection extends StatefulWidget {
   final String postId;
 

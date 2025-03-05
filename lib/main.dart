@@ -4,14 +4,81 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart'; // Import this for kIsWeb
 
 import 'Home.dart';
+
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  print("🔵 Background Notification Received: ${message.notification?.title}");
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  FirebaseAuth.instance.authStateChanges().listen((User? user) {
+    if (user != null) {
+      setupFirebaseNotifications();
+    }
+  });
+
   runApp(const MyApp());
+}
+
+void setupFirebaseNotifications() async {
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    print("✅ User granted permission");
+  }
+
+  // Get the device token
+  String? token = await messaging.getToken();
+  if (token != null) {
+    print("📲 Device FCM Token: $token");
+    saveUserToken(token);
+  } else {
+    print("❌ Failed to get FCM Token");
+  }
+
+  FirebaseMessaging.instance.onTokenRefresh.listen(saveUserToken);
+
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    print("🔴 Foreground Notification: ${message.notification?.title}");
+  });
+
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    print("🟡 App opened from notification: ${message.data}");
+  });
+}
+
+void saveUserToken(String token) async {
+  User? user;
+  while (user == null) {
+    await Future.delayed(const Duration(seconds: 1));
+    user = FirebaseAuth.instance.currentUser;
+  }
+
+  print("🔍 Saving FCM Token for user: ${user.uid} - Token: $token");
+
+  await FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .set({'fcmToken': token}, SetOptions(merge: true));
+
+  print("✅ FCM Token saved successfully!");
 }
 
 class MyApp extends StatelessWidget {
@@ -45,8 +112,8 @@ class GoogleSignInButton extends StatefulWidget {
 class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   bool _isLoading = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
-    scopes: ['email', 'profile'],
+    clientId: '267004637492-9fj3m3cuchvn145cc27r5r4eannq8ign.apps.googleusercontent.com'
+,scopes: ['email', 'profile'],
   );
 
  Future<void> _handleGoogleSignIn() async {

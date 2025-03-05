@@ -38,7 +38,7 @@ class _SearchScreenState extends State<SearchScreen> {
         final querySnapshot = await FirebaseFirestore.instance
             .collection(collection)
             .where('postContent', isGreaterThanOrEqualTo: query)
-            .where('postContent', isLessThanOrEqualTo: query + '\uf8ff')
+            .where('postContent', isLessThanOrEqualTo: '$query\uf8ff')
             .get();
 
         // Process results from this collection

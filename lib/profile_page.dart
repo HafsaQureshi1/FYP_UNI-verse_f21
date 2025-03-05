@@ -40,7 +40,7 @@ class _ProfilePageState extends State<ProfilePage> {
         setState(() {
           usernameController.text = userDoc['username'] ?? '';
           selectedRole = userDoc['role'] ?? 'Student';
-          profileImageUrl = userDoc['profileImage'] ?? null;
+          profileImageUrl = userDoc['profileImage'];
         });
       }
     }
