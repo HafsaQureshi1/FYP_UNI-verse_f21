@@ -87,6 +87,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
     return PreferredSize(
       preferredSize: const Size.fromHeight(50.0),
       child: AppBar(
@@ -149,23 +151,77 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 0.0), // Add padding here
-            child: IconButton(
-              onPressed: () { Navigator.push(context, MaterialPageRoute(builder: (context) => NotificationScreen()));},
-              icon: const Icon(Icons.notifications, color: Colors.black),
+            padding: const EdgeInsets.symmetric(horizontal: 0.0),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => NotificationScreen()));
+                  },
+                  icon: const Icon(Icons.notifications, color: Colors.black),
+                ),
+                // Notification Badge Counter
+                if (currentUserId != null)
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('notifications')
+                        .where('receiverId', isEqualTo: currentUserId)
+                        .where('isRead', isEqualTo: false)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int count = 0;
+                      if (snapshot.hasData && snapshot.data != null) {
+                        count = snapshot.data!.docs.length;
+                      }
+                      if (count == 0) {
+                        return Container(); // No badge when no unread notifications
+                      }
+
+                      return Positioned(
+                        top: 5,
+                        right: 5,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            count > 99 ? '99+' : count.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+              ],
             ),
           ),
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 9.0), // Add padding here
             child: IconButton(
-              onPressed: () {Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ProfilePage(),
-                      ),
-                    );},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfilePage(),
+                  ),
+                );
+              },
               icon: const Icon(Icons.person, color: Colors.black),
             ),
           ),
@@ -296,7 +352,6 @@ class LostFoundScreen extends StatelessWidget {
   }
 }
 
-
 class PostCard extends StatefulWidget {
   final String username;
   final String content;
@@ -332,21 +387,22 @@ class _PostCardState extends State<PostCard> {
   }
 
   Future<void> _checkIfUserLiked() async {
-  if (currentUserId == null) return;
+    if (currentUserId == null) return;
 
-  final likeDoc = await FirebaseFirestore.instance
-      .collection('lostfoundposts')
-      .doc(widget.postId)
-      .collection('likes')
-      .doc(currentUserId)
-      .get();
+    final likeDoc = await FirebaseFirestore.instance
+        .collection('lostfoundposts')
+        .doc(widget.postId)
+        .collection('likes')
+        .doc(currentUserId)
+        .get();
 
-  if (mounted) { // Check if widget is still in the tree
-    setState(() {
-      isLiked = likeDoc.exists;
-    });
+    if (mounted) {
+      // Check if widget is still in the tree
+      setState(() {
+        isLiked = likeDoc.exists;
+      });
+    }
   }
-}
 
   Future<void> _fetchPostTime() async {
     final postDoc = await FirebaseFirestore.instance
@@ -369,8 +425,19 @@ class _PostCardState extends State<PostCard> {
 
   String _getMonthName(int month) {
     const monthNames = [
-      "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
     ];
     return monthNames[month];
   }
@@ -379,18 +446,27 @@ class _PostCardState extends State<PostCard> {
     int hour = date.hour;
     int minute = date.minute;
     String period = hour >= 12 ? "PM" : "AM";
-    hour = hour > 12 ? hour - 12 : hour == 0 ? 12 : hour;
+    hour = hour > 12
+        ? hour - 12
+        : hour == 0
+            ? 12
+            : hour;
     return "$hour:${minute.toString().padLeft(2, '0')} $period";
   }
 
   void _toggleLike() async {
     if (currentUserId == null) return;
 
-    final postRef = FirebaseFirestore.instance.collection('lostfoundposts').doc(widget.postId);
+    final postRef = FirebaseFirestore.instance
+        .collection('lostfoundposts')
+        .doc(widget.postId);
     final postDoc = await postRef.get();
     final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUserId).get();
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserId)
+        .get();
     final String likerName = userDoc.data()?['username'] ?? 'Someone';
 
     if (isLiked) {
@@ -411,15 +487,17 @@ class _PostCardState extends State<PostCard> {
       });
 
       // Send FCM Notification
-      _fcmService.sendNotificationToUser(postAuthorId, likerName, "liked your post!");
+      _fcmService.sendNotificationToUser(
+          postAuthorId, likerName, "liked your post!");
 
-      // Store Notification in Firestore
+      // Store Notification in Firestore with collection name
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
         'senderId': currentUserId,
         'senderName': likerName,
         'postId': widget.postId,
-        'message': "$likerName liked your post!",
+        'collection': 'lostfoundposts',
+        'message': "$likerName liked your post",
         'timestamp': FieldValue.serverTimestamp(),
         'type': 'like',
         'isRead': false,
@@ -451,7 +529,8 @@ class _PostCardState extends State<PostCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(widget.username,
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                         Text(postTime,
                             style: const TextStyle(
                                 fontSize: 12.0, color: Colors.grey)),
@@ -462,9 +541,7 @@ class _PostCardState extends State<PostCard> {
               ],
             ),
             const SizedBox(height: 10.0),
-
             Text(widget.content, style: const TextStyle(fontSize: 16.0)),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -509,7 +586,7 @@ class CommentSection extends StatefulWidget {
 class _CommentSectionState extends State<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
   final FCMService _fcmService = FCMService(); // Initialize FCMService
-  
+
   String? _username;
 
   @override
@@ -531,70 +608,54 @@ class _CommentSectionState extends State<CommentSection> {
     }
   }
 
- void _addComment(String commentText) async {
-  if (commentText.trim().isEmpty || _username == null) return;
+  void _addComment(String commentText) async {
+    if (commentText.trim().isEmpty || _username == null) return;
 
-  final postRef = FirebaseFirestore.instance.collection('lostfoundposts').doc(widget.postId);
-  
-  // Fetch post document
-  final postDoc = await postRef.get();
+    final postRef = FirebaseFirestore.instance
+        .collection('lostfoundposts')
+        .doc(widget.postId);
 
-  if (!postDoc.exists) {
-    print("❌ No post found with ID: ${widget.postId}");
-    return;
-  } else {
-    print("✅ Post found: ${postDoc.data()}");
+    // Fetch post document
+    final postDoc = await postRef.get();
+
+    if (!postDoc.exists) {
+      return;
+    }
+
+    final String postAuthorId = postDoc.data()?['userId'] ?? '';
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    // Add comment and get its document reference
+    final commentRef = await postRef.collection('comments').add({
+      'userId': userId,
+      'username': _username,
+      'comment': commentText,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    _commentController.clear();
+
+    // Ensure the post owner isn't notified for their own comments
+    if (postAuthorId.isNotEmpty && postAuthorId != userId) {
+      _fcmService.sendNotificationOnComment(
+          widget.postId, _username!, commentRef.id);
+
+      // Store Notification in Firestore with collection name
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'receiverId': postAuthorId,
+        'senderId': userId,
+        'senderName': _username,
+        'postId': widget.postId,
+        'commentId': commentRef.id,
+        'collection': 'lostfoundposts',
+        'message': "$_username commented on your post",
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'comment',
+        'isRead': false,
+      });
+    }
   }
-
-  final String postAuthorId = postDoc.data()?['userId'] ?? '';
-  final userId = FirebaseAuth.instance.currentUser?.uid;
-  if (userId == null) return;
-
-  // Add comment and get its document reference
-  final commentRef = await postRef.collection('comments').add({
-    'userId': userId,
-    'username': _username,
-    'comment': commentText,
-    'timestamp': FieldValue.serverTimestamp(),
-  });
-
-  _commentController.clear();
-  print("✅ Comment added with ID: ${commentRef.id}");
-
-  // Ensure the post owner isn't notified for their own comments
- print("🔍 Checking if notification should be sent...");
-print("📌 Post Author ID: $postAuthorId");
-print("👤 Current User ID: $userId");
-
-if (postAuthorId.isNotEmpty && postAuthorId != userId) {
-  print("📢 Sending notification to post owner: $postAuthorId");
-
-  _fcmService.sendNotificationOnComment(
-    widget.postId,
-    _username!,
-    commentRef.id
-  );
-
-  // Store Notification in Firestore
-  await FirebaseFirestore.instance.collection('notifications').add({
-    'receiverId': postAuthorId,
-    'senderId': userId,
-    'senderName': _username,
-    'postId': widget.postId,
-    'commentId': commentRef.id,
-    'message': "$_username commented: $commentText",
-    'timestamp': FieldValue.serverTimestamp(),
-    'type': 'comment',
-    'isRead': false,
-  });
-
-  print("✅ Notification added for post owner");
-} else {
-  print("🚫 Notification NOT sent - either author ID is empty or commenter is the same as author.");
-}
-}
-
-
 
   @override
   Widget build(BuildContext context) {

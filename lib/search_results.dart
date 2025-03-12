@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_1/fcm-service.dart';
 
 class SearchResultsScreen extends StatefulWidget {
   final String query;
@@ -92,78 +94,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.9,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-            title: Text(_getCollectionDisplayName(post['collection'])),
-            leading: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          body: SingleChildScrollView(
-            child: Column(
-              children: [
-                // Post content
-                Card(
-                  margin: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ListTile(
-                        leading: const CircleAvatar(),
-                        title: Text(
-                          post['userName'] ?? 'Anonymous',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          DateFormat('MMM d, yyyy • h:mm a').format(
-                              (post['timestamp'] as Timestamp).toDate()),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          post['postContent'] ?? '',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
-                      // Like and Comment buttons
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          TextButton.icon(
-                            onPressed: () {
-                              // Implement like functionality
-                            },
-                            icon: Icon(
-                              post['isLiked'] ?? false
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              color: Colors.red,
-                            ),
-                            label: Text('${post['likes'] ?? 0} Likes'),
-                          ),
-                          TextButton.icon(
-                            onPressed: () {
-                              // Show comments section
-                              _showComments(context, post);
-                            },
-                            icon: const Icon(Icons.comment, color: Colors.blue),
-                            label: const Text('Comments'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      builder: (context) => PostDetailView(post: post),
     );
   }
 
@@ -171,49 +102,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const Text(
-              'Comments',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection(post['collection'])
-                    .doc(post['id'])
-                    .collection('comments')
-                    .orderBy('timestamp', descending: true)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final comments = snapshot.data!.docs;
-                  if (comments.isEmpty) {
-                    return const Center(child: Text('No comments yet'));
-                  }
-
-                  return ListView.builder(
-                    itemCount: comments.length,
-                    itemBuilder: (context, index) {
-                      final comment =
-                          comments[index].data() as Map<String, dynamic>;
-                      return ListTile(
-                        title: Text(comment['username'] ?? 'Anonymous'),
-                        subtitle: Text(comment['comment'] ?? ''),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+      builder: (context) => CommentSection(
+        postId: post['id'],
+        collectionName: post['collection'],
       ),
     );
   }
@@ -286,6 +177,381 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                     );
                   },
                 ),
+    );
+  }
+}
+
+// New Post Detail View for viewing full post
+class PostDetailView extends StatefulWidget {
+  final Map<String, dynamic> post;
+
+  const PostDetailView({super.key, required this.post});
+
+  @override
+  _PostDetailViewState createState() => _PostDetailViewState();
+}
+
+class _PostDetailViewState extends State<PostDetailView> {
+  bool isLiked = false;
+  int likeCount = 0;
+  final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  final FCMService _fcmService = FCMService();
+
+  @override
+  void initState() {
+    super.initState();
+    likeCount = widget.post['likes'] ?? 0;
+    _checkIfUserLiked();
+  }
+
+  Future<void> _checkIfUserLiked() async {
+    if (currentUserId == null) return;
+
+    try {
+      final likeDoc = await FirebaseFirestore.instance
+          .collection(widget.post['collection'])
+          .doc(widget.post['id'])
+          .collection('likes')
+          .doc(currentUserId)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          isLiked = likeDoc.exists;
+        });
+      }
+    } catch (e) {
+      print("Error checking like status: $e");
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    if (currentUserId == null) return;
+
+    final postRef = FirebaseFirestore.instance
+        .collection(widget.post['collection'])
+        .doc(widget.post['id']);
+    final postAuthorId = widget.post['userId'] ?? '';
+
+    if (isLiked) {
+      // Unlike post
+      await postRef.collection('likes').doc(currentUserId).delete();
+      setState(() {
+        isLiked = false;
+        likeCount--;
+      });
+    } else {
+      // Like post
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .get();
+      final String likerName = userDoc.data()?['username'] ?? 'Someone';
+
+      await postRef.collection('likes').doc(currentUserId).set({
+        'userId': currentUserId,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      setState(() {
+        isLiked = true;
+        likeCount++;
+      });
+
+      // Only send notification if the post author is not the current user
+      if (postAuthorId.isNotEmpty && postAuthorId != currentUserId) {
+        // Send FCM Notification
+        _fcmService.sendNotificationToUser(
+            postAuthorId, likerName, "liked your post!");
+
+        // Store Notification in Firestore
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'receiverId': postAuthorId,
+          'senderId': currentUserId,
+          'senderName': likerName,
+          'postId': widget.post['id'],
+          'message': "$likerName liked your post!",
+          'timestamp': FieldValue.serverTimestamp(),
+          'type': 'like',
+          'isRead': false,
+        });
+      }
+    }
+
+    // Update like count in the post document
+    await postRef.update({'likes': likeCount});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final timestamp = widget.post['timestamp'] as Timestamp;
+    final formattedDate =
+        DateFormat('MMM d, yyyy • h:mm a').format(timestamp.toDate());
+
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.9,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+          title: Text(_getCollectionDisplayName(widget.post['collection'])),
+          leading: IconButton(
+            icon: const Icon(Icons.close, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              Card(
+                margin: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ListTile(
+                      leading: const CircleAvatar(),
+                      title: Text(
+                        widget.post['userName'] ?? 'Anonymous',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(formattedDate),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        widget.post['postContent'] ?? '',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                    // Like and Comment buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _toggleLike,
+                          icon: Icon(
+                            isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: Colors.red,
+                          ),
+                          label: Text('$likeCount Likes'),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              builder: (context) => CommentSection(
+                                postId: widget.post['id'],
+                                collectionName: widget.post['collection'],
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.comment, color: Colors.blue),
+                          label: const Text('Comments'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getCollectionDisplayName(String collection) {
+    switch (collection) {
+      case 'lostfoundposts':
+        return 'Lost & Found';
+      case 'Peerposts':
+        return 'Peer Assistance';
+      case 'Eventposts':
+        return 'Events & Jobs';
+      case 'Surveyposts':
+        return 'Surveys';
+      default:
+        return collection;
+    }
+  }
+}
+
+// New Comment Section that works with any collection
+class CommentSection extends StatefulWidget {
+  final String postId;
+  final String collectionName;
+
+  const CommentSection(
+      {super.key, required this.postId, required this.collectionName});
+
+  @override
+  _CommentSectionState createState() => _CommentSectionState();
+}
+
+class _CommentSectionState extends State<CommentSection> {
+  final TextEditingController _commentController = TextEditingController();
+  final FCMService _fcmService = FCMService();
+  String? _username;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsername();
+  }
+
+  Future<void> _fetchUsername() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      setState(() {
+        _username = userDoc.data()?['username'] ?? 'Unknown User';
+      });
+    }
+  }
+
+  void _addComment(String commentText) async {
+    if (commentText.trim().isEmpty || _username == null) return;
+
+    final postRef = FirebaseFirestore.instance
+        .collection(widget.collectionName)
+        .doc(widget.postId);
+
+    // Fetch post document
+    final postDoc = await postRef.get();
+
+    if (!postDoc.exists) {
+      print("❌ No post found with ID: ${widget.postId}");
+      return;
+    } else {
+      print("✅ Post found: ${postDoc.data()}");
+    }
+
+    final String postAuthorId = postDoc.data()?['userId'] ?? '';
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    // Add comment and get its document reference
+    final commentRef = await postRef.collection('comments').add({
+      'userId': userId,
+      'username': _username,
+      'comment': commentText,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    _commentController.clear();
+    print("✅ Comment added with ID: ${commentRef.id}");
+
+    // Ensure the post owner isn't notified for their own comments
+    if (postAuthorId.isNotEmpty && postAuthorId != userId) {
+      print("📢 Sending notification to post owner: $postAuthorId");
+
+      _fcmService.sendNotificationOnComment(
+          widget.postId, _username!, commentRef.id);
+
+      // Store Notification in Firestore
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'receiverId': postAuthorId,
+        'senderId': userId,
+        'senderName': _username,
+        'postId': widget.postId,
+        'commentId': commentRef.id,
+        'message': "$_username commented: $commentText",
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'comment',
+        'isRead': false,
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        height: 400,
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            const Text("Comments",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection(widget.collectionName)
+                    .doc(widget.postId)
+                    .collection('comments')
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text("No comments yet"));
+                  }
+                  var comments = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    itemCount: comments.length,
+                    itemBuilder: (context, index) {
+                      var comment = comments[index];
+                      Timestamp? timestamp = comment['timestamp'];
+                      String formattedTime = "Just now";
+
+                      if (timestamp != null) {
+                        DateTime date = timestamp.toDate();
+                        formattedTime =
+                            DateFormat('MMM d, yyyy • h:mm a').format(date);
+                      }
+
+                      return ListTile(
+                        leading: const CircleAvatar(radius: 18.0),
+                        title: Text(comment['username'] ?? 'Unknown User',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              formattedTime,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey),
+                            ),
+                            Text(comment['comment'] ?? ''),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    decoration: const InputDecoration(
+                      hintText: "Write a comment...",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send, color: Colors.blue),
+                  onPressed: () {
+                    _addComment(_commentController.text);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

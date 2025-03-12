@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_1/search_results.dart';
+import 'package:intl/intl.dart';
 
 class NotificationScreen extends StatelessWidget {
   @override
@@ -15,7 +17,18 @@ class NotificationScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text("Notifications")),
+      appBar: AppBar(
+        title: Text("Notifications"),
+        actions: [
+          Tooltip(
+            message: "Mark all as read",
+            child: IconButton(
+              icon: Icon(Icons.check_circle_outline),
+              onPressed: () => _markAllAsRead(currentUserId),
+            ),
+          ),
+        ],
+      ),
       body: StreamBuilder(
         stream: FirebaseFirestore.instance
             .collection('notifications')
@@ -38,42 +51,88 @@ class NotificationScreen extends StatelessWidget {
               var doc = snapshot.data!.docs[index];
               var data = doc.data() as Map<String, dynamic>;
 
+              // Format the timestamp
+              String formattedTime = "Now";
+              if (data['timestamp'] != null) {
+                formattedTime =
+                    _getFormattedTimestamp(data['timestamp'].toDate());
+              }
+
+              // For legacy notifications that don't have collection field
+              if (!data.containsKey('collection') ||
+                  data['collection'] == null) {
+                _updateNotificationWithCollection(doc.id, data['postId']);
+              }
+
+              // Get collection name and display name
+              String collectionName = data['collection'] ?? 'lostfoundposts';
+              String collectionDisplayName =
+                  _getCollectionDisplayName(collectionName);
+
+              // Create notification message
+              String notificationMessage;
+
+              if (data['type'] == 'like') {
+                notificationMessage =
+                    "${data['senderName']} liked your post in $collectionDisplayName";
+              } else if (data['type'] == 'comment') {
+                notificationMessage =
+                    "${data['senderName']} commented on your post in $collectionDisplayName";
+              } else {
+                notificationMessage = data['message'] ?? 'New notification';
+              }
+
+              // Determine background color based on read status
+              Color bgColor = data['isRead'] == true
+                  ? Colors.white
+                  : const Color.fromARGB(255, 240, 249, 255);
+
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: Card(
-                  elevation: 3,
+                  elevation: 2,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
+                    side: data['isRead'] == true
+                        ? BorderSide.none
+                        : BorderSide(color: Colors.blue.shade100, width: 1),
                   ),
-                  color: const Color.fromARGB(255, 255, 255, 255),
+                  color: bgColor,
                   child: ListTile(
                     contentPadding: EdgeInsets.all(12),
-                    leading: Icon(
-                      data['type'] == 'like' ? Icons.favorite : Icons.comment,
-                      color: data['type'] == 'like' ? Colors.red : Colors.blue,
+                    leading: CircleAvatar(
+                      backgroundColor: data['type'] == 'like'
+                          ? Colors.red.shade100
+                          : Colors.blue.shade100,
+                      child: Icon(
+                        data['type'] == 'like' ? Icons.favorite : Icons.comment,
+                        color:
+                            data['type'] == 'like' ? Colors.red : Colors.blue,
+                      ),
                     ),
                     title: Text(
-                      data['message'],
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      notificationMessage,
+                      style: TextStyle(
+                        fontWeight: data['isRead'] == true
+                            ? FontWeight.normal
+                            : FontWeight.bold,
+                      ),
                     ),
                     subtitle: Text(
-                      data['timestamp'] != null
-                          ? data['timestamp'].toDate().toString()
-                          : 'No timestamp',
+                      formattedTime,
                       style: TextStyle(color: Colors.grey),
                     ),
                     trailing: data['isRead'] == true
-                        ? Icon(Icons.check, color: Colors.green)
-                        : Icon(Icons.circle, color: Colors.blue),
-                    onTap: () {
-                      // Mark notification as read when tapped
-                      FirebaseFirestore.instance
-                          .collection('notifications')
-                          .doc(doc.id)
-                          .update({'isRead': true}).catchError((error) {
-                        print("Error updating notification: $error");
-                      });
-                    },
+                        ? null
+                        : Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.blue,
+                            ),
+                          ),
+                    onTap: () => _handleNotificationTap(context, doc.id, data),
                   ),
                 ),
               );
@@ -82,5 +141,175 @@ class NotificationScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  // Helper method to update legacy notifications
+  Future<void> _updateNotificationWithCollection(
+      String notificationId, String? postId) async {
+    if (postId == null) return;
+
+    try {
+      List<String> collections = [
+        'lostfoundposts',
+        'Peerposts',
+        'Eventposts',
+        'Surveyposts'
+      ];
+
+      for (String collection in collections) {
+        DocumentSnapshot postDoc = await FirebaseFirestore.instance
+            .collection(collection)
+            .doc(postId)
+            .get();
+
+        if (postDoc.exists) {
+          await FirebaseFirestore.instance
+              .collection('notifications')
+              .doc(notificationId)
+              .update({'collection': collection});
+          break;
+        }
+      }
+    } catch (e) {
+      // Silent error handling
+    }
+  }
+
+  // Helper function to format timestamp in a user-friendly way
+  String _getFormattedTimestamp(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final dateToCheck = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    // Format just the time part (in 12-hour format)
+    final timeString = DateFormat('h:mm a').format(dateTime);
+
+    // Check if it's today, yesterday or older
+    if (dateToCheck == today) {
+      return 'Today at $timeString';
+    } else if (dateToCheck == yesterday) {
+      return 'Yesterday at $timeString';
+    } else {
+      // If it's within the last week (7 days)
+      final difference = now.difference(dateTime).inDays;
+      if (difference < 7) {
+        return '${DateFormat('EEEE').format(dateTime)} at $timeString';
+      } else {
+        return '${DateFormat('MMM d').format(dateTime)} at $timeString';
+      }
+    }
+  }
+
+  // Get a user-friendly name for collections
+  String _getCollectionDisplayName(String collection) {
+    switch (collection) {
+      case 'lostfoundposts':
+        return 'Lost & Found';
+      case 'Peerposts':
+        return 'Peer Assistance';
+      case 'Eventposts':
+        return 'Events & Jobs';
+      case 'Surveyposts':
+        return 'Surveys';
+      default:
+        return collection;
+    }
+  }
+
+  // Mark all notifications as read
+  Future<void> _markAllAsRead(String userId) async {
+    final batch = FirebaseFirestore.instance.batch();
+    final unreadNotifications = await FirebaseFirestore.instance
+        .collection('notifications')
+        .where('receiverId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    for (var doc in unreadNotifications.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+
+    await batch.commit();
+  }
+
+  // Handle notification tap
+  Future<void> _handleNotificationTap(BuildContext context,
+      String notificationId, Map<String, dynamic> data) async {
+    // Mark notification as read
+    await FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(notificationId)
+        .update({'isRead': true}).catchError((error) {
+      // Silent error handling
+    });
+
+    // Navigate to the post
+    if (data['postId'] != null) {
+      String postId = data['postId'];
+      String? collectionName;
+
+      // Check if collection name is available in notification
+      if (data.containsKey('collection') && data['collection'] != null) {
+        collectionName = data['collection'];
+      } else {
+        // Try to determine collection
+        List<String> collections = [
+          'lostfoundposts',
+          'Peerposts',
+          'Eventposts',
+          'Surveyposts',
+        ];
+
+        for (String collection in collections) {
+          DocumentSnapshot postDoc = await FirebaseFirestore.instance
+              .collection(collection)
+              .doc(postId)
+              .get();
+
+          if (postDoc.exists) {
+            collectionName = collection;
+
+            // Update notification with correct collection
+            await FirebaseFirestore.instance
+                .collection('notifications')
+                .doc(notificationId)
+                .update({'collection': collection});
+            break;
+          }
+        }
+      }
+
+      // If we found the collection, navigate to post
+      if (collectionName != null) {
+        DocumentSnapshot postDoc = await FirebaseFirestore.instance
+            .collection(collectionName)
+            .doc(postId)
+            .get();
+
+        if (postDoc.exists) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PostDetailView(
+                post: {
+                  ...postDoc.data() as Map<String, dynamic>,
+                  'id': postDoc.id,
+                  'collection': collectionName,
+                },
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Post no longer exists')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not find the post')),
+        );
+      }
+    }
   }
 }
