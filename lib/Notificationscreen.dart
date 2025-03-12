@@ -31,41 +31,53 @@ class NotificationScreen extends StatelessWidget {
             return Center(child: Text("No notifications yet."));
           }
 
-          // Debugging: Print fetched notifications
-          print("Fetched ${snapshot.data!.docs.length} notifications");
-          for (var doc in snapshot.data!.docs) {
-            print("Notification Data: ${doc.data()}");
-          }
-
-          return ListView(
-            children: snapshot.data!.docs.map((doc) {
+          return ListView.builder(
+            padding: EdgeInsets.all(12),
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              var doc = snapshot.data!.docs[index];
               var data = doc.data() as Map<String, dynamic>;
 
-              return ListTile(
-                leading: Icon(
-                  data['type'] == 'like' ? Icons.favorite : Icons.comment,
-                  color: Colors.red,
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                child: Card(
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  color: const Color.fromARGB(255, 255, 255, 255),
+                  child: ListTile(
+                    contentPadding: EdgeInsets.all(12),
+                    leading: Icon(
+                      data['type'] == 'like' ? Icons.favorite : Icons.comment,
+                      color: data['type'] == 'like' ? Colors.red : Colors.blue,
+                    ),
+                    title: Text(
+                      data['message'],
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      data['timestamp'] != null
+                          ? data['timestamp'].toDate().toString()
+                          : 'No timestamp',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    trailing: data['isRead'] == true
+                        ? Icon(Icons.check, color: Colors.green)
+                        : Icon(Icons.circle, color: Colors.blue),
+                    onTap: () {
+                      // Mark notification as read when tapped
+                      FirebaseFirestore.instance
+                          .collection('notifications')
+                          .doc(doc.id)
+                          .update({'isRead': true}).catchError((error) {
+                        print("Error updating notification: $error");
+                      });
+                    },
+                  ),
                 ),
-                title: Text(data['message']),
-                subtitle: Text(
-                  data['timestamp'] != null
-                      ? data['timestamp'].toDate().toString()
-                      : 'No timestamp',
-                ),
-                trailing: data['isRead'] == true
-                    ? Icon(Icons.check, color: Colors.green)
-                    : Icon(Icons.circle, color: Colors.blue),
-                onTap: () {
-                  // Mark notification as read when tapped
-                  FirebaseFirestore.instance
-                      .collection('notifications')
-                      .doc(doc.id)
-                      .update({'isRead': true}).catchError((error) {
-                    print("Error updating notification: $error");
-                  });
-                },
               );
-            }).toList(),
+            },
           );
         },
       ),
