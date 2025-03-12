@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_application_1/Notificationscreen.dart';
 import 'package:flutter_application_1/fcm-service.dart';
 import 'package:intl/intl.dart'; // For formatting timestamps
 import 'search_results.dart';
@@ -151,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding:
                 const EdgeInsets.symmetric(horizontal: 0.0), // Add padding here
             child: IconButton(
-              onPressed: () {},
+              onPressed: () { Navigator.push(context, MaterialPageRoute(builder: (context) => NotificationScreen()));},
               icon: const Icon(Icons.notifications, color: Colors.black),
             ),
           ),
@@ -316,7 +317,7 @@ class PostCard extends StatefulWidget {
 
 class _PostCardState extends State<PostCard> {
   String postTime = "";
-int likeCount = 0;
+  int likeCount = 0;
   bool isLiked = false;
   String? currentUserId;
   final FCMService _fcmService = FCMService();
@@ -327,21 +328,59 @@ int likeCount = 0;
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
     likeCount = widget.likes;
     _checkIfUserLiked();
+    _fetchPostTime();
   }
 
   Future<void> _checkIfUserLiked() async {
-    if (currentUserId == null) return;
+  if (currentUserId == null) return;
 
-    final likeDoc = await FirebaseFirestore.instance
-        .collection('lostfoundposts')
-        .doc(widget.postId)
-        .collection('likes')
-        .doc(currentUserId)
-        .get();
+  final likeDoc = await FirebaseFirestore.instance
+      .collection('lostfoundposts')
+      .doc(widget.postId)
+      .collection('likes')
+      .doc(currentUserId)
+      .get();
 
+  if (mounted) { // Check if widget is still in the tree
     setState(() {
       isLiked = likeDoc.exists;
     });
+  }
+}
+
+  Future<void> _fetchPostTime() async {
+    final postDoc = await FirebaseFirestore.instance
+        .collection('lostfoundposts')
+        .doc(widget.postId)
+        .get();
+
+    if (postDoc.exists) {
+      final Timestamp? timestamp = postDoc.data()?['timestamp'];
+      if (timestamp != null) {
+        final DateTime date = timestamp.toDate();
+        final String formattedDate =
+            "${date.day} ${_getMonthName(date.month)} ${date.year}, ${_formatTime(date)}";
+        setState(() {
+          postTime = formattedDate;
+        });
+      }
+    }
+  }
+
+  String _getMonthName(int month) {
+    const monthNames = [
+      "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    return monthNames[month];
+  }
+
+  String _formatTime(DateTime date) {
+    int hour = date.hour;
+    int minute = date.minute;
+    String period = hour >= 12 ? "PM" : "AM";
+    hour = hour > 12 ? hour - 12 : hour == 0 ? 12 : hour;
+    return "$hour:${minute.toString().padLeft(2, '0')} $period";
   }
 
   void _toggleLike() async {
@@ -350,6 +389,9 @@ int likeCount = 0;
     final postRef = FirebaseFirestore.instance.collection('lostfoundposts').doc(widget.postId);
     final postDoc = await postRef.get();
     final String postAuthorId = postDoc.data()?['userId'] ?? '';
+
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUserId).get();
+    final String likerName = userDoc.data()?['username'] ?? 'Someone';
 
     if (isLiked) {
       await postRef.collection('likes').doc(currentUserId).delete();
@@ -368,8 +410,20 @@ int likeCount = 0;
         likeCount++;
       });
 
-      // Send FCM notification to the post owner
-      _fcmService.sendNotificationToUser(postAuthorId, "Someone liked your post!");
+      // Send FCM Notification
+      _fcmService.sendNotificationToUser(postAuthorId, likerName, "liked your post!");
+
+      // Store Notification in Firestore
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'receiverId': postAuthorId,
+        'senderId': currentUserId,
+        'senderName': likerName,
+        'postId': widget.postId,
+        'message': "$likerName liked your post!",
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'like',
+        'isRead': false,
+      });
     }
 
     await postRef.update({'likes': likeCount});
@@ -442,6 +496,7 @@ int likeCount = 0;
     );
   }
 }
+
 class CommentSection extends StatefulWidget {
   final String postId;
 
@@ -453,6 +508,8 @@ class CommentSection extends StatefulWidget {
 
 class _CommentSectionState extends State<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
+  final FCMService _fcmService = FCMService(); // Initialize FCMService
+  
   String? _username;
 
   @override
@@ -474,21 +531,70 @@ class _CommentSectionState extends State<CommentSection> {
     }
   }
 
-  void _addComment(String commentText) {
-    if (commentText.trim().isEmpty || _username == null) return;
+ void _addComment(String commentText) async {
+  if (commentText.trim().isEmpty || _username == null) return;
 
-    FirebaseFirestore.instance
-        .collection('lostfoundposts')
-        .doc(widget.postId)
-        .collection('comments')
-        .add({
-      'username': _username,
-      'comment': commentText,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+  final postRef = FirebaseFirestore.instance.collection('lostfoundposts').doc(widget.postId);
+  
+  // Fetch post document
+  final postDoc = await postRef.get();
 
-    _commentController.clear();
+  if (!postDoc.exists) {
+    print("❌ No post found with ID: ${widget.postId}");
+    return;
+  } else {
+    print("✅ Post found: ${postDoc.data()}");
   }
+
+  final String postAuthorId = postDoc.data()?['userId'] ?? '';
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+  if (userId == null) return;
+
+  // Add comment and get its document reference
+  final commentRef = await postRef.collection('comments').add({
+    'userId': userId,
+    'username': _username,
+    'comment': commentText,
+    'timestamp': FieldValue.serverTimestamp(),
+  });
+
+  _commentController.clear();
+  print("✅ Comment added with ID: ${commentRef.id}");
+
+  // Ensure the post owner isn't notified for their own comments
+ print("🔍 Checking if notification should be sent...");
+print("📌 Post Author ID: $postAuthorId");
+print("👤 Current User ID: $userId");
+
+if (postAuthorId.isNotEmpty && postAuthorId != userId) {
+  print("📢 Sending notification to post owner: $postAuthorId");
+
+  _fcmService.sendNotificationOnComment(
+    widget.postId,
+    _username!,
+    commentRef.id
+  );
+
+  // Store Notification in Firestore
+  await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': postAuthorId,
+    'senderId': userId,
+    'senderName': _username,
+    'postId': widget.postId,
+    'commentId': commentRef.id,
+    'message': "$_username commented: $commentText",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'comment',
+    'isRead': false,
+  });
+
+  print("✅ Notification added for post owner");
+} else {
+  print("🚫 Notification NOT sent - either author ID is empty or commenter is the same as author.");
+}
+}
+
+
 
   @override
   Widget build(BuildContext context) {

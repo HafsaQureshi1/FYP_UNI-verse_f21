@@ -2,12 +2,10 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:googleapis_auth/auth_io.dart' as auth show clientViaServiceAccount;
 import 'package:googleapis_auth/googleapis_auth.dart' as auth;
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart' show rootBundle; // Import this for reading assets
-
 class FCMService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
@@ -49,21 +47,16 @@ class FCMService {
 
   Future<String?> getAccessToken() async {
     try {
-      // Load service account credentials from assets
       final String serviceAccountJson =
           await rootBundle.loadString("assets/universe-123-firebase-adminsdk-dxv5x-586f17d46e.json");
 
-      // Parse the JSON file
       final Map<String, dynamic> credentials = jsonDecode(serviceAccountJson);
-
-      // Create an authentication client
       final accountCredentials =
           auth.ServiceAccountCredentials.fromJson(credentials);
-      final client = await auth.clientViaServiceAccount( 
-  accountCredentials, 
-  ["https://www.googleapis.com/auth/firebase.messaging"]
-);
-
+      final client = await auth.clientViaServiceAccount(
+        accountCredentials,
+        ["https://www.googleapis.com/auth/firebase.messaging"],
+      );
 
       return client.credentials.accessToken.data;
     } catch (e) {
@@ -72,55 +65,124 @@ class FCMService {
     }
   }
 
-  /// Function to send notification using FCM v1 API
-  Future<void> sendNotificationToUser(String userId, String message) async {
-    final userDoc =
-        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+  Future<void> sendNotificationToUser(
+    String userId, String likerName, String message) async {
+  final userDoc =
+      await FirebaseFirestore.instance.collection('users').doc(userId).get();
 
-    if (!userDoc.exists) {
-      print("❌ No user found with ID: $userId");
-      return;
-    }
-
-    final String? fcmToken = userDoc.data()?['fcmToken'];
-    if (fcmToken == null || fcmToken.isEmpty) {
-      print("❌ No FCM token found for user.");
-      return;
-    }
-
-    final String? accessToken = await getAccessToken();
-    if (accessToken == null) {
-      print("❌ Failed to get OAuth token.");
-      return;
-    }
-
-    final Map<String, dynamic> notificationPayload = {
-      "message": {
-        "token": fcmToken,
-        "notification": {
-          "title": "New Like on Your Post! ❤️",
-          "body": message,
-        },
-        "data": {
-          "type": "like",
-          "postId": userId,
-        }
-      }
-    };
-
-    final response = await http.post(
-      Uri.parse("https://fcm.googleapis.com/v1/projects/universe-123/messages:send"),
-      headers: <String, String>{
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $accessToken",
-      },
-      body: jsonEncode(notificationPayload),
-    );
-
-    if (response.statusCode == 200) {
-      print("✅ Notification sent successfully!");
-    } else {
-      print("❌ Failed to send notification: ${response.body}");
-    }
+  if (!userDoc.exists) {
+    print("❌ No user found with ID: $userId");
+    return;
   }
+
+  final String? fcmToken = userDoc.data()?['fcmToken'];
+  if (fcmToken == null || fcmToken.isEmpty) {
+    print("❌ No FCM token found for user.");
+    return;
+  }
+
+  final String? accessToken = await getAccessToken();
+  if (accessToken == null) {
+    print("❌ Failed to get OAuth token.");
+    return;
+  }
+
+  final Map<String, dynamic> notificationPayload = {
+    "message": {
+      "token": fcmToken,
+      "notification": {
+        "title": "New Like on Your Post! ❤️",
+        "body": "$likerName liked your post: $message",
+      },
+      "data": {
+        "type": "like",
+        "postId": userId,
+        "likerName": likerName, // Include liker name in data payload
+      }
+    }
+  };
+
+  final response = await http.post(
+    Uri.parse("https://fcm.googleapis.com/v1/projects/universe-123/messages:send"),
+    headers: <String, String>{
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $accessToken",
+    },
+    body: jsonEncode(notificationPayload),
+  );
+
+  if (response.statusCode == 200) {
+    print("✅ Notification sent successfully!");
+  } else {
+    print("❌ Failed to send notification: ${response.body}");
+  }
+}
+
+
+Future<void> sendNotificationOnComment(String postId, String commenterName, String commentId) async {
+  final postDoc =
+      await FirebaseFirestore.instance.collection('lostfoundposts').doc(postId).get(); // ✅ FIXED: Correct collection
+
+  if (!postDoc.exists) {
+    print("❌ No post found with ID: $postId");
+    return;
+  }
+
+  final String postOwnerId = postDoc.data()?['userId'] ?? '';
+  if (postOwnerId.isEmpty) {
+    print("❌ No user found for the post.");
+    return;
+  }
+
+  final userDoc =
+      await FirebaseFirestore.instance.collection('users').doc(postOwnerId).get();
+
+  if (!userDoc.exists) {
+    print("❌ No user found with ID: $postOwnerId");
+    return;
+  }
+
+  final String? fcmToken = userDoc.data()?['fcmToken'];
+  if (fcmToken == null || fcmToken.isEmpty) {
+    print("❌ No FCM token found for user.");
+    return;
+  }
+
+  final String? accessToken = await getAccessToken();
+  if (accessToken == null) {
+    print("❌ Failed to get OAuth token.");
+    return;
+  }
+
+  final Map<String, dynamic> notificationPayload = {
+    "message": {
+      "token": fcmToken,
+      "notification": {
+        "title": "New Comment on Your Post! 💬",
+        "body": "$commenterName commented on your post.",
+      },
+      "data": {
+        "type": "comment",
+        "postId": postId,
+        "commentId": commentId,
+      }
+    }
+  };
+
+  final response = await http.post(
+    Uri.parse("https://fcm.googleapis.com/v1/projects/universe-123/messages:send"),
+    headers: <String, String>{
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $accessToken",
+    },
+    body: jsonEncode(notificationPayload),
+  );
+
+  if (response.statusCode == 200) {
+    print("✅ Comment notification sent successfully!");
+  } else {
+    print("❌ Failed to send comment notification: ${response.body}");
+  }
+}
+
 }
