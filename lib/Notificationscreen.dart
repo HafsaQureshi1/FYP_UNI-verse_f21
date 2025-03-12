@@ -17,13 +17,17 @@ class NotificationScreen extends StatelessWidget {
     }
 
     return Scaffold(
+      backgroundColor: Colors.grey[100], // Facebook-like light gray background
       appBar: AppBar(
-        title: Text("Notifications"),
+        title: Text("Notifications",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+        backgroundColor: Colors.white, // White app bar like Facebook
+        elevation: 1, // Subtle elevation
         actions: [
           Tooltip(
             message: "Mark all as read",
             child: IconButton(
-              icon: Icon(Icons.check_circle_outline),
+              icon: Icon(Icons.done_all),
               onPressed: () => _markAllAsRead(currentUserId),
             ),
           ),
@@ -44,9 +48,15 @@ class NotificationScreen extends StatelessWidget {
             return Center(child: Text("No notifications yet."));
           }
 
-          return ListView.builder(
-            padding: EdgeInsets.all(12),
+          return ListView.separated(
+            padding: EdgeInsets.zero, // Remove default padding
             itemCount: snapshot.data!.docs.length,
+            separatorBuilder: (context, index) => Divider(
+              height: 1,
+              thickness: 0.5,
+              color: Colors.grey[200],
+              indent: 72, // Indent to align with text, not icon
+            ),
             itemBuilder: (context, index) {
               var doc = snapshot.data!.docs[index];
               var data = doc.data() as Map<String, dynamic>;
@@ -85,54 +95,84 @@ class NotificationScreen extends StatelessWidget {
               // Determine background color based on read status
               Color bgColor = data['isRead'] == true
                   ? Colors.white
-                  : const Color.fromARGB(255, 240, 249, 255);
+                  : Color.fromARGB(
+                      255, 237, 246, 254); // Lighter blue for unread
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: data['isRead'] == true
-                        ? BorderSide.none
-                        : BorderSide(color: Colors.blue.shade100, width: 1),
-                  ),
-                  color: bgColor,
-                  child: ListTile(
-                    contentPadding: EdgeInsets.all(12),
-                    leading: CircleAvatar(
-                      backgroundColor: data['type'] == 'like'
-                          ? Colors.red.shade100
-                          : Colors.blue.shade100,
-                      child: Icon(
-                        data['type'] == 'like' ? Icons.favorite : Icons.comment,
-                        color:
-                            data['type'] == 'like' ? Colors.red : Colors.blue,
+              return Material(
+                color: bgColor,
+                child: InkWell(
+                  onTap: () => _handleNotificationTap(context, doc.id, data),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.0),
+                    child: ListTile(
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      leading: CircleAvatar(
+                        backgroundColor: data['type'] == 'like'
+                            ? Colors.red.shade100
+                            : Colors.blue.shade100,
+                        radius: 24, // Slightly larger avatar
+                        child: Icon(
+                          data['type'] == 'like'
+                              ? Icons.favorite
+                              : Icons.comment,
+                          color:
+                              data['type'] == 'like' ? Colors.red : Colors.blue,
+                          size: 20,
+                        ),
                       ),
-                    ),
-                    title: Text(
-                      notificationMessage,
-                      style: TextStyle(
-                        fontWeight: data['isRead'] == true
-                            ? FontWeight.normal
-                            : FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Text(
-                      formattedTime,
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    trailing: data['isRead'] == true
-                        ? null
-                        : Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.blue,
-                            ),
+                      title: RichText(
+                        text: TextSpan(
+                          style: TextStyle(
+                            fontSize: 15.0,
+                            color: Colors.black,
+                            height: 1.4, // Increase line height for readability
                           ),
-                    onTap: () => _handleNotificationTap(context, doc.id, data),
+                          children: [
+                            TextSpan(
+                              text: data['senderName'],
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            TextSpan(
+                              text: data['type'] == 'like'
+                                  ? ' liked your post in '
+                                  : ' commented on your post in ',
+                              style: TextStyle(color: Colors.black87),
+                            ),
+                            TextSpan(
+                              text: collectionDisplayName,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          formattedTime,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13.0,
+                          ),
+                        ),
+                      ),
+                      trailing: data['isRead'] == true
+                          ? null
+                          : Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.blue,
+                              ),
+                            ),
+                    ),
                   ),
                 ),
               );
@@ -178,26 +218,33 @@ class NotificationScreen extends StatelessWidget {
   // Helper function to format timestamp in a user-friendly way
   String _getFormattedTimestamp(DateTime dateTime) {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final dateToCheck = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    final difference = now.difference(dateTime);
 
-    // Format just the time part (in 12-hour format)
-    final timeString = DateFormat('h:mm a').format(dateTime);
-
-    // Check if it's today, yesterday or older
-    if (dateToCheck == today) {
-      return 'Today at $timeString';
-    } else if (dateToCheck == yesterday) {
-      return 'Yesterday at $timeString';
-    } else {
-      // If it's within the last week (7 days)
-      final difference = now.difference(dateTime).inDays;
-      if (difference < 7) {
-        return '${DateFormat('EEEE').format(dateTime)} at $timeString';
-      } else {
-        return '${DateFormat('MMM d').format(dateTime)} at $timeString';
-      }
+    // Within the last minute
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    }
+    // Within the last hour
+    else if (difference.inHours < 1) {
+      final minutes = difference.inMinutes;
+      return '$minutes ${minutes == 1 ? 'minute' : 'minutes'} ago';
+    }
+    // Within the last day
+    else if (difference.inHours < 24) {
+      final hours = difference.inHours;
+      return '$hours ${hours == 1 ? 'hour' : 'hours'} ago';
+    }
+    // Yesterday
+    else if (difference.inDays < 2) {
+      return 'Yesterday at ${DateFormat('h:mm a').format(dateTime)}';
+    }
+    // Within the last week
+    else if (difference.inDays < 7) {
+      return DateFormat('EEEE').format(dateTime);
+    }
+    // Older than a week
+    else {
+      return DateFormat('MMM d').format(dateTime);
     }
   }
 
