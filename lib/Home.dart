@@ -14,6 +14,7 @@ import 'EventScreen.dart';
 import 'profile_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'profileimage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -324,6 +325,7 @@ class LostFoundScreen extends StatelessWidget {
                           // userProfilePic: userProfilePic,
                           postId: post.id,
                           likes: post['likes'] ?? 0,
+                          userId: post['userId'], 
                         );
                       },
                     );
@@ -360,33 +362,38 @@ class PostCard extends StatefulWidget {
   final String content;
   final String postId;
   final int likes;
-
+ final String userId;
+ 
   const PostCard({
-    super.key,
-    required this.username,
-    required this.content,
-    required this.postId,
-    required this.likes,
-  });
+  super.key,
+  required this.username,
+  required this.content,
+  required this.postId,
+  required this.likes,
+  required this.userId,  // Fixed typo here
+});
+
 
   @override
   _PostCardState createState() => _PostCardState();
 }
 
 class _PostCardState extends State<PostCard> {
-  String postTime = "";
+String postTime = "";
   int likeCount = 0;
   bool isLiked = false;
   String? currentUserId;
+  String? profileImageUrl; // Store profile image URL
   final FCMService _fcmService = FCMService();
 
   @override
-  void initState() {
+    void initState() {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
     likeCount = widget.likes;
     _checkIfUserLiked();
     _fetchPostTime();
+    _fetchProfileImage();  // Fetch profile image
   }
 
   Future<void> _checkIfUserLiked() async {
@@ -456,6 +463,19 @@ class _PostCardState extends State<PostCard> {
             : hour;
     return "$hour:${minute.toString().padLeft(2, '0')} $period";
   }
+   Future<void> _fetchProfileImage() async {
+  final userDoc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(widget.userId)
+      .get();
+
+  if (userDoc.exists && mounted) { // Check if widget is still in the tree
+    setState(() {
+      profileImageUrl = userDoc.data()?['profilePicture'];
+    });
+  }
+}
+
 
   void _toggleLike() async {
     if (currentUserId == null) return;
@@ -534,21 +554,38 @@ class _PostCardState extends State<PostCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
-                    children: [
-                      const CircleAvatar(radius: 20.0),
-                      const SizedBox(width: 15.0),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(widget.username,
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text(postTime,
-                              style: const TextStyle(
-                                  fontSize: 12.0, color: Colors.grey)),
-                        ],
-                      ),
-                    ],
-                  ),
+  children: [
+    CircleAvatar(
+      radius: 20.0,
+      backgroundColor: Colors.grey[300],
+      child: profileImageUrl == null
+          ? CircularProgressIndicator() // Show spinner while loading
+          : ClipOval(
+              child: Image.network(
+                profileImageUrl!,
+                fit: BoxFit.cover,
+                width: 40.0,
+                height: 40.0,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child; // Show image if loaded
+                  return Center(child: CircularProgressIndicator()); // Show spinner while loading
+                },
+                errorBuilder: (context, error, stackTrace) =>
+                    Icon(Icons.person, size: 20.0, color: Colors.grey[600]), // Default icon if error
+              ),
+            ),
+    ),
+    const SizedBox(width: 15.0),
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.username, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(postTime, style: const TextStyle(fontSize: 12.0, color: Colors.grey)),
+      ],
+    ),
+  ],
+),
+
                 ],
               ),
               const SizedBox(height: 10.0),
@@ -588,7 +625,6 @@ class _PostCardState extends State<PostCard> {
 
 
 }
-
 class CommentSection extends StatefulWidget {
   final String postId;
 
@@ -600,7 +636,7 @@ class CommentSection extends StatefulWidget {
 
 class _CommentSectionState extends State<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
-  final FCMService _fcmService = FCMService(); // Initialize FCMService
+  final FCMService _fcmService = FCMService();
 
   String? _username;
 
@@ -630,18 +666,13 @@ class _CommentSectionState extends State<CommentSection> {
         .collection('lostfoundposts')
         .doc(widget.postId);
 
-    // Fetch post document
     final postDoc = await postRef.get();
-
-    if (!postDoc.exists) {
-      return;
-    }
+    if (!postDoc.exists) return;
 
     final String postAuthorId = postDoc.data()?['userId'] ?? '';
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
-    // Add comment and get its document reference
     final commentRef = await postRef.collection('comments').add({
       'userId': userId,
       'username': _username,
@@ -651,12 +682,10 @@ class _CommentSectionState extends State<CommentSection> {
 
     _commentController.clear();
 
-    // Ensure the post owner isn't notified for their own comments
     if (postAuthorId.isNotEmpty && postAuthorId != userId) {
       _fcmService.sendNotificationOnComment(
           widget.postId, _username!, commentRef.id);
 
-      // Store Notification in Firestore with collection name
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
         'senderId': userId,
@@ -705,6 +734,7 @@ class _CommentSectionState extends State<CommentSection> {
                     itemCount: comments.length,
                     itemBuilder: (context, index) {
                       var comment = comments[index];
+                      String commenterId = comment['userId']; // User's ID
                       Timestamp? timestamp = comment['timestamp'];
                       String formattedTime = "Just now";
 
@@ -715,8 +745,7 @@ class _CommentSectionState extends State<CommentSection> {
                       }
 
                       return ListTile(
-                        leading: const CircleAvatar(
-                            radius: 18.0), // Add user profile pic if available
+                        leading: ProfileAvatar(userId: commenterId, radius: 18), // Profile picture
                         title: Text(comment['username'] ?? 'Unknown User',
                             style:
                                 const TextStyle(fontWeight: FontWeight.bold)),
@@ -739,6 +768,11 @@ class _CommentSectionState extends State<CommentSection> {
             ),
             Row(
               children: [
+                ProfileAvatar( // Show logged-in user's profile pic
+                  userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                  radius: 18,
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
                     controller: _commentController,
@@ -762,7 +796,6 @@ class _CommentSectionState extends State<CommentSection> {
     );
   }
 }
-
 class CreateNewPostScreen extends StatefulWidget {
   const CreateNewPostScreen({super.key});
 
@@ -860,179 +893,187 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
       ),
       // Keep SingleChildScrollView for keyboard handling
       body: SingleChildScrollView(
-        child: Container(
-          color: Colors.white,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // User info section with subtle divider
-              Container(
-                padding: const EdgeInsets.all(16.0),
-                child: FutureBuilder<DocumentSnapshot>(
-                  future: _firestore
-                      .collection('users')
-                      .doc(_auth.currentUser?.uid)
-                      .get(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox(
-                        height: 40,
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    if (!snapshot.hasData ||
-                        snapshot.data == null ||
-                        !snapshot.data!.exists) {
-                      return const Text("Not logged in");
-                    }
-                    String username = snapshot.data!['username'] ?? 'Anonymous';
-                    return Row(
-                      children: [
-                        // Larger avatar with shadow
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const CircleAvatar(
-                            radius: 24.0,
-                            backgroundColor: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 12.0),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                username,
-                                style: const TextStyle(
-                                  fontSize: 16.0,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const Text(
-                                "Posting to Lost & Found",
-                                style: TextStyle(
-                                  fontSize: 13.0,
-                                  color: Colors.grey,
-                                ),
-                              )
-                            ],
-                          ),
+  child: Container(
+    color: Colors.white,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // User info section with subtle divider
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          child: FutureBuilder<DocumentSnapshot>(
+            future: _firestore
+                .collection('users')
+                .doc(_auth.currentUser?.uid)
+                .get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 40,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (!snapshot.hasData ||
+                  snapshot.data == null ||
+                  !snapshot.data!.exists) {
+                return const Text("Not logged in");
+              }
+              String username = snapshot.data!['username'] ?? 'Anonymous';
+              String? profilePicUrl = snapshot.data!['profilePicture'];
+
+              return Row(
+                children: [
+                  // Profile avatar with shadow
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
                         ),
                       ],
-                    );
-                  },
-                ),
-              ),
-
-              const Divider(height: 1, thickness: 1),
-
-              // Enhanced post content area
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextField(
-                    controller: _postController,
-                    maxLines: null,
-                    minLines: 8,
-                    keyboardType: TextInputType.multiline,
-                    style: const TextStyle(fontSize: 16.0),
-                    decoration: InputDecoration(
-                      hintText:
-                          "Describe a lost or found item with location details...",
-                      hintStyle: TextStyle(
-                          color: Colors.grey.shade500, fontSize: 20.0),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.all(12.0),
+                    ),
+                    child: CircleAvatar(
+                      radius: 24.0,
+                      backgroundColor: Colors.white,
+                      backgroundImage: profilePicUrl != null && profilePicUrl.isNotEmpty
+                          ? NetworkImage(profilePicUrl)
+                          : null,
+                      child: profilePicUrl == null || profilePicUrl.isEmpty
+                          ? const Icon(Icons.person, size: 30, color: Colors.grey)
+                          : null,
                     ),
                   ),
-                ),
-              ),
-
-              //  full-width post button
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _isPosting ? null : _createPost,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: themeColor,
-                        disabledBackgroundColor: themeColor.withOpacity(0.6),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          username,
+                          style: const TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        elevation: 0,
-                      ),
-                      child: _isPosting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.0,
-                              ),
-                            )
-                          : const Text(
-                              'Post',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                        const Text(
+                          "Posting to Lost & Found",
+                          style: TextStyle(
+                            fontSize: 13.0,
+                            color: Colors.grey,
+                          ),
+                        )
+                      ],
                     ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
 
-                    const SizedBox(height: 10),
+        const Divider(height: 1, thickness: 1),
 
-                    // Cancel button with subtle styling
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
+        // Enhanced post content area
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _postController,
+              maxLines: null,
+              minLines: 8,
+              keyboardType: TextInputType.multiline,
+              style: const TextStyle(fontSize: 16.0),
+              decoration: InputDecoration(
+                hintText:
+                    "Describe a lost or found item with location details...",
+                hintStyle: TextStyle(
+                    color: Colors.grey.shade500, fontSize: 20.0),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.all(12.0),
+              ),
+            ),
+          ),
+        ),
+
+        // Full-width post button
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ElevatedButton(
+                onPressed: _isPosting ? null : _createPost,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: themeColor,
+                  disabledBackgroundColor: themeColor.withOpacity(0.6),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  elevation: 0,
+                ),
+                child: _isPosting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.0,
                         ),
-                      ),
-                      child: Text(
-                        'Cancel',
+                      )
+                    : const Text(
+                        'Post',
                         style: TextStyle(
-                          color: themeColor,
+                          color: Colors.white,
                           fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
-                ),
               ),
 
-              // Bottom padding for keyboard
-              SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+              const SizedBox(height: 10),
+
+              // Cancel button with subtle styling
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: themeColor,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-      ),
-      resizeToAvoidBottomInset: true,
-    );
+
+        // Bottom padding for keyboard
+        SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+      ],
+    ),
+  ),
+),
+resizeToAvoidBottomInset: true,
+   );
   }
 }
 
