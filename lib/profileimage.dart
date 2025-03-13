@@ -17,43 +17,30 @@ class ProfileAvatar extends StatefulWidget {
 
 class _ProfileAvatarState extends State<ProfileAvatar> {
   String? _imageUrl;
-  bool _isLoading = true;
-  static final Map<String, String> _cachedProfileImages = {}; // Cache to prevent redundant network calls
+  static final Map<String, String> _cachedProfileImages = {}; // Cache for efficiency
 
   @override
   void initState() {
     super.initState();
-    _fetchProfileImage();
+    _listenToProfileImageUpdates(); // Real-time updates
   }
 
-  Future<void> _fetchProfileImage() async {
-    if (_cachedProfileImages.containsKey(widget.userId)) {
-      setState(() {
-        _imageUrl = _cachedProfileImages[widget.userId];
-        _isLoading = false;
-      });
-      return;
-    }
-
-    try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .get();
-
-      if (userDoc.exists && userDoc['profileImage'] != null) {
-        _imageUrl = userDoc['profileImage'] as String;
-        _cachedProfileImages[widget.userId] = _imageUrl!; // Cache the image URL
+  /// ✅ Listens for real-time profile image changes
+  void _listenToProfileImageUpdates() {
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .snapshots()
+        .listen((userDoc) {
+      if (userDoc.exists && mounted) {
+        setState(() {
+          _imageUrl = userDoc.data()?['profileImage'];
+          if (_imageUrl != null) {
+            _cachedProfileImages[widget.userId] = _imageUrl!; // Cache the image URL
+          }
+        });
       }
-    } catch (e) {
-      print("Error fetching profile image: $e");
-    }
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    });
   }
 
   @override
@@ -62,13 +49,9 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
       radius: widget.radius,
       backgroundColor: Colors.grey[300],
       backgroundImage: _imageUrl != null ? NetworkImage(_imageUrl!) : null,
-      child: _isLoading
-          ? const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-            )
-          : _imageUrl == null
-              ? const Icon(Icons.person, size: 30, color: Colors.white)
-              : null,
+      child: _imageUrl == null
+          ? const Icon(Icons.person, size: 30, color: Colors.white)
+          : null,
     );
   }
 }

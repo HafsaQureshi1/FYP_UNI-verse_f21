@@ -371,7 +371,6 @@ class LostFoundScreen extends StatelessWidget {
 }
 
 
-
 class PostCard extends StatefulWidget {
   final String postId;
   final String userId;
@@ -398,7 +397,7 @@ class _PostCardState extends State<PostCard> {
   bool isLiked = false;
   String? currentUserId;
   String? profileImageUrl;
-  String currentUsername = ''; // To store the latest username
+  String currentUsername = ''; // Store the latest username
   final FCMService _fcmService = FCMService();
 
   @override
@@ -406,43 +405,43 @@ class _PostCardState extends State<PostCard> {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
     likeCount = widget.likes;
-    _fetchUsername(); // Fetch latest username
-    _fetchProfileImage(); // Fetch profile picture
+    _fetchUsername(); // Live update for username
+    _fetchProfileImage(); // Live update for profile picture
     _fetchPostTime();
     _checkIfUserLiked();
   }
 
-  /// Fetches the latest username from Firestore based on `userId`
+  /// ✅ **Fetches the latest username in real-time**
   void _fetchUsername() {
-  FirebaseFirestore.instance
-      .collection('users')
-      .doc(widget.userId) // Fetch username for the post owner
-      .snapshots()
-      .listen((userDoc) {
-    if (userDoc.exists && mounted) {
-      setState(() {
-        currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
-      });
-    }
-  });
-}
-
-
-  /// Fetches the user's profile picture
-  Future<void> _fetchProfileImage() async {
-    final userDoc = await FirebaseFirestore.instance
+    FirebaseFirestore.instance
         .collection('users')
         .doc(widget.userId)
-        .get();
-
-    if (userDoc.exists && mounted) {
-      setState(() {
-        profileImageUrl = userDoc.data()?['profilePicture'];
-      });
-    }
+        .snapshots()
+        .listen((userDoc) {
+      if (userDoc.exists && mounted) {
+        setState(() {
+          currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
+        });
+      }
+    });
   }
 
-  /// Fetches the timestamp and formats it
+  /// ✅ **Fetches the latest profile picture in real-time**
+  void _fetchProfileImage() {
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .snapshots()
+        .listen((userDoc) {
+      if (userDoc.exists && mounted) {
+        setState(() {
+          profileImageUrl = userDoc.data()?['profilePicture'];
+        });
+      }
+    });
+  }
+
+  /// Fetches and formats the post timestamp
   Future<void> _fetchPostTime() async {
     final postDoc = await FirebaseFirestore.instance
         .collection('lostfoundposts')
@@ -554,6 +553,7 @@ class _PostCardState extends State<PostCard> {
     await postRef.update({'likes': likeCount});
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -643,6 +643,7 @@ class _PostCardState extends State<PostCard> {
     );
   }
 }
+
 class CommentSection extends StatefulWidget {
   final String postId;
 
@@ -655,30 +656,33 @@ class CommentSection extends StatefulWidget {
 class _CommentSectionState extends State<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
   final FCMService _fcmService = FCMService();
-
-  String? _username;
+  String? _userId;
 
   @override
   void initState() {
     super.initState();
-    _fetchUsername();
+    _fetchUserId();
   }
 
-  Future<void> _fetchUsername() async {
+  void _fetchUserId() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
       setState(() {
-        _username = userDoc.data()?['username'] ?? 'Unknown User';
+        _userId = user.uid;
       });
     }
   }
 
+  Stream<String?> _getUsernameStream(String userId) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .map((snapshot) => snapshot.data()?['username'] ?? 'Unknown User');
+  }
+
   void _addComment(String commentText) async {
-    if (commentText.trim().isEmpty || _username == null) return;
+    if (commentText.trim().isEmpty || _userId == null) return;
 
     final postRef = FirebaseFirestore.instance
         .collection('lostfoundposts')
@@ -688,30 +692,33 @@ class _CommentSectionState extends State<CommentSection> {
     if (!postDoc.exists) return;
 
     final String postAuthorId = postDoc.data()?['userId'] ?? '';
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
 
     final commentRef = await postRef.collection('comments').add({
-      'userId': userId,
-      'username': _username,
+      'userId': _userId, // ✅ Store only userId, NOT username
       'comment': commentText,
       'timestamp': FieldValue.serverTimestamp(),
     });
 
     _commentController.clear();
 
-    if (postAuthorId.isNotEmpty && postAuthorId != userId) {
+    if (postAuthorId.isNotEmpty && postAuthorId != _userId) {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_userId)
+          .get();
+      final String currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
+
       _fcmService.sendNotificationOnComment(
-          widget.postId, _username!, commentRef.id);
+          widget.postId, currentUsername, commentRef.id);
 
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
-        'senderId': userId,
-        'senderName': _username,
+        'senderId': _userId,
+        'senderName': currentUsername,
         'postId': widget.postId,
         'commentId': commentRef.id,
         'collection': 'lostfoundposts',
-        'message': "$_username commented on your post",
+        'message': "$currentUsername commented on your post",
         'timestamp': FieldValue.serverTimestamp(),
         'type': 'comment',
         'isRead': false,
@@ -722,8 +729,8 @@ class _CommentSectionState extends State<CommentSection> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: 400,
         padding: const EdgeInsets.all(12.0),
@@ -740,8 +747,10 @@ class _CommentSectionState extends State<CommentSection> {
                     .orderBy('timestamp', descending: true)
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                        child: CircularProgressIndicator());
                   }
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return const Center(child: Text("No comments yet"));
@@ -752,32 +761,43 @@ class _CommentSectionState extends State<CommentSection> {
                     itemCount: comments.length,
                     itemBuilder: (context, index) {
                       var comment = comments[index];
-                      String commenterId = comment['userId']; // User's ID
+                      String commenterId = comment['userId'];
                       Timestamp? timestamp = comment['timestamp'];
                       String formattedTime = "Just now";
 
                       if (timestamp != null) {
                         DateTime date = timestamp.toDate();
-                        formattedTime =
-                            DateFormat('MMM d, yyyy • h:mm a').format(date);
+                        formattedTime = DateFormat(
+                                'MMM d, yyyy • h:mm a')
+                            .format(date);
                       }
 
-                      return ListTile(
-                        leading: ProfileAvatar(userId: commenterId, radius: 18), // Profile picture
-                        title: Text(comment['username'] ?? 'Unknown User',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              formattedTime,
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.grey),
+                      return StreamBuilder<String?>(
+                        stream: _getUsernameStream(commenterId),
+                        builder: (context, usernameSnapshot) {
+                          String username =
+                              usernameSnapshot.data ?? 'Unknown User';
+
+                          return ListTile(
+                            leading: ProfileAvatar(
+                                userId: commenterId, radius: 18),
+                            title: Text(username,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                            subtitle: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  formattedTime,
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.grey),
+                                ),
+                                Text(comment['comment'] ?? ''),
+                              ],
                             ),
-                            Text(comment['comment'] ?? ''),
-                          ],
-                        ),
+                          );
+                        },
                       );
                     },
                   );
@@ -786,8 +806,8 @@ class _CommentSectionState extends State<CommentSection> {
             ),
             Row(
               children: [
-                ProfileAvatar( // Show logged-in user's profile pic
-                  userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                ProfileAvatar(
+                  userId: _userId ?? '',
                   radius: 18,
                 ),
                 const SizedBox(width: 10),
