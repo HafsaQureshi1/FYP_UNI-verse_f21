@@ -28,7 +28,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String? profileImageUrl;
   bool isEditing = false;
   String? selectedRole;
-
+ bool isImageLoading = false;
   @override
   void initState() {
     super.initState();
@@ -78,63 +78,84 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _pickImage() async {
-    try {
-      if (kIsWeb) {
-        // Web Image Picker
-        FilePickerResult? result = await FilePicker.platform.pickFiles(
-          type: FileType.image,
-          allowMultiple: false,
-        );
+ Future<void> _pickImage() async {
+  try {
+    setState(() {
+      isImageLoading = true; // Start spinner immediately
+      profileImageUrl = null; // Clear previous image to prevent flickering
+    });
 
-        if (result != null) {
-          Uint8List? fileBytes = result.files.first.bytes;
-          String fileName = result.files.first.name;
+    if (kIsWeb) {
+      // Web Image Picker
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
 
-          if (fileBytes != null) {
-            String? imageUrl = await _uploadImageToCloudinaryWeb(fileBytes, fileName);
-            if (imageUrl != null) {
-              _updateFirestoreProfileImage(imageUrl);
-            }
-          }
-        }
-      } else {
-        // Mobile Image Picker
-        final ImagePicker picker = ImagePicker();
-        final XFile? pickedFile =
-            await picker.pickImage(source: ImageSource.gallery);
+      if (result != null) {
+        Uint8List? fileBytes = result.files.first.bytes;
+        String fileName = result.files.first.name;
 
-        if (pickedFile != null) {
-          File imageFile = File(pickedFile.path);
-          String? imageUrl = await _uploadImageToCloudinaryMobile(imageFile);
+        if (fileBytes != null) {
+          String? imageUrl = await _uploadImageToCloudinaryWeb(fileBytes, fileName);
+          
           if (imageUrl != null) {
-            _updateFirestoreProfileImage(imageUrl);
+            await _updateFirestoreProfileImage(imageUrl);
+            setState(() {
+              profileImageUrl = imageUrl; // Update with new image
+            });
           }
         }
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.toString()}")),
-      );
+    } else {
+      // Mobile Image Picker
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+      if (pickedFile != null) {
+        File imageFile = File(pickedFile.path);
+        String? imageUrl = await _uploadImageToCloudinaryMobile(imageFile);
+        
+        if (imageUrl != null) {
+          await _updateFirestoreProfileImage(imageUrl);
+          setState(() {
+            profileImageUrl = imageUrl; // Update with new image
+          });
+        }
+      }
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error: ${e.toString()}")),
+    );
+  } finally {
+    setState(() {
+      isImageLoading = false; // Stop spinner after process completes
+    });
   }
+}
+
 
   Future<void> _updateFirestoreProfileImage(String imageUrl) async {
-  await _firestore.collection('users').doc(user!.uid).update({
-    'profileImage': imageUrl,
-  });
+    setState(() {
+      isImageLoading = true; // Start loading
+    });
 
-  if (mounted) {  // Check if widget is still in the tree
+    await _firestore.collection('users').doc(user!.uid).update({
+      'profileImage': imageUrl,
+    });
+
+    _fetchUserData(); // Refresh data
+
     setState(() {
       profileImageUrl = imageUrl;
+      isImageLoading = false; // Stop loading after update
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Profile image updated!")),
     );
   }
-}
-
   // Fetch updated data to refresh the UI
  
 
@@ -180,7 +201,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   @override
-   Widget build(BuildContext context) {
+    Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -202,19 +223,24 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 const SizedBox(height: 20),
 
-                // Profile Image with Upload Button
+                // Profile Image with Upload Button and Loading Indicator
                 Stack(
                   alignment: Alignment.bottomRight,
                   children: [
                     CircleAvatar(
                       radius: 60,
                       backgroundColor: Colors.grey[300],
-                      backgroundImage: profileImageUrl != null
+                      backgroundImage: profileImageUrl != null && !isImageLoading
                           ? NetworkImage(profileImageUrl!)
                           : null,
-                      child: profileImageUrl == null
-                          ? const Icon(Icons.person, size: 60, color: Colors.white)
-                          : null,
+                      child: isImageLoading
+                          ? const CircularProgressIndicator(
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.blue),
+                            )
+                          : profileImageUrl == null
+                              ? const Icon(Icons.person, size: 60, color: Colors.white)
+                              : null,
                     ),
                     IconButton(
                       icon: const Icon(Icons.camera_alt, color: Colors.blue),
@@ -283,11 +309,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     contentPadding: const EdgeInsets.symmetric(
                         vertical: 16.0, horizontal: 20.0),
                   ),
-                   items: const [
-    DropdownMenuItem(value: 'Student', child: Text('Student')),
-    DropdownMenuItem(value: 'Alumni', child: Text('Alumni')),
-    
-  ],
+                  items: const [
+                    DropdownMenuItem(value: 'Student', child: Text('Student')),
+                    DropdownMenuItem(value: 'Alumni', child: Text('Alumni')),
+                  ],
                   onChanged: (value) {
                     setState(() {
                       selectedRole = value;
