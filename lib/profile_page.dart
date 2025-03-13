@@ -35,29 +35,37 @@ class _ProfilePageState extends State<ProfilePage> {
     _fetchUserData();
   }
 
-  Future<void> _fetchUserData() async {
-    user = _auth.currentUser;
+ Future<void> _fetchUserData() async {
+  user = _auth.currentUser;
 
-    if (user != null) {
-      DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(user!.uid).get();
+  if (user != null) {
+    DocumentSnapshot userDoc =
+        await _firestore.collection('users').doc(user!.uid).get();
 
-      if (userDoc.exists) {
+    if (userDoc.exists) {
+      String? roleFromDB = userDoc['role'] ?? '';
+
+      if (mounted) {  // Check if widget is still in the tree
         setState(() {
           usernameController.text = userDoc['username'] ?? '';
-          selectedRole = userDoc['role'] ?? 'Student';
           profileImageUrl = userDoc['profileImage'];
+
+          // Ensure the fetched role exists in the dropdown items
+          List<String> validRoles = ['Student', 'Alumni'];
+          selectedRole = validRoles.contains(roleFromDB) ? roleFromDB : null;
         });
       }
     }
   }
+}
+
 
   Future<void> _updateUsername() async {
     if (user != null) {
       await _firestore.collection('users').doc(user!.uid).update({
         'username': usernameController.text,
         'role': selectedRole,
-        'profileImage': profileImageUrl, // Ensure this is not lost
+        'profilePicture': profileImageUrl, // Ensure this is not lost
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -112,10 +120,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _updateFirestoreProfileImage(String imageUrl) async {
-    await _firestore.collection('users').doc(user!.uid).update({
-      'profileImage': imageUrl,
-    });
+  await _firestore.collection('users').doc(user!.uid).update({
+    'profileImage': imageUrl,
+  });
 
+  if (mounted) {  // Check if widget is still in the tree
     setState(() {
       profileImageUrl = imageUrl;
     });
@@ -124,6 +133,10 @@ class _ProfilePageState extends State<ProfilePage> {
       const SnackBar(content: Text("Profile image updated!")),
     );
   }
+}
+
+  // Fetch updated data to refresh the UI
+ 
 
   Future<String?> _uploadImageToCloudinaryMobile(File imageFile) async {
     return _uploadImageToCloudinary(imageFile.readAsBytesSync());
@@ -167,7 +180,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -211,44 +224,92 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 20),
 
+                // Username Field with Edit Option
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: usernameController,
+                        enabled: isEditing,
+                        decoration: InputDecoration(
+                          labelText: 'Username',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 16.0, horizontal: 20.0),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(isEditing ? Icons.check : Icons.edit),
+                      onPressed: () {
+                        if (isEditing) {
+                          _updateUsername();
+                        } else {
+                          setState(() {
+                            isEditing = true;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Email Field (Read-Only)
                 TextField(
-                  controller: usernameController,
-                  enabled: isEditing,
+                  controller: TextEditingController(text: user?.email ?? ''),
+                  readOnly: true,
                   decoration: InputDecoration(
-                    labelText: 'Username',
+                    labelText: 'Your Email',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10.0),
                     ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 16.0, horizontal: 20.0),
                   ),
                 ),
-                IconButton(
-                  icon: Icon(isEditing ? Icons.check : Icons.edit),
-                  onPressed: () {
-                    if (isEditing) {
-                      _updateUsername();
-                    } else {
-                      setState(() {
-                        isEditing = true;
-                      });
-                    }
+                const SizedBox(height: 20),
+
+                // Role Dropdown (Editable)
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  decoration: InputDecoration(
+                    labelText: 'Select Your Role',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 16.0, horizontal: 20.0),
+                  ),
+                   items: const [
+    DropdownMenuItem(value: 'Student', child: Text('Student')),
+    DropdownMenuItem(value: 'Alumni', child: Text('Alumni')),
+    
+  ],
+                  onChanged: (value) {
+                    setState(() {
+                      selectedRole = value;
+                    });
                   },
                 ),
                 const SizedBox(height: 20),
 
-                DropdownButtonFormField<String>(
-                  value: selectedRole,
-                  items: const [
-                    DropdownMenuItem(value: 'Student', child: Text('Student')),
-                    DropdownMenuItem(value: 'Alumni', child: Text('Alumni')),
-                  ],
-                  onChanged: (value) => setState(() => selectedRole = value),
-                ),
-
-                const SizedBox(height: 20),
-
+                // Update Profile Button
                 ElevatedButton(
                   onPressed: _updateUsername,
-                  child: const Text('Update Profile'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    backgroundColor: const Color(0xFF01214E),
+                  ),
+                  child: const Text(
+                    'Update Profile',
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
                 ),
               ],
             ),
