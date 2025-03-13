@@ -286,11 +286,11 @@ class _HomeScreenState extends State<HomeScreen> {
 class LostFoundScreen extends StatelessWidget {
   const LostFoundScreen({super.key});
 
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-            backgroundColor: const Color.fromARGB(64, 236, 236, 236), // Set background color to white
-
+      backgroundColor: const Color.fromARGB(64, 236, 236, 236),
       body: Stack(
         children: [
           Column(
@@ -316,16 +316,29 @@ class LostFoundScreen extends StatelessWidget {
                       itemCount: posts.length,
                       itemBuilder: (context, index) {
                         var post = posts[index];
-                        String username = post['userName'] ?? 'Anonymous';
-                        String content = post['postContent'] ?? '';
-
-                        return PostCard(
-                          username: username,
-                          content: content,
-                          // userProfilePic: userProfilePic,
-                          postId: post.id,
-                          likes: post['likes'] ?? 0,
-                          userId: post['userId'], 
+                        return StreamBuilder<DocumentSnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('lostfoundposts')
+                              .doc(post.id)
+                              .snapshots(),
+                          builder: (context, postSnapshot) {
+                            if (postSnapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const SizedBox.shrink();
+                            }
+                            if (!postSnapshot.hasData ||
+                                !postSnapshot.data!.exists) {
+                              return const SizedBox.shrink();
+                            }
+                            var postData = postSnapshot.data!;
+                            return PostCard(
+                              username: postData['userName'] ?? 'Anonymous',
+                              content: postData['postContent'] ?? '',
+                              postId: postData.id,
+                              likes: postData['likes'] ?? 0,
+                              userId: postData['userId'],
+                            );
+                          },
                         );
                       },
                     );
@@ -357,61 +370,59 @@ class LostFoundScreen extends StatelessWidget {
   }
 }
 
+
 class PostCard extends StatefulWidget {
   final String username;
   final String content;
   final String postId;
+  final String userId;
   final int likes;
- final String userId;
- 
-  const PostCard({
-  super.key,
-  required this.username,
-  required this.content,
-  required this.postId,
-  required this.likes,
-  required this.userId,  // Fixed typo here
-});
 
+  const PostCard({
+    super.key,
+    required this.username,
+    required this.content,
+    required this.postId,
+    required this.userId,
+    required this.likes,
+  });
 
   @override
-  _PostCardState createState() => _PostCardState();
+  State<PostCard> createState() => _PostCardState();
 }
 
 class _PostCardState extends State<PostCard> {
-String postTime = "";
-  int likeCount = 0;
+  String postTime = "";
   bool isLiked = false;
   String? currentUserId;
-  String? profileImageUrl; // Store profile image URL
+  String? profileImageUrl;
   final FCMService _fcmService = FCMService();
 
   @override
-    void initState() {
+  void initState() {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    likeCount = widget.likes;
     _checkIfUserLiked();
     _fetchPostTime();
-    _fetchProfileImage();  // Fetch profile image
+    _fetchProfileImage();
   }
 
   Future<void> _checkIfUserLiked() async {
     if (currentUserId == null) return;
 
-    final likeDoc = await FirebaseFirestore.instance
+    FirebaseFirestore.instance
         .collection('lostfoundposts')
         .doc(widget.postId)
         .collection('likes')
         .doc(currentUserId)
-        .get();
-
-    if (mounted) {
-      // Check if widget is still in the tree
-      setState(() {
-        isLiked = likeDoc.exists;
-      });
-    }
+        .snapshots()
+        .listen((likeDoc) {
+      if (mounted) {
+        setState(() {
+          isLiked = likeDoc.exists;
+        });
+      }
+    });
   }
 
   Future<void> _fetchPostTime() async {
@@ -433,49 +444,19 @@ String postTime = "";
     }
   }
 
-  String _getMonthName(int month) {
-    const monthNames = [
-      "",
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec"
-    ];
-    return monthNames[month];
-  }
-
-  String _formatTime(DateTime date) {
-    int hour = date.hour;
-    int minute = date.minute;
-    String period = hour >= 12 ? "PM" : "AM";
-    hour = hour > 12
-        ? hour - 12
-        : hour == 0
-            ? 12
-            : hour;
-    return "$hour:${minute.toString().padLeft(2, '0')} $period";
-  }
-   Future<void> _fetchProfileImage() async {
-  final userDoc = await FirebaseFirestore.instance
-      .collection('users')
-      .doc(widget.userId)
-      .get();
-
-  if (userDoc.exists && mounted) { // Check if widget is still in the tree
-    setState(() {
-      profileImageUrl = userDoc.data()?['profilePicture'];
+  Future<void> _fetchProfileImage() async {
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .snapshots()
+        .listen((userDoc) {
+      if (userDoc.exists && mounted) {
+        setState(() {
+          profileImageUrl = userDoc.data()?['profilePicture'];
+        });
+      }
     });
   }
-}
-
 
   void _toggleLike() async {
     if (currentUserId == null) return;
@@ -483,8 +464,6 @@ String postTime = "";
     final postRef = FirebaseFirestore.instance
         .collection('lostfoundposts')
         .doc(widget.postId);
-    final postDoc = await postRef.get();
-    final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
     final userDoc = await FirebaseFirestore.instance
         .collection('users')
@@ -494,30 +473,18 @@ String postTime = "";
 
     if (isLiked) {
       await postRef.collection('likes').doc(currentUserId).delete();
-      if (mounted) {
-        setState(() {
-          isLiked = false;
-          likeCount--;
-        });
-      }
     } else {
       await postRef.collection('likes').doc(currentUserId).set({
         'userId': currentUserId,
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      if (mounted) {
-        setState(() {
-          isLiked = true;
-          likeCount++;
-        });
-      }
+      final postDoc = await postRef.get();
+      final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
-      // Send FCM Notification
       _fcmService.sendNotificationToUser(
           postAuthorId, likerName, "liked your post!");
 
-      // Store Notification in Firestore with collection name
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
         'senderId': currentUserId,
@@ -530,100 +497,93 @@ String postTime = "";
         'isRead': false,
       });
     }
-
-    await postRef.update({'likes': likeCount});
   }
 
   @override
- Widget build(BuildContext context) {
-  return Column(
-    children: [
-      Card(
-        margin: const EdgeInsets.only(bottom: 15.0),
-        elevation: 1.0,
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(5.0), // Decreased border radius
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-  children: [
-    CircleAvatar(
-      radius: 20.0,
-      backgroundColor: Colors.grey[300],
-      child: profileImageUrl == null
-          ? CircularProgressIndicator() // Show spinner while loading
-          : ClipOval(
-              child: Image.network(
-                profileImageUrl!,
-                fit: BoxFit.cover,
-                width: 40.0,
-                height: 40.0,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child; // Show image if loaded
-                  return Center(child: CircularProgressIndicator()); // Show spinner while loading
-                },
-                errorBuilder: (context, error, stackTrace) =>
-                    Icon(Icons.person, size: 20.0, color: Colors.grey[600]), // Default icon if error
-              ),
-            ),
-    ),
-    const SizedBox(width: 15.0),
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(widget.username, style: const TextStyle(fontWeight: FontWeight.bold)),
-        Text(postTime, style: const TextStyle(fontSize: 12.0, color: Colors.grey)),
-      ],
-    ),
-  ],
-),
+  Widget build(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('lostfoundposts')
+          .doc(widget.postId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const SizedBox.shrink();
+        }
+        var postData = snapshot.data!;
+        int likeCount = postData['likes'] ?? 0;
 
-                ],
-              ),
-              const SizedBox(height: 10.0),
-              Text(widget.content, style: const TextStyle(fontSize: 16.0)),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton.icon(
-                    onPressed: _toggleLike,
-                    icon: Icon(
-                      isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: Colors.red,
-                    ),
-                    label: Text('$likeCount Likes'),
-                  ),
-                  TextButton.icon(
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        builder: (context) =>
-                            CommentSection(postId: widget.postId),
-                      );
-                    },
-                    icon: const Icon(Icons.comment, color: Colors.blue),
-                    label: const Text('Comment'),
-                  ),
-                ],
-              ),
-            ],
+        return Card(
+          margin: const EdgeInsets.only(bottom: 15.0),
+          elevation: 1.0,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(5.0),
           ),
-        ),
-      ),
-    ],
-  );
-}
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20.0,
+                      backgroundColor: Colors.grey[300],
+                      backgroundImage: profileImageUrl != null
+                          ? NetworkImage(profileImageUrl!)
+                          : null,
+                      child: profileImageUrl == null
+                          ? const Icon(Icons.person, size: 20.0)
+                          : null,
+                    ),
+                    const SizedBox(width: 15.0),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.username,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(postTime,
+                            style: const TextStyle(
+                                fontSize: 12.0, color: Colors.grey)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10.0),
+                Text(widget.content, style: const TextStyle(fontSize: 16.0)),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: _toggleLike,
+                      icon: Icon(
+                        isLiked ? Icons.favorite : Icons.favorite_border,
+                        color: Colors.red,
+                      ),
+                      label: Text('$likeCount Likes'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
+  String _getMonthName(int month) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[month];
+  }
 
+  String _formatTime(DateTime date) {
+    return "${date.hour}:${date.minute.toString().padLeft(2, '0')}";
+  }
 }
 class CommentSection extends StatefulWidget {
   final String postId;
@@ -901,78 +861,75 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
         // User info section with subtle divider
         Container(
           padding: const EdgeInsets.all(16.0),
-          child: FutureBuilder<DocumentSnapshot>(
-            future: _firestore
-                .collection('users')
-                .doc(_auth.currentUser?.uid)
-                .get(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  height: 40,
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (!snapshot.hasData ||
-                  snapshot.data == null ||
-                  !snapshot.data!.exists) {
-                return const Text("Not logged in");
-              }
-              String username = snapshot.data!['username'] ?? 'Anonymous';
-              String? profilePicUrl = snapshot.data!['profilePicture'];
+          child: StreamBuilder<DocumentSnapshot>(
+  stream: _firestore.collection('users').doc(_auth.currentUser?.uid).snapshots(),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const SizedBox(
+        height: 40,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (!snapshot.hasData || snapshot.data == null || !snapshot.data!.exists) {
+      return const Text("Not logged in");
+    }
 
-              return Row(
-                children: [
-                  // Profile avatar with shadow
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: CircleAvatar(
-                      radius: 24.0,
-                      backgroundColor: Colors.white,
-                      backgroundImage: profilePicUrl != null && profilePicUrl.isNotEmpty
-                          ? NetworkImage(profilePicUrl)
-                          : null,
-                      child: profilePicUrl == null || profilePicUrl.isEmpty
-                          ? const Icon(Icons.person, size: 30, color: Colors.grey)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 12.0),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          username,
-                          style: const TextStyle(
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Text(
-                          "Posting to Lost & Found",
-                          style: TextStyle(
-                            fontSize: 13.0,
-                            color: Colors.grey,
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
+    String username = snapshot.data!['username'] ?? 'Anonymous';
+    String? profilePicUrl = snapshot.data!['profilePicture'];
+
+    return Row(
+      children: [
+        // Profile avatar with shadow
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
+          child: CircleAvatar(
+            radius: 24.0,
+            backgroundColor: Colors.white,
+            backgroundImage: profilePicUrl != null && profilePicUrl.isNotEmpty
+                ? NetworkImage(profilePicUrl)
+                : null,
+            child: profilePicUrl == null || profilePicUrl.isEmpty
+                ? const Icon(Icons.person, size: 30, color: Colors.grey)
+                : null,
+          ),
+        ),
+        const SizedBox(width: 12.0),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                username,
+                style: const TextStyle(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+              const Text(
+                "Posting to Lost & Found",
+                style: TextStyle(
+                  fontSize: 13.0,
+                  color: Colors.grey,
+                ),
+              )
+            ],
+          ),
+        ),
+      ],
+    );
+  },
+),
+
         ),
 
         const Divider(height: 1, thickness: 1),
