@@ -28,10 +28,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
+     theme: ThemeData(
+  primaryColor: Colors.white, // Use this instead of primarySwatch
+  useMaterial3: true,
+),
+
       home: const HomeScreen(),
     );
   }
@@ -287,11 +288,12 @@ class LostFoundScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+            backgroundColor: const Color.fromARGB(64, 236, 236, 236), // Set background color to white
+
       body: Stack(
         children: [
           Column(
             children: [
-              Divider(color: Colors.grey[300], thickness: 1), // Grey divider
               const CategoryChips(),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
@@ -513,70 +515,78 @@ class _PostCardState extends State<PostCard> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12.0),
-      elevation: 3.0,
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const CircleAvatar(radius: 20.0),
-                    const SizedBox(width: 10.0),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.username,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        Text(postTime,
-                            style: const TextStyle(
-                                fontSize: 12.0, color: Colors.grey)),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 10.0),
-            Text(widget.content, style: const TextStyle(fontSize: 16.0)),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton.icon(
-                  onPressed: _toggleLike,
-                  icon: Icon(
-                    isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: Colors.red,
+ Widget build(BuildContext context) {
+  return Column(
+    children: [
+      Card(
+        margin: const EdgeInsets.only(bottom: 15.0),
+        elevation: 1.0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(5.0), // Decreased border radius
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const CircleAvatar(radius: 20.0),
+                      const SizedBox(width: 15.0),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.username,
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(postTime,
+                              style: const TextStyle(
+                                  fontSize: 12.0, color: Colors.grey)),
+                        ],
+                      ),
+                    ],
                   ),
-                  label: Text('$likeCount Likes'),
-                ),
-                TextButton.icon(
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (context) =>
-                          CommentSection(postId: widget.postId),
-                    );
-                  },
-                  icon: const Icon(Icons.comment, color: Colors.blue),
-                  label: const Text('Comment'),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+              const SizedBox(height: 10.0),
+              Text(widget.content, style: const TextStyle(fontSize: 16.0)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton.icon(
+                    onPressed: _toggleLike,
+                    icon: Icon(
+                      isLiked ? Icons.favorite : Icons.favorite_border,
+                      color: Colors.red,
+                    ),
+                    label: Text('$likeCount Likes'),
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (context) =>
+                            CommentSection(postId: widget.postId),
+                      );
+                    },
+                    icon: const Icon(Icons.comment, color: Colors.blue),
+                    label: const Text('Comment'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    );
-  }
+    ],
+  );
+}
+
+
 }
 
 class CommentSection extends StatefulWidget {
