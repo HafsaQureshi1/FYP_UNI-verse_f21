@@ -1,4 +1,3 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting timestamps
@@ -8,7 +7,7 @@ class PeerAssistanceScreen extends StatelessWidget {
   const PeerAssistanceScreen({super.key});
 
   @override
- Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
@@ -39,11 +38,11 @@ class PeerAssistanceScreen extends StatelessWidget {
                         var post = posts[index];
                         String username = post['userName'] ?? 'Anonymous';
                         String content = post['postContent'] ?? '';
-                       
+
                         return PostCard(
                           username: username,
                           content: content,
-                         // userProfilePic: userProfilePic,
+                          // userProfilePic: userProfilePic,
                           postId: post.id,
                           likes: post['likes'] ?? 0,
                         );
@@ -58,6 +57,7 @@ class PeerAssistanceScreen extends StatelessWidget {
             bottom: 16.0,
             right: 16.0,
             child: FloatingActionButton(
+              backgroundColor: const Color.fromARGB(255, 0, 58, 92),
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
@@ -67,7 +67,7 @@ class PeerAssistanceScreen extends StatelessWidget {
                   },
                 );
               },
-              child: const Icon(Icons.add),
+              child: const Icon(Icons.add, color: Colors.white),
             ),
           ),
         ],
@@ -184,97 +184,208 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColor = const Color.fromARGB(255, 0, 58, 92);
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        ),
-        title: const Text(
-          'Create New Post',
-          style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(26.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 40.0),
-            FutureBuilder<DocumentSnapshot>(
-              future: _firestore.collection('users').doc(_auth.currentUser?.uid).get(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const CircularProgressIndicator();
-                }
-                if (!snapshot.hasData || snapshot.data == null || !snapshot.data!.exists) {
-                  return const Text("Not logged in");
-                }
-                String username = snapshot.data!['username'] ?? 'Anonymous';
-                //String profilePic = snapshot.data!['profilePic'] ?? '';
-                return Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 20.0,
-                      //backgroundImage: profilePic.isNotEmpty
-                     //     ? NetworkImage(profilePic)
-                      //    : const AssetImage('assets/images/hi.png') as ImageProvider,
-                    ),
-                    const SizedBox(width: 10.0),
-                    Text(
-                      username,
-                      style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                );
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(
+            85), // Increased height to accommodate the camera hole
+        child: Container(
+          padding: const EdgeInsets.only(
+              top: 35), // Add padding to move content below camera hole
+          child: AppBar(
+            backgroundColor: themeColor,
+            elevation: 0,
+            centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () {
+                Navigator.of(context).pop();
               },
             ),
-            const SizedBox(height: 20.0),
-            TextField(
-              controller: _postController,
-              maxLines: null,
-              decoration: const InputDecoration(
-                hintText: "What's on your mind?",
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 14.0),
-              ),
-              style: const TextStyle(fontSize: 18.0),
+            title: const Text(
+              'Create Post',
+              style: TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
             ),
-            const SizedBox(height: 20.0),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey,
-                    minimumSize: const Size(160, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-                  ),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.white, fontSize: 18)),
-                ),
-                const SizedBox(width: 10.0),
-                ElevatedButton(
-                  onPressed: _isPosting ? null : _createPost,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-                    minimumSize: const Size(160, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-                  ),
-                  child: _isPosting
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Post Now', style: TextStyle(color: Colors.white, fontSize: 18)),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
+      // Keep SingleChildScrollView for keyboard handling
+      body: SingleChildScrollView(
+        child: Container(
+          color: Colors.white,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // User info section with subtle divider
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                child: FutureBuilder<DocumentSnapshot>(
+                  future: _firestore
+                      .collection('users')
+                      .doc(_auth.currentUser?.uid)
+                      .get(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                        height: 40,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (!snapshot.hasData ||
+                        snapshot.data == null ||
+                        !snapshot.data!.exists) {
+                      return const Text("Not logged in");
+                    }
+                    String username = snapshot.data!['username'] ?? 'Anonymous';
+                    return Row(
+                      children: [
+                        // Larger avatar with shadow
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const CircleAvatar(
+                            radius: 24.0,
+                            backgroundColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                username,
+                                style: const TextStyle(
+                                  fontSize: 16.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const Text(
+                                "Posting to Peer Assistance",
+                                style: TextStyle(
+                                  fontSize: 13.0,
+                                  color: Colors.grey,
+                                ),
+                              )
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+
+              const Divider(height: 1, thickness: 1),
+
+              // Enhanced post content area
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: _postController,
+                    maxLines: null,
+                    minLines: 8,
+                    keyboardType: TextInputType.multiline,
+                    style: const TextStyle(fontSize: 16.0),
+                    decoration: InputDecoration(
+                      hintText: "Ask a question or offer help to your peers...",
+                      hintStyle: TextStyle(
+                          color: Colors.grey.shade500, fontSize: 20.0),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.all(12.0),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Full-width post button
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _isPosting ? null : _createPost,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: themeColor,
+                        disabledBackgroundColor: themeColor.withOpacity(0.6),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isPosting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.0,
+                              ),
+                            )
+                          : const Text(
+                              'Post',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Cancel button with subtle styling
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: themeColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Bottom padding for keyboard
+              SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+            ],
+          ),
+        ),
+      ),
+      resizeToAvoidBottomInset: true,
     );
   }
 }
@@ -296,7 +407,6 @@ class PostCard extends StatefulWidget {
   @override
   _PostCardState createState() => _PostCardState();
 }
-
 
 class _PostCardState extends State<PostCard> {
   int likeCount = 0;
@@ -323,9 +433,12 @@ class _PostCardState extends State<PostCard> {
         .doc(currentUserId)
         .get();
 
-    setState(() {
-      isLiked = likeDoc.exists;
-    });
+    if (mounted) {
+      // Check if widget is still in the tree
+      setState(() {
+        isLiked = likeDoc.exists;
+      });
+    }
   }
 
   Future<void> _fetchPostTime() async {
@@ -336,7 +449,8 @@ class _PostCardState extends State<PostCard> {
 
     if (postDoc.exists) {
       Timestamp? timestamp = postDoc['timestamp']; // Firestore timestamp
-      if (timestamp != null) {
+      if (timestamp != null && mounted) {
+        // Check if widget is still in the tree
         DateTime date = timestamp.toDate();
         String formattedTime = DateFormat('MMM d, yyyy • h:mm a').format(date);
         setState(() {
@@ -357,25 +471,34 @@ class _PostCardState extends State<PostCard> {
 
     if (isLiked) {
       await likeRef.delete();
-      setState(() {
-        isLiked = false;
-        likeCount--;
-      });
+      if (mounted) {
+        // Check if widget is still in the tree
+        setState(() {
+          isLiked = false;
+          likeCount--;
+        });
+      }
     } else {
       await likeRef.set({
         'userId': currentUserId,
         'timestamp': FieldValue.serverTimestamp(),
       });
-      setState(() {
-        isLiked = true;
-        likeCount++;
-      });
+      if (mounted) {
+        // Check if widget is still in the tree
+        setState(() {
+          isLiked = true;
+          likeCount++;
+        });
+      }
     }
 
-    await FirebaseFirestore.instance
-        .collection('Peerposts')
-        .doc(widget.postId)
-        .update({'likes': likeCount});
+    // Only update the post if the widget is still mounted
+    if (mounted) {
+      await FirebaseFirestore.instance
+          .collection('Peerposts')
+          .doc(widget.postId)
+          .update({'likes': likeCount});
+    }
   }
 
   @override
@@ -383,7 +506,7 @@ class _PostCardState extends State<PostCard> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12.0),
       elevation: 3.0,
-      color:Colors.white,
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -395,13 +518,18 @@ class _PostCardState extends State<PostCard> {
               children: [
                 Row(
                   children: [
-                    const CircleAvatar(radius: 20.0), // Profile picture placeholder
+                    const CircleAvatar(
+                        radius: 20.0), // Profile picture placeholder
                     const SizedBox(width: 10.0),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.username, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        Text(postTime, style: const TextStyle(fontSize: 12.0, color: Colors.grey)),
+                        Text(widget.username,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(postTime,
+                            style: const TextStyle(
+                                fontSize: 12.0, color: Colors.grey)),
                       ],
                     ),
                   ],
@@ -430,7 +558,8 @@ class _PostCardState extends State<PostCard> {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
-                      builder: (context) => CommentSection(postId: widget.postId),
+                      builder: (context) =>
+                          CommentSection(postId: widget.postId),
                     );
                   },
                   icon: const Icon(Icons.comment, color: Colors.blue),
@@ -444,6 +573,7 @@ class _PostCardState extends State<PostCard> {
     );
   }
 }
+
 class CommentSection extends StatefulWidget {
   final String postId;
 
@@ -452,6 +582,7 @@ class CommentSection extends StatefulWidget {
   @override
   _CommentSectionState createState() => _CommentSectionState();
 }
+
 class _CommentSectionState extends State<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
   String? _username;
@@ -465,7 +596,10 @@ class _CommentSectionState extends State<CommentSection> {
   Future<void> _fetchUsername() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
       setState(() {
         _username = userDoc.data()?['username'] ?? 'Unknown User';
       });
@@ -491,13 +625,15 @@ class _CommentSectionState extends State<CommentSection> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: 400,
         padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
-            const Text("Comments", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text("Comments",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
@@ -525,22 +661,25 @@ class _CommentSectionState extends State<CommentSection> {
 
                       if (timestamp != null) {
                         DateTime date = timestamp.toDate();
-                        formattedTime = DateFormat('MMM d, yyyy • h:mm a').format(date);
+                        formattedTime =
+                            DateFormat('MMM d, yyyy • h:mm a').format(date);
                       }
 
                       return ListTile(
-                        leading: const CircleAvatar(radius: 18.0), // Add user profile pic if available
+                        leading: const CircleAvatar(
+                            radius: 18.0), // Add user profile pic if available
                         title: Text(comment['username'] ?? 'Unknown User',
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               formattedTime,
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey),
                             ),
                             Text(comment['comment'] ?? ''),
-                            
                           ],
                         ),
                       );

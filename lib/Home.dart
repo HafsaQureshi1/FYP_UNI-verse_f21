@@ -114,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               )
             : const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10.0),
+                padding: EdgeInsets.only(left: 16.0),
                 child: Text(
                   "UNI-verse",
                   style: TextStyle(
@@ -124,9 +124,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+        titleSpacing: 0,
         leading: _isSearching
             ? IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black),
+                padding: EdgeInsets.zero,
                 onPressed: () {
                   setState(() {
                     _isSearching = false;
@@ -149,89 +151,87 @@ class _HomeScreenState extends State<HomeScreen> {
               _isSearching ? Icons.close : Icons.search,
               color: Colors.black,
             ),
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            constraints: const BoxConstraints(),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 0.0),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => NotificationScreen()));
-                  },
-                  icon: const Icon(Icons.notifications, color: Colors.black),
-                ),
-                // Notification Badge Counter
-                if (currentUserId != null)
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('notifications')
-                        .where('receiverId', isEqualTo: currentUserId)
-                        .where('isRead', isEqualTo: false)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      int count = 0;
-                      if (snapshot.hasData && snapshot.data != null) {
-                        count = snapshot.data!.docs.length;
-                      }
-                      if (count == 0) {
-                        return Container(); // No badge when no unread notifications
-                      }
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => NotificationScreen()));
+                },
+                icon: const Icon(Icons.notifications, color: Colors.black),
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                constraints: const BoxConstraints(),
+              ),
+              // Notification Badge Counter
+              if (currentUserId != null)
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('notifications')
+                      .where('receiverId', isEqualTo: currentUserId)
+                      .where('isRead', isEqualTo: false)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    int count = 0;
+                    if (snapshot.hasData && snapshot.data != null) {
+                      count = snapshot.data!.docs.length;
+                    }
+                    if (count == 0) {
+                      return Container(); // No badge when no unread notifications
+                    }
 
-                      return Positioned(
-                        top: 5,
-                        right: 5,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
-                          ),
-                          child: Text(
-                            count > 99 ? '99+' : count.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
+                    return Positioned(
+                      top: 5,
+                      right: 5,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      );
-                    },
-                  ),
-              ],
-            ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          count > 99 ? '99+' : count.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
           ),
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 9.0), // Add padding here
-            child: IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfilePage(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.person, color: Colors.black),
-            ),
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProfilePage(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.person, color: Colors.black),
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            constraints: const BoxConstraints(),
           ),
           // Logout Button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 9.0),
-            child: IconButton(
-              onPressed: _signOut, // Call the sign-out function
-              icon: const Icon(Icons.exit_to_app, color: Colors.black),
-            ),
+          IconButton(
+            onPressed: _signOut, // Call the sign-out function
+            icon: const Icon(Icons.exit_to_app, color: Colors.black),
+            padding: const EdgeInsets.only(left: 8.0, right: 16.0),
+            constraints: const BoxConstraints(),
           ),
         ],
       ),
@@ -334,6 +334,7 @@ class LostFoundScreen extends StatelessWidget {
             bottom: 16.0,
             right: 16.0,
             child: FloatingActionButton(
+              backgroundColor: const Color.fromARGB(255, 0, 58, 92),
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
@@ -343,7 +344,7 @@ class LostFoundScreen extends StatelessWidget {
                   },
                 );
               },
-              child: const Icon(Icons.add),
+              child: const Icon(Icons.add, color: Colors.white),
             ),
           ),
         ],
@@ -412,7 +413,7 @@ class _PostCardState extends State<PostCard> {
 
     if (postDoc.exists) {
       final Timestamp? timestamp = postDoc.data()?['timestamp'];
-      if (timestamp != null) {
+      if (timestamp != null && mounted) {
         final DateTime date = timestamp.toDate();
         final String formattedDate =
             "${date.day} ${_getMonthName(date.month)} ${date.year}, ${_formatTime(date)}";
@@ -471,20 +472,24 @@ class _PostCardState extends State<PostCard> {
 
     if (isLiked) {
       await postRef.collection('likes').doc(currentUserId).delete();
-      setState(() {
-        isLiked = false;
-        likeCount--;
-      });
+      if (mounted) {
+        setState(() {
+          isLiked = false;
+          likeCount--;
+        });
+      }
     } else {
       await postRef.collection('likes').doc(currentUserId).set({
         'userId': currentUserId,
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      setState(() {
-        isLiked = true;
-        likeCount++;
-      });
+      if (mounted) {
+        setState(() {
+          isLiked = true;
+          likeCount++;
+        });
+      }
 
       // Send FCM Notification
       _fcmService.sendNotificationToUser(
@@ -814,109 +819,209 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColor = const Color.fromARGB(255, 0, 58, 92);
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        ),
-        title: const Text(
-          'Create New Post',
-          style: TextStyle(
-              fontSize: 20.0, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(26.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 40.0),
-            FutureBuilder<DocumentSnapshot>(
-              future: _firestore
-                  .collection('users')
-                  .doc(_auth.currentUser?.uid)
-                  .get(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const CircularProgressIndicator();
-                }
-                if (!snapshot.hasData ||
-                    snapshot.data == null ||
-                    !snapshot.data!.exists) {
-                  return const Text("Not logged in");
-                }
-                String username = snapshot.data!['username'] ?? 'Anonymous';
-                //String profilePic = snapshot.data!['profilePic'] ?? '';
-                return Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 20.0,
-                      //backgroundImage: profilePic.isNotEmpty
-                      //     ? NetworkImage(profilePic)
-                      //    : const AssetImage('assets/images/hi.png') as ImageProvider,
-                    ),
-                    const SizedBox(width: 10.0),
-                    Text(
-                      username,
-                      style: const TextStyle(
-                          fontSize: 16.0, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                );
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(
+            85), // Increased height to accommodate the camera hole
+        child: Container(
+          padding: const EdgeInsets.only(
+              top: 35), // Add padding to move content below camera hole
+          child: AppBar(
+            backgroundColor: themeColor,
+            elevation: 0,
+            centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () {
+                Navigator.of(context).pop();
               },
             ),
-            const SizedBox(height: 20.0),
-            TextField(
-              controller: _postController,
-              maxLines: null,
-              decoration: const InputDecoration(
-                hintText: "What's on your mind?",
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(vertical: 20.0, horizontal: 14.0),
-              ),
-              style: const TextStyle(fontSize: 18.0),
+            title: const Text(
+              'Create Post',
+              style: TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
             ),
-            const SizedBox(height: 20.0),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey,
-                    minimumSize: const Size(160, 50),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0)),
-                  ),
-                  child: const Text('Cancel',
-                      style: TextStyle(color: Colors.white, fontSize: 18)),
-                ),
-                const SizedBox(width: 10.0),
-                ElevatedButton(
-                  onPressed: _isPosting ? null : _createPost,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-                    minimumSize: const Size(160, 50),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0)),
-                  ),
-                  child: _isPosting
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Post Now',
-                          style: TextStyle(color: Colors.white, fontSize: 18)),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
+      // Keep SingleChildScrollView for keyboard handling
+      body: SingleChildScrollView(
+        child: Container(
+          color: Colors.white,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // User info section with subtle divider
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                child: FutureBuilder<DocumentSnapshot>(
+                  future: _firestore
+                      .collection('users')
+                      .doc(_auth.currentUser?.uid)
+                      .get(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                        height: 40,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (!snapshot.hasData ||
+                        snapshot.data == null ||
+                        !snapshot.data!.exists) {
+                      return const Text("Not logged in");
+                    }
+                    String username = snapshot.data!['username'] ?? 'Anonymous';
+                    return Row(
+                      children: [
+                        // Larger avatar with shadow
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const CircleAvatar(
+                            radius: 24.0,
+                            backgroundColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                username,
+                                style: const TextStyle(
+                                  fontSize: 16.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const Text(
+                                "Posting to Lost & Found",
+                                style: TextStyle(
+                                  fontSize: 13.0,
+                                  color: Colors.grey,
+                                ),
+                              )
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+
+              const Divider(height: 1, thickness: 1),
+
+              // Enhanced post content area
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: _postController,
+                    maxLines: null,
+                    minLines: 8,
+                    keyboardType: TextInputType.multiline,
+                    style: const TextStyle(fontSize: 16.0),
+                    decoration: InputDecoration(
+                      hintText:
+                          "Describe a lost or found item with location details...",
+                      hintStyle: TextStyle(
+                          color: Colors.grey.shade500, fontSize: 20.0),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.all(12.0),
+                    ),
+                  ),
+                ),
+              ),
+
+              //  full-width post button
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _isPosting ? null : _createPost,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: themeColor,
+                        disabledBackgroundColor: themeColor.withOpacity(0.6),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isPosting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.0,
+                              ),
+                            )
+                          : const Text(
+                              'Post',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Cancel button with subtle styling
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: themeColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Bottom padding for keyboard
+              SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+            ],
+          ),
+        ),
+      ),
+      resizeToAvoidBottomInset: true,
     );
   }
 }
