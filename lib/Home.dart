@@ -371,60 +371,78 @@ class LostFoundScreen extends StatelessWidget {
 }
 
 
+
 class PostCard extends StatefulWidget {
-  final String username;
-  final String content;
   final String postId;
   final String userId;
+  final String username;
+  final String content;
   final int likes;
 
   const PostCard({
-    super.key,
-    required this.username,
-    required this.content,
+    Key? key,
     required this.postId,
     required this.userId,
+    required this.username,
+    required this.content,
     required this.likes,
-  });
+  }) : super(key: key);
 
   @override
-  State<PostCard> createState() => _PostCardState();
+  _PostCardState createState() => _PostCardState();
 }
 
 class _PostCardState extends State<PostCard> {
   String postTime = "";
+  int likeCount = 0;
   bool isLiked = false;
   String? currentUserId;
   String? profileImageUrl;
+  String currentUsername = ''; // To store the latest username
   final FCMService _fcmService = FCMService();
 
   @override
   void initState() {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    _checkIfUserLiked();
+    likeCount = widget.likes;
+    _fetchUsername(); // Fetch latest username
+    _fetchProfileImage(); // Fetch profile picture
     _fetchPostTime();
-    _fetchProfileImage();
+    _checkIfUserLiked();
   }
 
-  Future<void> _checkIfUserLiked() async {
-    if (currentUserId == null) return;
+  /// Fetches the latest username from Firestore based on `userId`
+  void _fetchUsername() {
+  FirebaseFirestore.instance
+      .collection('users')
+      .doc(widget.userId) // Fetch username for the post owner
+      .snapshots()
+      .listen((userDoc) {
+    if (userDoc.exists && mounted) {
+      setState(() {
+        currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
+      });
+    }
+  });
+}
 
-    FirebaseFirestore.instance
-        .collection('lostfoundposts')
-        .doc(widget.postId)
-        .collection('likes')
-        .doc(currentUserId)
-        .snapshots()
-        .listen((likeDoc) {
-      if (mounted) {
-        setState(() {
-          isLiked = likeDoc.exists;
-        });
-      }
-    });
+
+  /// Fetches the user's profile picture
+  Future<void> _fetchProfileImage() async {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.userId)
+        .get();
+
+    if (userDoc.exists && mounted) {
+      setState(() {
+        profileImageUrl = userDoc.data()?['profilePicture'];
+      });
+    }
   }
 
+  /// Fetches the timestamp and formats it
   Future<void> _fetchPostTime() async {
     final postDoc = await FirebaseFirestore.instance
         .collection('lostfoundposts')
@@ -444,26 +462,49 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
-  Future<void> _fetchProfileImage() async {
-    FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.userId)
-        .snapshots()
-        .listen((userDoc) {
-      if (userDoc.exists && mounted) {
-        setState(() {
-          profileImageUrl = userDoc.data()?['profilePicture'];
-        });
-      }
-    });
+  String _getMonthName(int month) {
+    const monthNames = [
+      "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    return monthNames[month];
   }
 
+  String _formatTime(DateTime date) {
+    int hour = date.hour;
+    int minute = date.minute;
+    String period = hour >= 12 ? "PM" : "AM";
+    hour = hour > 12 ? hour - 12 : hour == 0 ? 12 : hour;
+    return "$hour:${minute.toString().padLeft(2, '0')} $period";
+  }
+
+  /// Checks if the current user has liked the post
+  Future<void> _checkIfUserLiked() async {
+    if (currentUserId == null) return;
+
+    final likeDoc = await FirebaseFirestore.instance
+        .collection('lostfoundposts')
+        .doc(widget.postId)
+        .collection('likes')
+        .doc(currentUserId)
+        .get();
+
+    if (mounted) {
+      setState(() {
+        isLiked = likeDoc.exists;
+      });
+    }
+  }
+
+  /// Toggles the like status and updates Firestore
   void _toggleLike() async {
     if (currentUserId == null) return;
 
     final postRef = FirebaseFirestore.instance
         .collection('lostfoundposts')
         .doc(widget.postId);
+    final postDoc = await postRef.get();
+    final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
     final userDoc = await FirebaseFirestore.instance
         .collection('users')
@@ -473,18 +514,30 @@ class _PostCardState extends State<PostCard> {
 
     if (isLiked) {
       await postRef.collection('likes').doc(currentUserId).delete();
+      if (mounted) {
+        setState(() {
+          isLiked = false;
+          likeCount--;
+        });
+      }
     } else {
       await postRef.collection('likes').doc(currentUserId).set({
         'userId': currentUserId,
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      final postDoc = await postRef.get();
-      final String postAuthorId = postDoc.data()?['userId'] ?? '';
+      if (mounted) {
+        setState(() {
+          isLiked = true;
+          likeCount++;
+        });
+      }
 
+      // Send FCM Notification
       _fcmService.sendNotificationToUser(
           postAuthorId, likerName, "liked your post!");
 
+      // Store Notification in Firestore
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
         'senderId': currentUserId,
@@ -497,23 +550,15 @@ class _PostCardState extends State<PostCard> {
         'isRead': false,
       });
     }
+
+    await postRef.update({'likes': likeCount});
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('lostfoundposts')
-          .doc(widget.postId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const SizedBox.shrink();
-        }
-        var postData = snapshot.data!;
-        int likeCount = postData['likes'] ?? 0;
-
-        return Card(
+    return Column(
+      children: [
+        Card(
           margin: const EdgeInsets.only(bottom: 15.0),
           elevation: 1.0,
           color: Colors.white,
@@ -525,35 +570,49 @@ class _PostCardState extends State<PostCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                /// Username and profile image
                 Row(
                   children: [
                     CircleAvatar(
                       radius: 20.0,
                       backgroundColor: Colors.grey[300],
-                      backgroundImage: profileImageUrl != null
-                          ? NetworkImage(profileImageUrl!)
-                          : null,
                       child: profileImageUrl == null
-                          ? const Icon(Icons.person, size: 20.0)
-                          : null,
+                          ? CircularProgressIndicator()
+                          : ClipOval(
+                              child: Image.network(
+                                profileImageUrl!,
+                                fit: BoxFit.cover,
+                                width: 40.0,
+                                height: 40.0,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(child: CircularProgressIndicator());
+                                },
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Icon(Icons.person, size: 20.0, color: Colors.grey[600]),
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 15.0),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.username,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        Text(postTime,
-                            style: const TextStyle(
-                                fontSize: 12.0, color: Colors.grey)),
+                        Text(
+                          currentUsername, // Updated username
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(postTime, style: const TextStyle(fontSize: 12.0, color: Colors.grey)),
                       ],
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 10.0),
                 Text(widget.content, style: const TextStyle(fontSize: 16.0)),
+
+                /// Like and comment buttons
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton.icon(
                       onPressed: _toggleLike,
@@ -563,26 +622,25 @@ class _PostCardState extends State<PostCard> {
                       ),
                       label: Text('$likeCount Likes'),
                     ),
+                    TextButton.icon(
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (context) => CommentSection(postId: widget.postId),
+                        );
+                      },
+                      icon: const Icon(Icons.comment, color: Colors.blue),
+                      label: const Text('Comment'),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
-        );
-      },
+        ),
+      ],
     );
-  }
-
-  String _getMonthName(int month) {
-    const months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return months[month];
-  }
-
-  String _formatTime(DateTime date) {
-    return "${date.hour}:${date.minute.toString().padLeft(2, '0')}";
   }
 }
 class CommentSection extends StatefulWidget {
