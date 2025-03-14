@@ -98,16 +98,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     );
   }
 
-  void _showComments(BuildContext context, Map<String, dynamic> post) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => CommentSection(
-        postId: post['id'],
-        collectionName: post['collection'],
-      ),
-    );
-  }
+  
 
   @override
   Widget build(BuildContext context) {

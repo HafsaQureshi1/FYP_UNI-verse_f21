@@ -6,10 +6,10 @@ class ProfileAvatar extends StatefulWidget {
   final double radius;
 
   const ProfileAvatar({
-    Key? key,
+    super.key,
     required this.userId,
     this.radius = 30,
-  }) : super(key: key);
+  });
 
   @override
   _ProfileAvatarState createState() => _ProfileAvatarState();

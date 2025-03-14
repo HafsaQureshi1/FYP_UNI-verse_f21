@@ -12,8 +12,6 @@ import 'PeerScreen.dart';
 import 'SurveyScreen.dart';
 import 'EventScreen.dart';
 import 'profile_page.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'profileimage.dart';
 
 void main() async {
@@ -379,13 +377,13 @@ class PostCard extends StatefulWidget {
   final int likes;
 
   const PostCard({
-    Key? key,
+    super.key,
     required this.postId,
     required this.userId,
     required this.username,
     required this.content,
     required this.likes,
-  }) : super(key: key);
+  });
 
   @override
   _PostCardState createState() => _PostCardState();
@@ -577,7 +575,7 @@ class _PostCardState extends State<PostCard> {
                       radius: 20.0,
                       backgroundColor: Colors.grey[300],
                       child: profileImageUrl == null
-                          ? CircularProgressIndicator()
+                          ? const CircularProgressIndicator()
                           : ClipOval(
                               child: Image.network(
                                 profileImageUrl!,
@@ -586,7 +584,7 @@ class _PostCardState extends State<PostCard> {
                                 height: 40.0,
                                 loadingBuilder: (context, child, loadingProgress) {
                                   if (loadingProgress == null) return child;
-                                  return Center(child: CircularProgressIndicator());
+                                  return const Center(child: CircularProgressIndicator());
                                 },
                                 errorBuilder: (context, error, stackTrace) =>
                                     Icon(Icons.person, size: 20.0, color: Colors.grey[600]),
@@ -673,13 +671,8 @@ class _CommentSectionState extends State<CommentSection> {
     }
   }
 
-  Stream<String?> _getUsernameStream(String userId) {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .snapshots()
-        .map((snapshot) => snapshot.data()?['username'] ?? 'Unknown User');
-  }
+
+
 
   void _addComment(String commentText) async {
     if (commentText.trim().isEmpty || _userId == null) return;
@@ -772,33 +765,29 @@ class _CommentSectionState extends State<CommentSection> {
                             .format(date);
                       }
 
-                      return StreamBuilder<String?>(
-                        stream: _getUsernameStream(commenterId),
-                        builder: (context, usernameSnapshot) {
-                          String username =
-                              usernameSnapshot.data ?? 'Unknown User';
+                      return StreamBuilder<DocumentSnapshot>(
+  stream: FirebaseFirestore.instance.collection('users').doc(commenterId).snapshots(),
+  builder: (context, usernameSnapshot) {
+    if (!usernameSnapshot.hasData || !usernameSnapshot.data!.exists) {
+      return const SizedBox(); // Skip rendering this comment
+    }
+    
+    String username = usernameSnapshot.data!.get('username') ?? 'Unknown User';
 
-                          return ListTile(
-                            leading: ProfileAvatar(
-                                userId: commenterId, radius: 18),
-                            title: Text(username,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
-                            subtitle: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  formattedTime,
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Colors.grey),
-                                ),
-                                Text(comment['comment'] ?? ''),
-                              ],
-                            ),
-                          );
-                        },
-                      );
+    return ListTile(
+      leading: ProfileAvatar(userId: commenterId, radius: 18),
+      title: Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(formattedTime, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(comment['comment'] ?? ''),
+        ],
+      ),
+    );
+  },
+);
+
                     },
                   );
                 },
@@ -900,7 +889,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = const Color.fromARGB(255, 0, 58, 92);
+    const themeColor = Color.fromARGB(255, 0, 58, 92);
 
     return Scaffold(
       appBar: PreferredSize(
@@ -963,7 +952,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: const Color.fromARGB(255, 231, 231, 231),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),

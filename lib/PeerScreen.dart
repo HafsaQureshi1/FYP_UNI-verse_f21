@@ -184,7 +184,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = const Color.fromARGB(255, 0, 58, 92);
+    const themeColor = Color.fromARGB(255, 0, 58, 92);
 
     return Scaffold(
       appBar: PreferredSize(

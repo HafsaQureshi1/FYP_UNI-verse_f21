@@ -5,21 +5,23 @@ import 'package:flutter_application_1/search_results.dart';
 import 'package:intl/intl.dart';
 
 class NotificationScreen extends StatelessWidget {
+  const NotificationScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
     if (currentUserId == null) {
       return Scaffold(
-        appBar: AppBar(title: Text("Notifications")),
-        body: Center(child: Text("Error: User not authenticated")),
+        appBar: AppBar(title: const Text("Notifications")),
+        body: const Center(child: Text("Error: User not authenticated")),
       );
     }
 
     return Scaffold(
       backgroundColor: Colors.grey[100], // Facebook-like light gray background
       appBar: AppBar(
-        title: Text("Notifications",
+        title: const Text("Notifications",
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
         backgroundColor: Colors.white, // White app bar like Facebook
         elevation: 1, // Subtle elevation
@@ -27,7 +29,7 @@ class NotificationScreen extends StatelessWidget {
           Tooltip(
             message: "Mark all as read",
             child: IconButton(
-              icon: Icon(Icons.done_all),
+              icon: const Icon(Icons.done_all),
               onPressed: () => _markAllAsRead(currentUserId),
             ),
           ),
@@ -41,11 +43,11 @@ class NotificationScreen extends StatelessWidget {
             .snapshots(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text("No notifications yet."));
+            return const Center(child: Text("No notifications yet."));
           }
 
           return ListView.separated(
@@ -95,7 +97,7 @@ class NotificationScreen extends StatelessWidget {
               // Determine background color based on read status
               Color bgColor = data['isRead'] == true
                   ? Colors.white
-                  : Color.fromARGB(
+                  : const Color.fromARGB(
                       255, 237, 246, 254); // Lighter blue for unread
 
               return Material(
@@ -106,7 +108,7 @@ class NotificationScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 2.0),
                     child: ListTile(
                       contentPadding:
-                          EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                          const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                       leading: CircleAvatar(
                         backgroundColor: data['type'] == 'like'
                             ? Colors.red.shade100
@@ -123,7 +125,7 @@ class NotificationScreen extends StatelessWidget {
                       ),
                       title: RichText(
                         text: TextSpan(
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 15.0,
                             color: Colors.black,
                             height: 1.4, // Increase line height for readability
@@ -131,7 +133,7 @@ class NotificationScreen extends StatelessWidget {
                           children: [
                             TextSpan(
                               text: data['senderName'],
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black,
                               ),
@@ -140,7 +142,7 @@ class NotificationScreen extends StatelessWidget {
                               text: data['type'] == 'like'
                                   ? ' liked your post in '
                                   : ' commented on your post in ',
-                              style: TextStyle(color: Colors.black87),
+                              style: const TextStyle(color: Colors.black87),
                             ),
                             TextSpan(
                               text: collectionDisplayName,
@@ -167,7 +169,7 @@ class NotificationScreen extends StatelessWidget {
                           : Container(
                               width: 12,
                               height: 12,
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.blue,
                               ),
@@ -349,12 +351,12 @@ class NotificationScreen extends StatelessWidget {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Post no longer exists')),
+            const SnackBar(content: Text('Post no longer exists')),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not find the post')),
+          const SnackBar(content: Text('Could not find the post')),
         );
       }
     }
