@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -13,6 +15,12 @@ import 'SurveyScreen.dart';
 import 'EventScreen.dart';
 import 'profile_page.dart';
 import 'profileimage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -375,6 +383,7 @@ class PostCard extends StatefulWidget {
   final String username;
   final String content;
   final int likes;
+   final String? imageUrl; 
 
   const PostCard({
     super.key,
@@ -383,6 +392,7 @@ class PostCard extends StatefulWidget {
     required this.username,
     required this.content,
     required this.likes,
+     this.imageUrl, // ✅ Accept optional image URL
   });
 
   @override
@@ -395,7 +405,9 @@ class _PostCardState extends State<PostCard> {
   bool isLiked = false;
   String? currentUserId;
   String? profileImageUrl;
-  String currentUsername = ''; // Store the latest username
+  String currentUsername = '';
+  String? imageUrl;
+ // Store the latest username
   final FCMService _fcmService = FCMService();
 
   @override
@@ -407,6 +419,7 @@ class _PostCardState extends State<PostCard> {
     _fetchProfileImage(); // Live update for profile picture
     _fetchPostTime();
     _checkIfUserLiked();
+    _fetchImageUrl();
   }
 
   /// ✅ **Fetches the latest username in real-time**
@@ -438,7 +451,19 @@ class _PostCardState extends State<PostCard> {
       }
     });
   }
-
+  void _fetchImageUrl() {
+    FirebaseFirestore.instance
+        .collection('lostfoundposts')
+        .doc(widget.postId)
+        .snapshots()
+        .listen((postDoc) {
+      if (postDoc.exists && mounted) {
+        setState(() {
+          imageUrl = postDoc.data()?['imageUrl'];
+        });
+      }
+    });
+  }
   /// Fetches and formats the post timestamp
   Future<void> _fetchPostTime() async {
     final postDoc = await FirebaseFirestore.instance
@@ -500,8 +525,6 @@ class _PostCardState extends State<PostCard> {
     final postRef = FirebaseFirestore.instance
         .collection('lostfoundposts')
         .doc(widget.postId);
-    final postDoc = await postRef.get();
-    final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
     final userDoc = await FirebaseFirestore.instance
         .collection('users')
@@ -511,30 +534,18 @@ class _PostCardState extends State<PostCard> {
 
     if (isLiked) {
       await postRef.collection('likes').doc(currentUserId).delete();
-      if (mounted) {
-        setState(() {
-          isLiked = false;
-          likeCount--;
-        });
-      }
     } else {
       await postRef.collection('likes').doc(currentUserId).set({
         'userId': currentUserId,
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      if (mounted) {
-        setState(() {
-          isLiked = true;
-          likeCount++;
-        });
-      }
+      final postDoc = await postRef.get();
+      final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
-      // Send FCM Notification
       _fcmService.sendNotificationToUser(
           postAuthorId, likerName, "liked your post!");
 
-      // Store Notification in Firestore
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
         'senderId': currentUserId,
@@ -547,8 +558,6 @@ class _PostCardState extends State<PostCard> {
         'isRead': false,
       });
     }
-
-    await postRef.update({'likes': likeCount});
   }
 
 
@@ -568,7 +577,7 @@ class _PostCardState extends State<PostCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// Username and profile image
+                /// ✅ Username and profile image
                 Row(
                   children: [
                     CircleAvatar(
@@ -582,10 +591,6 @@ class _PostCardState extends State<PostCard> {
                                 fit: BoxFit.cover,
                                 width: 40.0,
                                 height: 40.0,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return const Center(child: CircularProgressIndicator());
-                                },
                                 errorBuilder: (context, error, stackTrace) =>
                                     Icon(Icons.person, size: 20.0, color: Colors.grey[600]),
                               ),
@@ -596,7 +601,7 @@ class _PostCardState extends State<PostCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          currentUsername, // Updated username
+                          currentUsername,
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Text(postTime, style: const TextStyle(fontSize: 12.0, color: Colors.grey)),
@@ -606,9 +611,32 @@ class _PostCardState extends State<PostCard> {
                 ),
 
                 const SizedBox(height: 10.0),
+
+                /// ✅ Display post content
                 Text(widget.content, style: const TextStyle(fontSize: 16.0)),
 
-                /// Like and comment buttons
+                /// ✅ Display Image (if available)
+                 if (imageUrl != null && imageUrl!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 10.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: Image.network(
+                    imageUrl!,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 200.0,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(child: CircularProgressIndicator());
+                    },
+                    errorBuilder: (context, error, stackTrace) =>
+                        Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                  ),
+                ),
+              ),
+
+                /// ✅ Like and comment buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -638,8 +666,7 @@ class _PostCardState extends State<PostCard> {
           ),
         ),
       ],
-    );
-  }
+    );}
 }
 
 class CommentSection extends StatefulWidget {
@@ -823,6 +850,8 @@ class _CommentSectionState extends State<CommentSection> {
     );
   }
 }
+
+
 class CreateNewPostScreen extends StatefulWidget {
   const CreateNewPostScreen({super.key});
 
@@ -835,6 +864,46 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isPosting = false;
+
+  File? _imageFile;
+  Uint8List? _webImage;
+  String? _uploadedImageUrl;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      if (kIsWeb) {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _webImage = bytes;
+        });
+      } else {
+        setState(() {
+          _imageFile = File(pickedFile.path);
+        });
+      }
+    }
+  }
+
+  Future<String?> _uploadImageToCloudinary(Uint8List imageBytes) async {
+    const cloudinaryUrl = "https://api.cloudinary.com/v1_1/dgyktklti/image/upload";
+    const uploadPreset = "Universe_upload";
+
+    var request = http.MultipartRequest("POST", Uri.parse(cloudinaryUrl));
+    request.fields['upload_preset'] = uploadPreset;
+    request.files.add(http.MultipartFile.fromBytes('file', imageBytes, filename: 'upload.jpg'));
+
+    var response = await request.send();
+    if (response.statusCode == 200) {
+      final responseData = await response.stream.bytesToString();
+      final decodedData = jsonDecode(responseData);
+      return decodedData['secure_url']; // Cloudinary URL
+    } else {
+      return null;
+    }
+  }
 
   Future<void> _createPost() async {
     String postContent = _postController.text.trim();
@@ -851,11 +920,16 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
 
     try {
       User? user = _auth.currentUser;
-
       if (user != null) {
         DocumentSnapshot userDoc =
             await _firestore.collection('users').doc(user.uid).get();
         String username = userDoc.exists ? userDoc['username'] : 'Anonymous';
+
+        // Upload image if selected
+        if (_imageFile != null || _webImage != null) {
+          Uint8List imageBytes = kIsWeb ? _webImage! : await _imageFile!.readAsBytes();
+          _uploadedImageUrl = await _uploadImageToCloudinary(imageBytes);
+        }
 
         await _firestore.collection('lostfoundposts').add({
           'userId': user.uid,
@@ -863,6 +937,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
           'userEmail': user.email,
           'likes': 0,
           'postContent': postContent,
+          'imageUrl': _uploadedImageUrl ?? '', // Store image URL if available
           'timestamp': FieldValue.serverTimestamp(),
         });
 
@@ -892,212 +967,89 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
     const themeColor = Color.fromARGB(255, 0, 58, 92);
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(
-            85), // Increased height to accommodate the camera hole
-        child: Container(
-          padding: const EdgeInsets.only(
-              top: 35), // Add padding to move content below camera hole
-          child: AppBar(
-            backgroundColor: themeColor,
-            elevation: 0,
-            centerTitle: true,
-            leading: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            title: const Text(
-              'Create Post',
-              style: TextStyle(
-                  fontSize: 20.0,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
-          ),
+      appBar: AppBar(
+        backgroundColor: themeColor,
+        title: const Text('Create Post', style: TextStyle(color: Colors.white)),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      // Keep SingleChildScrollView for keyboard handling
       body: SingleChildScrollView(
-  child: Container(
-    color: Colors.white,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // User info section with subtle divider
-        Container(
-          padding: const EdgeInsets.all(16.0),
-          child: StreamBuilder<DocumentSnapshot>(
-  stream: _firestore.collection('users').doc(_auth.currentUser?.uid).snapshots(),
-  builder: (context, snapshot) {
-    if (snapshot.connectionState == ConnectionState.waiting) {
-      return const SizedBox(
-        height: 40,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    if (!snapshot.hasData || snapshot.data == null || !snapshot.data!.exists) {
-      return const Text("Not logged in");
-    }
-
-    String username = snapshot.data!['username'] ?? 'Anonymous';
-    String? profilePicUrl = snapshot.data!['profilePicture'];
-
-    return Row(
-      children: [
-        // Profile avatar with shadow
-        Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromARGB(255, 231, 231, 231),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: CircleAvatar(
-            radius: 24.0,
-            backgroundColor: Colors.white,
-            backgroundImage: profilePicUrl != null && profilePicUrl.isNotEmpty
-                ? NetworkImage(profilePicUrl)
-                : null,
-            child: profilePicUrl == null || profilePicUrl.isEmpty
-                ? const Icon(Icons.person, size: 30, color: Colors.grey)
-                : null,
-          ),
-        ),
-        const SizedBox(width: 12.0),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                username,
-                style: const TextStyle(
-                  fontSize: 16.0,
-                  fontWeight: FontWeight.bold,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-              const Text(
-                "Posting to Lost & Found",
-                style: TextStyle(
-                  fontSize: 13.0,
-                  color: Colors.grey,
-                ),
-              )
-            ],
-          ),
-        ),
-      ],
-    );
-  },
-),
-
-        ),
-
-        const Divider(height: 1, thickness: 1),
-
-        // Enhanced post content area
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Post content input
+            TextField(
               controller: _postController,
-              maxLines: null,
-              minLines: 8,
-              keyboardType: TextInputType.multiline,
-              style: const TextStyle(fontSize: 16.0),
+              maxLines: 5,
               decoration: InputDecoration(
-                hintText:
-                    "Describe a lost or found item with location details...",
-                hintStyle: TextStyle(
-                    color: Colors.grey.shade500, fontSize: 20.0),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.all(12.0),
+                hintText: "Describe a lost or found item...",
+                border: OutlineInputBorder(),
               ),
             ),
-          ),
-        ),
+            const SizedBox(height: 16),
 
-        // Full-width post button
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ElevatedButton(
-                onPressed: _isPosting ? null : _createPost,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: themeColor,
-                  disabledBackgroundColor: themeColor.withOpacity(0.6),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  elevation: 0,
+            // Image preview
+            if (_imageFile != null || _webImage != null)
+              Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
-                child: _isPosting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.0,
-                        ),
-                      )
-                    : const Text(
-                        'Post',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                child: kIsWeb
+                    ? Image.memory(_webImage!, fit: BoxFit.cover)
+                    : Image.file(_imageFile!, fit: BoxFit.cover),
               ),
+            const SizedBox(height: 10),
 
-              const SizedBox(height: 10),
-
-              // Cancel button with subtle styling
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
+            // Image selection button
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.add_photo_alternate),
+                  label: const Text("Add Photo"),
                 ),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: themeColor,
-                    fontSize: 16,
+                if (_imageFile != null || _webImage != null)
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () {
+                      setState(() {
+                        _imageFile = null;
+                        _webImage = null;
+                      });
+                    },
                   ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Post button
+            ElevatedButton(
+              onPressed: _isPosting ? null : _createPost,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: themeColor,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
               ),
-            ],
-          ),
+              child: _isPosting
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      'Post',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+            ),
+          ],
         ),
-
-        // Bottom padding for keyboard
-        SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
-      ],
-    ),
-  ),
-),
-resizeToAvoidBottomInset: true,
-   );
+      ),
+    );
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/fcm-service.dart';
+import 'profileimage.dart';
 
 class SearchResultsScreen extends StatefulWidget {
   final String query;
@@ -368,12 +369,11 @@ class _PostDetailViewState extends State<PostDetailView> {
 }
 
 // New Comment Section that works with any collection
+
 class CommentSection extends StatefulWidget {
   final String postId;
-  final String collectionName;
 
-  const CommentSection(
-      {super.key, required this.postId, required this.collectionName});
+  const CommentSection({super.key, required this.postId, required collectionName});
 
   @override
   _CommentSectionState createState() => _CommentSectionState();
@@ -382,74 +382,64 @@ class CommentSection extends StatefulWidget {
 class _CommentSectionState extends State<CommentSection> {
   final TextEditingController _commentController = TextEditingController();
   final FCMService _fcmService = FCMService();
-  String? _username;
+  String? _userId;
 
   @override
   void initState() {
     super.initState();
-    _fetchUsername();
+    _fetchUserId();
   }
 
-  Future<void> _fetchUsername() async {
+  void _fetchUserId() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
       setState(() {
-        _username = userDoc.data()?['username'] ?? 'Unknown User';
+        _userId = user.uid;
       });
     }
   }
 
+
+
+
   void _addComment(String commentText) async {
-    if (commentText.trim().isEmpty || _username == null) return;
+    if (commentText.trim().isEmpty || _userId == null) return;
 
     final postRef = FirebaseFirestore.instance
-        .collection(widget.collectionName)
+        .collection('lostfoundposts')
         .doc(widget.postId);
 
-    // Fetch post document
     final postDoc = await postRef.get();
-
-    if (!postDoc.exists) {
-      print("❌ No post found with ID: ${widget.postId}");
-      return;
-    } else {
-      print("✅ Post found: ${postDoc.data()}");
-    }
+    if (!postDoc.exists) return;
 
     final String postAuthorId = postDoc.data()?['userId'] ?? '';
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
 
-    // Add comment and get its document reference
     final commentRef = await postRef.collection('comments').add({
-      'userId': userId,
-      'username': _username,
+      'userId': _userId, // ✅ Store only userId, NOT username
       'comment': commentText,
       'timestamp': FieldValue.serverTimestamp(),
     });
 
     _commentController.clear();
-    print("✅ Comment added with ID: ${commentRef.id}");
 
-    // Ensure the post owner isn't notified for their own comments
-    if (postAuthorId.isNotEmpty && postAuthorId != userId) {
-      print("📢 Sending notification to post owner: $postAuthorId");
+    if (postAuthorId.isNotEmpty && postAuthorId != _userId) {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_userId)
+          .get();
+      final String currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
 
       _fcmService.sendNotificationOnComment(
-          widget.postId, _username!, commentRef.id);
+          widget.postId, currentUsername, commentRef.id);
 
-      // Store Notification in Firestore
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
-        'senderId': userId,
-        'senderName': _username,
+        'senderId': _userId,
+        'senderName': currentUsername,
         'postId': widget.postId,
         'commentId': commentRef.id,
-        'message': "$_username commented: $commentText",
+        'collection': 'lostfoundposts',
+        'message': "$currentUsername commented on your post",
         'timestamp': FieldValue.serverTimestamp(),
         'type': 'comment',
         'isRead': false,
@@ -460,8 +450,8 @@ class _CommentSectionState extends State<CommentSection> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: 400,
         padding: const EdgeInsets.all(12.0),
@@ -472,14 +462,16 @@ class _CommentSectionState extends State<CommentSection> {
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection(widget.collectionName)
+                    .collection('lostfoundposts')
                     .doc(widget.postId)
                     .collection('comments')
                     .orderBy('timestamp', descending: true)
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                        child: CircularProgressIndicator());
                   }
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return const Center(child: Text("No comments yet"));
@@ -490,32 +482,40 @@ class _CommentSectionState extends State<CommentSection> {
                     itemCount: comments.length,
                     itemBuilder: (context, index) {
                       var comment = comments[index];
+                      String commenterId = comment['userId'];
                       Timestamp? timestamp = comment['timestamp'];
                       String formattedTime = "Just now";
 
                       if (timestamp != null) {
                         DateTime date = timestamp.toDate();
-                        formattedTime =
-                            DateFormat('MMM d, yyyy • h:mm a').format(date);
+                        formattedTime = DateFormat(
+                                'MMM d, yyyy • h:mm a')
+                            .format(date);
                       }
 
-                      return ListTile(
-                        leading: const CircleAvatar(radius: 18.0),
-                        title: Text(comment['username'] ?? 'Unknown User',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              formattedTime,
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.grey),
-                            ),
-                            Text(comment['comment'] ?? ''),
-                          ],
-                        ),
-                      );
+                      return StreamBuilder<DocumentSnapshot>(
+  stream: FirebaseFirestore.instance.collection('users').doc(commenterId).snapshots(),
+  builder: (context, usernameSnapshot) {
+    if (!usernameSnapshot.hasData || !usernameSnapshot.data!.exists) {
+      return const SizedBox(); // Skip rendering this comment
+    }
+    
+    String username = usernameSnapshot.data!.get('username') ?? 'Unknown User';
+
+    return ListTile(
+      leading: ProfileAvatar(userId: commenterId, radius: 18),
+      title: Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(formattedTime, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(comment['comment'] ?? ''),
+        ],
+      ),
+    );
+  },
+);
+
                     },
                   );
                 },
@@ -523,6 +523,11 @@ class _CommentSectionState extends State<CommentSection> {
             ),
             Row(
               children: [
+                ProfileAvatar(
+                  userId: _userId ?? '',
+                  radius: 18,
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
                     controller: _commentController,
@@ -546,3 +551,4 @@ class _CommentSectionState extends State<CommentSection> {
     );
   }
 }
+
