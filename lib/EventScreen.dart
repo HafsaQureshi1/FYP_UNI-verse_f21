@@ -9,14 +9,13 @@ class EventsJobsScreen extends StatelessWidget {
   const EventsJobsScreen({super.key});
 
   @override
-   Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromARGB(64, 236, 236, 236),
       body: Stack(
         children: [
           Column(
             children: [
-              
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -52,13 +51,24 @@ class EventsJobsScreen extends StatelessWidget {
                               return const SizedBox.shrink();
                             }
                             var postData = postSnapshot.data!;
+                            // Use safe access pattern for imageUrl
+                            String? imageUrl;
+                            try {
+                              final data =
+                                  postData.data() as Map<String, dynamic>?;
+                              imageUrl = data?['imageUrl'] as String?;
+                            } catch (e) {
+                              // Handle error silently
+                              print('Error accessing imageUrl: $e');
+                            }
                             return PostCard(
                               username: postData['userName'] ?? 'Anonymous',
                               content: postData['postContent'] ?? '',
                               postId: postData.id,
                               likes: postData['likes'] ?? 0,
                               userId: postData['userId'],
-                               collectionName: 'Eventposts',
+                              collectionName: 'Eventposts',
+                              imageUrl: imageUrl,
                             );
                           },
                         );
@@ -79,7 +89,9 @@ class EventsJobsScreen extends StatelessWidget {
                   context: context,
                   isScrollControlled: true,
                   builder: (context) {
-                    return const CreateNewPostScreen(collectionName: 'Eventposts',);
+                    return const CreateNewPostScreen(
+                      collectionName: 'Eventposts',
+                    );
                   },
                 );
               },

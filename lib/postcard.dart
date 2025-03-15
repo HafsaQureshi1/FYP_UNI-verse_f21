@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/fcm-service.dart';
 import 'package:intl/intl.dart';
 import 'profileimage.dart';
+import 'image_viewer_screen.dart';
+
 class PostCard extends StatefulWidget {
   final String postId;
   final String userId;
@@ -118,8 +120,19 @@ class _PostCardState extends State<PostCard> {
 
   String _getMonthName(int month) {
     const monthNames = [
-      "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
     ];
     return monthNames[month];
   }
@@ -128,7 +141,11 @@ class _PostCardState extends State<PostCard> {
     int hour = date.hour;
     int minute = date.minute;
     String period = hour >= 12 ? "PM" : "AM";
-    hour = hour > 12 ? hour - 12 : hour == 0 ? 12 : hour;
+    hour = hour > 12
+        ? hour - 12
+        : hour == 0
+            ? 12
+            : hour;
     return "$hour:${minute.toString().padLeft(2, '0')} $period";
   }
 
@@ -170,7 +187,11 @@ class _PostCardState extends State<PostCard> {
       });
 
       // Fetch likerName asynchronously
-      FirebaseFirestore.instance.collection('users').doc(currentUserId).get().then((userDoc) async {
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .get()
+          .then((userDoc) async {
         final String likerName = userDoc.data()?['username'] ?? 'Someone';
 
         final postDoc = await postRef.get();
@@ -200,12 +221,13 @@ class _PostCardState extends State<PostCard> {
         .collection(widget.collectionName)
         .doc(widget.postId)
         .get();
-    
+
     if (!postDoc.exists) return;
-    
+
     final currentContent = postDoc.data()?['content'] ?? '';
-    final TextEditingController contentController = TextEditingController(text: currentContent);
-    
+    final TextEditingController contentController =
+        TextEditingController(text: currentContent);
+
     // Show edit dialog
     showDialog(
       context: context,
@@ -234,15 +256,15 @@ class _PostCardState extends State<PostCard> {
                       .collection(widget.collectionName)
                       .doc(widget.postId)
                       .update({
-                        'postContent': updatedContent,
-                        'editedAt': FieldValue.serverTimestamp(),
-                      });
-                      Navigator.pop(context);
-                  
+                    'postContent': updatedContent,
+                    'editedAt': FieldValue.serverTimestamp(),
+                  });
+                  Navigator.pop(context);
+
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Post updated successfully')),
-                      
+                      const SnackBar(
+                          content: Text('Post updated successfully')),
                     );
                   }
                 }
@@ -268,7 +290,8 @@ class _PostCardState extends State<PostCard> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Post'),
-          content: const Text('Are you sure you want to delete this post? This action cannot be undone.'),
+          content: const Text(
+              'Are you sure you want to delete this post? This action cannot be undone.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -282,7 +305,7 @@ class _PostCardState extends State<PostCard> {
                     .collection(widget.collectionName)
                     .doc(widget.postId)
                     .delete();
-                
+
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Post deleted successfully')),
@@ -317,7 +340,8 @@ class _PostCardState extends State<PostCard> {
               ),
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete Post', style: TextStyle(color: Colors.red)),
+                title: const Text('Delete Post',
+                    style: TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context);
                   _deletePost();
@@ -370,8 +394,11 @@ class _PostCardState extends State<PostCard> {
                                       fit: BoxFit.cover,
                                       width: 40.0,
                                       height: 40.0,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          Icon(Icons.person, size: 20.0, color: Colors.grey[600]),
+                                      errorBuilder:
+                                          (context, error, stackTrace) => Icon(
+                                              Icons.person,
+                                              size: 20.0,
+                                              color: Colors.grey[600]),
                                     ),
                                   ),
                           ),
@@ -381,21 +408,21 @@ class _PostCardState extends State<PostCard> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  currentUsername, 
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  currentUsername,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                Text(
-                                  postTime, 
-                                  style: const TextStyle(fontSize: 12.0, color: Colors.grey)
-                                ),
+                                Text(postTime,
+                                    style: const TextStyle(
+                                        fontSize: 12.0, color: Colors.grey)),
                               ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    
+
                     // ✅ Options menu (only visible to post owner)
                     if (isOwner)
                       IconButton(
@@ -411,23 +438,59 @@ class _PostCardState extends State<PostCard> {
                 Text(widget.content, style: const TextStyle(fontSize: 16.0)),
 
                 // Image (if available)
-                if (imageUrl != null && imageUrl!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 15.0),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8.0),
-                      child: Image.network(
-                        imageUrl!,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: 200.0,
-                        errorBuilder: (context, error, stackTrace) => 
-                            Container(
-                              height: 200.0,
-                              width: double.infinity,
-                              color: Colors.grey[300],
-                              child: const Center(child: Icon(Icons.broken_image)),
-                            ),
+                if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ImageViewerScreen(
+                            imageUrl: widget.imageUrl!,
+                            heroTag: "post_image_${widget.postId}",
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 8.0),
+                      width: double.infinity,
+                      constraints: const BoxConstraints(
+                        maxHeight: 250,
+                      ),
+                      child: Hero(
+                        tag: "post_image_${widget.postId}",
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: Image.network(
+                            widget.imageUrl!,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes !=
+                                          null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: 150,
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.error_outline,
+                                    color: Colors.grey,
+                                    size: 40,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -440,7 +503,9 @@ class _PostCardState extends State<PostCard> {
                     children: [
                       TextButton.icon(
                         onPressed: _toggleLike,
-                        icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+                        icon: Icon(
+                            isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: Colors.red),
                         label: Text('$likeCount Likes'),
                       ),
                       TextButton.icon(
@@ -468,11 +533,13 @@ class _PostCardState extends State<PostCard> {
     );
   }
 }
+
 class CommentSection extends StatefulWidget {
   final String postId;
   final String collectionName; // Generalized collection name
 
-  const CommentSection({super.key, required this.postId, required this.collectionName});
+  const CommentSection(
+      {super.key, required this.postId, required this.collectionName});
 
   @override
   _CommentSectionState createState() => _CommentSectionState();
@@ -523,9 +590,11 @@ class _CommentSectionState extends State<CommentSection> {
           .collection('users')
           .doc(_userId)
           .get();
-      final String currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
+      final String currentUsername =
+          userDoc.data()?['username'] ?? 'Unknown User';
 
-      _fcmService.sendNotificationOnComment(widget.postId, currentUsername, commentRef.id);
+      _fcmService.sendNotificationOnComment(
+          widget.postId, currentUsername, commentRef.id);
 
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
@@ -545,13 +614,15 @@ class _CommentSectionState extends State<CommentSection> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: 400,
         padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
-            const Text("Comments", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text("Comments",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
@@ -579,23 +650,35 @@ class _CommentSectionState extends State<CommentSection> {
 
                       if (timestamp != null) {
                         DateTime date = timestamp.toDate();
-                        formattedTime = DateFormat('MMM d, yyyy • h:mm a').format(date);
+                        formattedTime =
+                            DateFormat('MMM d, yyyy • h:mm a').format(date);
                       }
 
                       return StreamBuilder<DocumentSnapshot>(
-                        stream: FirebaseFirestore.instance.collection('users').doc(commenterId).snapshots(),
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(commenterId)
+                            .snapshots(),
                         builder: (context, usernameSnapshot) {
-                          if (!usernameSnapshot.hasData || !usernameSnapshot.data!.exists) {
+                          if (!usernameSnapshot.hasData ||
+                              !usernameSnapshot.data!.exists) {
                             return const SizedBox();
                           }
-                          String username = usernameSnapshot.data!.get('username') ?? 'Unknown User';
+                          String username =
+                              usernameSnapshot.data!.get('username') ??
+                                  'Unknown User';
                           return ListTile(
-                            leading: ProfileAvatar(userId: commenterId, radius: 18),
-                            title: Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            leading:
+                                ProfileAvatar(userId: commenterId, radius: 18),
+                            title: Text(username,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(formattedTime, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text(formattedTime,
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.grey)),
                                 Text(comment['comment'] ?? ''),
                               ],
                             ),
@@ -634,4 +717,3 @@ class _CommentSectionState extends State<CommentSection> {
     );
   }
 }
-

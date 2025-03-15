@@ -1,4 +1,3 @@
-
 import 'package:flutter_application_1/search_results.dart';
 
 import 'postcard.dart';
@@ -29,11 +28,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-     theme: ThemeData(
-  primaryColor: Colors.white, // Use this instead of primarySwatch
-  useMaterial3: true,
-),
-
+      theme: ThemeData(
+        primaryColor: Colors.white, // Use this instead of primarySwatch
+        useMaterial3: true,
+      ),
       home: const HomeScreen(),
     );
   }
@@ -286,7 +284,6 @@ class _HomeScreenState extends State<HomeScreen> {
 class LostFoundScreen extends StatelessWidget {
   const LostFoundScreen({super.key});
 
-  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -330,14 +327,27 @@ class LostFoundScreen extends StatelessWidget {
                                 !postSnapshot.data!.exists) {
                               return const SizedBox.shrink();
                             }
+
                             var postData = postSnapshot.data!;
+                            // Use safe access pattern for imageUrl
+                            String? imageUrl;
+                            try {
+                              final data =
+                                  postData.data() as Map<String, dynamic>?;
+                              imageUrl = data?['imageUrl'] as String?;
+                            } catch (e) {
+                              // Handle error silently
+                              print('Error accessing imageUrl: $e');
+                            }
+
                             return PostCard(
                               username: postData['userName'] ?? 'Anonymous',
                               content: postData['postContent'] ?? '',
                               postId: postData.id,
                               likes: postData['likes'] ?? 0,
                               userId: postData['userId'],
-                               collectionName: 'lostfoundposts',
+                              collectionName: 'lostfoundposts',
+                              imageUrl: imageUrl,
                             );
                           },
                         );
@@ -358,7 +368,8 @@ class LostFoundScreen extends StatelessWidget {
                   context: context,
                   isScrollControlled: true,
                   builder: (context) {
-                    return const CreateNewPostScreen(collectionName: 'lostfoundposts');
+                    return const CreateNewPostScreen(
+                        collectionName: 'lostfoundposts');
                   },
                 );
               },
@@ -370,9 +381,6 @@ class LostFoundScreen extends StatelessWidget {
     );
   }
 }
-
-
-
 
 class CategoryChips extends StatelessWidget {
   const CategoryChips({super.key});

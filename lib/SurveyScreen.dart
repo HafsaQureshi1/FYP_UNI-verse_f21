@@ -4,6 +4,7 @@ import 'package:intl/intl.dart'; // For formatting timestamps
 import 'postcard.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'createpost.dart';
+
 class SurveysScreen extends StatelessWidget {
   const SurveysScreen({super.key});
 
@@ -50,13 +51,25 @@ class SurveysScreen extends StatelessWidget {
                               return const SizedBox.shrink();
                             }
                             var postData = postSnapshot.data!;
+                            // Use safe access pattern for imageUrl
+                            String? imageUrl;
+                            try {
+                              final data =
+                                  postData.data() as Map<String, dynamic>?;
+                              imageUrl = data?['imageUrl'] as String?;
+                            } catch (e) {
+                              // Handle error silently
+                              print('Error accessing imageUrl: $e');
+                            }
+
                             return PostCard(
                               username: postData['userName'] ?? 'Anonymous',
                               content: postData['postContent'] ?? '',
                               postId: postData.id,
                               likes: postData['likes'] ?? 0,
                               userId: postData['userId'],
-                               collectionName: 'Surveyposts',
+                              collectionName: 'Surveyposts',
+                              imageUrl: imageUrl,
                             );
                           },
                         );
@@ -77,7 +90,9 @@ class SurveysScreen extends StatelessWidget {
                   context: context,
                   isScrollControlled: true,
                   builder: (context) {
-                    return const CreateNewPostScreen(collectionName: 'Surveyposts',);
+                    return const CreateNewPostScreen(
+                      collectionName: 'Surveyposts',
+                    );
                   },
                 );
               },
