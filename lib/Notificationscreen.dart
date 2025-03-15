@@ -107,8 +107,8 @@ class NotificationScreen extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2.0),
                     child: ListTile(
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
                       leading: CircleAvatar(
                         backgroundColor: data['type'] == 'like'
                             ? Colors.red.shade100

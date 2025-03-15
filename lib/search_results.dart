@@ -99,8 +99,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     );
   }
 
-  
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -188,11 +186,13 @@ class _PostDetailViewState extends State<PostDetailView> {
   int likeCount = 0;
   final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
   final FCMService _fcmService = FCMService();
+  String? userId;
 
   @override
   void initState() {
     super.initState();
     likeCount = widget.post['likes'] ?? 0;
+    userId = widget.post['userId'] ?? '';
     _checkIfUserLiked();
   }
 
@@ -300,7 +300,15 @@ class _PostDetailViewState extends State<PostDetailView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ListTile(
-                      leading: const CircleAvatar(),
+                      // Replace CircleAvatar with ProfileAvatar
+                      leading: userId != null && userId!.isNotEmpty
+                          ? ProfileAvatar(userId: userId!, radius: 20)
+                          : CircleAvatar(
+                              radius: 20,
+                              backgroundColor: Colors.grey[300],
+                              child:
+                                  const Icon(Icons.person, color: Colors.grey),
+                            ),
                       title: Text(
                         widget.post['userName'] ?? 'Anonymous',
                         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -314,6 +322,42 @@ class _PostDetailViewState extends State<PostDetailView> {
                         style: const TextStyle(fontSize: 16),
                       ),
                     ),
+                    // Display image if available
+                    if (widget.post['imageUrl'] != null &&
+                        widget.post['imageUrl'].isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: Image.network(
+                            widget.post['imageUrl'],
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes !=
+                                          null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: 150,
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: Icon(Icons.error_outline,
+                                      color: Colors.grey, size: 40),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
                     // Like and Comment buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -372,8 +416,10 @@ class _PostDetailViewState extends State<PostDetailView> {
 
 class CommentSection extends StatefulWidget {
   final String postId;
+  final String collectionName;
 
-  const CommentSection({super.key, required this.postId, required collectionName});
+  const CommentSection(
+      {super.key, required this.postId, required this.collectionName});
 
   @override
   _CommentSectionState createState() => _CommentSectionState();
@@ -399,14 +445,11 @@ class _CommentSectionState extends State<CommentSection> {
     }
   }
 
-
-
-
   void _addComment(String commentText) async {
     if (commentText.trim().isEmpty || _userId == null) return;
 
     final postRef = FirebaseFirestore.instance
-        .collection('lostfoundposts')
+        .collection(widget.collectionName)
         .doc(widget.postId);
 
     final postDoc = await postRef.get();
@@ -427,7 +470,8 @@ class _CommentSectionState extends State<CommentSection> {
           .collection('users')
           .doc(_userId)
           .get();
-      final String currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
+      final String currentUsername =
+          userDoc.data()?['username'] ?? 'Unknown User';
 
       _fcmService.sendNotificationOnComment(
           widget.postId, currentUsername, commentRef.id);
@@ -438,7 +482,7 @@ class _CommentSectionState extends State<CommentSection> {
         'senderName': currentUsername,
         'postId': widget.postId,
         'commentId': commentRef.id,
-        'collection': 'lostfoundposts',
+        'collection': widget.collectionName,
         'message': "$currentUsername commented on your post",
         'timestamp': FieldValue.serverTimestamp(),
         'type': 'comment',
@@ -450,8 +494,8 @@ class _CommentSectionState extends State<CommentSection> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: 400,
         padding: const EdgeInsets.all(12.0),
@@ -462,16 +506,14 @@ class _CommentSectionState extends State<CommentSection> {
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection('lostfoundposts')
+                    .collection(widget.collectionName)
                     .doc(widget.postId)
                     .collection('comments')
                     .orderBy('timestamp', descending: true)
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(
-                        child: CircularProgressIndicator());
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
                   }
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return const Center(child: Text("No comments yet"));
@@ -488,34 +530,43 @@ class _CommentSectionState extends State<CommentSection> {
 
                       if (timestamp != null) {
                         DateTime date = timestamp.toDate();
-                        formattedTime = DateFormat(
-                                'MMM d, yyyy • h:mm a')
-                            .format(date);
+                        formattedTime =
+                            DateFormat('MMM d, yyyy • h:mm a').format(date);
                       }
 
                       return StreamBuilder<DocumentSnapshot>(
-  stream: FirebaseFirestore.instance.collection('users').doc(commenterId).snapshots(),
-  builder: (context, usernameSnapshot) {
-    if (!usernameSnapshot.hasData || !usernameSnapshot.data!.exists) {
-      return const SizedBox(); // Skip rendering this comment
-    }
-    
-    String username = usernameSnapshot.data!.get('username') ?? 'Unknown User';
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(commenterId)
+                            .snapshots(),
+                        builder: (context, usernameSnapshot) {
+                          if (!usernameSnapshot.hasData ||
+                              !usernameSnapshot.data!.exists) {
+                            return const SizedBox(); // Skip rendering this comment
+                          }
 
-    return ListTile(
-      leading: ProfileAvatar(userId: commenterId, radius: 18),
-      title: Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(formattedTime, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          Text(comment['comment'] ?? ''),
-        ],
-      ),
-    );
-  },
-);
+                          String username =
+                              usernameSnapshot.data!.get('username') ??
+                                  'Unknown User';
 
+                          return ListTile(
+                            leading:
+                                ProfileAvatar(userId: commenterId, radius: 18),
+                            title: Text(username,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(formattedTime,
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.grey)),
+                                Text(comment['comment'] ?? ''),
+                              ],
+                            ),
+                          );
+                        },
+                      );
                     },
                   );
                 },
@@ -551,4 +602,3 @@ class _CommentSectionState extends State<CommentSection> {
     );
   }
 }
-

@@ -280,7 +280,7 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
-  // Modified Delete Post Function to show confirmation and navigate back
+  // ✅ Delete Post Function
   void _deletePost() async {
     if (!isOwner) return;
 
@@ -290,45 +290,30 @@ class _PostCardState extends State<PostCard> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Post'),
-          content: const Text('Are you sure you want to delete this post?'),
+          content: const Text(
+              'Are you sure you want to delete this post? This action cannot be undone.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
             TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
               onPressed: () async {
-                // Close the dialog first
-                Navigator.pop(context);
+                // Delete post from Firestore
+                await FirebaseFirestore.instance
+                    .collection(widget.collectionName)
+                    .doc(widget.postId)
+                    .delete();
 
-                try {
-                  // Delete post from Firestore
-                  await FirebaseFirestore.instance
-                      .collection(widget.collectionName)
-                      .doc(widget.postId)
-                      .delete();
-
-                  // Show success message
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Post deleted successfully')),
-                    );
-                    // Navigate back to the previous screen if needed
-                    // This is useful when viewing a detailed post
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    }
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error deleting post: $e')),
-                    );
-                  }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Post deleted successfully')),
+                  );
+                  Navigator.pop(context);
                 }
               },
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              child: const Text('Delete'),
             ),
           ],
         );
@@ -336,7 +321,7 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
-  // Modified Options Menu
+  // ✅ Show Options Menu
   void _showOptionsMenu() {
     showModalBottomSheet(
       context: context,
@@ -358,8 +343,8 @@ class _PostCardState extends State<PostCard> {
                 title: const Text('Delete Post',
                     style: TextStyle(color: Colors.red)),
                 onTap: () {
-                  Navigator.pop(context); // Close bottom sheet
-                  _deletePost(); // Now shows confirmation dialog
+                  Navigator.pop(context);
+                  _deletePost();
                 },
               ),
               ListTile(
