@@ -38,14 +38,16 @@ class _PostCardState extends State<PostCard> {
   String? profileImageUrl;
   String currentUsername = '';
   String? imageUrl;
-  int commentCount = 0; // Add a comment counter
+  // Check if the post belongs to the current user
   bool isOwner = false;
+  int commentCount = 0; // Add comment count variable
 
   @override
   void initState() {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
     likeCount = widget.likes;
+    // Set isOwner by comparing post's userId with currentUserId
     isOwner = currentUserId == widget.userId;
 
     _fetchUsername();
@@ -53,7 +55,7 @@ class _PostCardState extends State<PostCard> {
     _fetchPostTime();
     _checkIfUserLiked();
     _fetchImageUrl();
-    _fetchCommentCount(); // Fetch comment count
+    _fetchCommentCount(); // Add method call to fetch comment count
   }
 
   /// ✅ Fetches user details dynamically
@@ -166,22 +168,6 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
-  // Fetch comment count from Firestore
-  void _fetchCommentCount() {
-    FirebaseFirestore.instance
-        .collection(widget.collectionName)
-        .doc(widget.postId)
-        .collection('comments')
-        .snapshots()
-        .listen((snapshot) {
-      if (mounted) {
-        setState(() {
-          commentCount = snapshot.size;
-        });
-      }
-    });
-  }
-
   void _toggleLike() async {
     if (currentUserId == null) return;
 
@@ -189,62 +175,42 @@ class _PostCardState extends State<PostCard> {
         .collection(widget.collectionName)
         .doc(widget.postId);
 
-    // Update UI immediately for responsiveness
     setState(() {
       isLiked = !isLiked;
       likeCount = isLiked ? likeCount + 1 : likeCount - 1;
-      if (likeCount < 0) likeCount = 0; // Ensure count doesn't go negative
     });
 
-    try {
-      if (!isLiked) {
-        // Unlike post
-        await postRef.collection('likes').doc(currentUserId).delete();
-      } else {
-        // Like post
-        await postRef.collection('likes').doc(currentUserId).set({
-          'userId': currentUserId,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-
-        // Fetch likerName asynchronously
-        FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUserId)
-            .get()
-            .then((userDoc) async {
-          final String likerName = userDoc.data()?['username'] ?? 'Someone';
-
-          final postDoc = await postRef.get();
-          final String postAuthorId = postDoc.data()?['userId'] ?? '';
-
-          // Only send notification if post author is not the current user
-          if (postAuthorId.isNotEmpty && postAuthorId != currentUserId) {
-            await FirebaseFirestore.instance.collection('notifications').add({
-              'receiverId': postAuthorId,
-              'senderId': currentUserId,
-              'senderName': likerName,
-              'postId': widget.postId,
-              'collection': widget.collectionName,
-              'message': "$likerName liked your post",
-              'timestamp': FieldValue.serverTimestamp(),
-              'type': 'like',
-              'isRead': false,
-            });
-          }
-        });
-      }
-
-      // Update like count in the post document
-      await postRef.update({'likes': likeCount});
-    } catch (error) {
-      // If there's an error, revert the UI changes
-      setState(() {
-        isLiked = !isLiked;
-        likeCount = isLiked ? likeCount + 1 : likeCount - 1;
-        if (likeCount < 0) likeCount = 0;
+    if (!isLiked) {
+      await postRef.collection('likes').doc(currentUserId).delete();
+    } else {
+      await postRef.collection('likes').doc(currentUserId).set({
+        'userId': currentUserId,
+        'timestamp': FieldValue.serverTimestamp(),
       });
-      print('Error updating like: $error');
+
+      // Fetch likerName asynchronously
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .get()
+          .then((userDoc) async {
+        final String likerName = userDoc.data()?['username'] ?? 'Someone';
+
+        final postDoc = await postRef.get();
+        final String postAuthorId = postDoc.data()?['userId'] ?? '';
+
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'receiverId': postAuthorId,
+          'senderId': currentUserId,
+          'senderName': likerName,
+          'postId': widget.postId,
+          'collection': widget.collectionName,
+          'message': "$likerName liked your post",
+          'timestamp': FieldValue.serverTimestamp(),
+          'type': 'like',
+          'isRead': false,
+        });
+      });
     }
   }
 
@@ -395,6 +361,22 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
+  // Add method to fetch comment count
+  Future<void> _fetchCommentCount() async {
+    FirebaseFirestore.instance
+        .collection(widget.collectionName)
+        .doc(widget.postId)
+        .collection('comments')
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          commentCount = snapshot.docs.length;
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -531,78 +513,40 @@ class _PostCardState extends State<PostCard> {
                     ),
                   ),
 
-                // Like and Comment Buttons with updated like count display
+                // Like and Comment Buttons
                 Padding(
                   padding: const EdgeInsets.only(top: 12.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Left side - Like button with count above as icon + number
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Like count with heart icon - only show when likes > 0
-                          if (likeCount > 0)
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.favorite,
-                                  color: Colors.red,
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '$likeCount',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          const SizedBox(height: 4),
-                          // Like button
-                          TextButton.icon(
-                            onPressed: _toggleLike,
-                            icon: Icon(
-                              isLiked ? Icons.favorite : Icons.favorite_border,
-                              color: Colors.red,
-                            ),
-                            label: const Text('Like'),
-                          ),
-                        ],
+                      TextButton.icon(
+                        onPressed: _toggleLike,
+                        icon: Icon(
+                            isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: Colors.red),
+                        label: Text(likeCount == 0
+                            ? 'Like'
+                            : likeCount == 1
+                                ? '1 Like'
+                                : '$likeCount Likes'),
                       ),
-
-                      // Right side - Comment section
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // Comment count indicator above the button
-                          if (commentCount > 0)
-                            Text(
-                              '$commentCount ${commentCount == 1 ? 'comment' : 'comments'}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
+                      TextButton.icon(
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (context) => CommentSection(
+                              postId: widget.postId,
+                              collectionName: widget.collectionName,
                             ),
-                          const SizedBox(height: 4),
-                          // Comment button
-                          TextButton.icon(
-                            onPressed: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                builder: (context) => CommentSection(
-                                  postId: widget.postId,
-                                  collectionName: widget.collectionName,
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.comment, color: Colors.blue),
-                            label: const Text('Comment'),
-                          ),
-                        ],
+                          );
+                        },
+                        icon: const Icon(Icons.comment, color: Colors.blue),
+                        label: Text(commentCount == 0
+                            ? 'Comment'
+                            : commentCount == 1
+                                ? '1 Comment'
+                                : '$commentCount Comments'),
                       ),
                     ],
                   ),
@@ -667,7 +611,6 @@ class _CommentSectionState extends State<CommentSection> {
 
     _commentController.clear();
 
-    // Only send notification if post author is not the current user
     if (postAuthorId.isNotEmpty && postAuthorId != _userId) {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
