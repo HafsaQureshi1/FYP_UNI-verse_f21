@@ -189,42 +189,62 @@ class _PostCardState extends State<PostCard> {
         .collection(widget.collectionName)
         .doc(widget.postId);
 
+    // Update UI immediately for responsiveness
     setState(() {
       isLiked = !isLiked;
       likeCount = isLiked ? likeCount + 1 : likeCount - 1;
+      if (likeCount < 0) likeCount = 0; // Ensure count doesn't go negative
     });
 
-    if (!isLiked) {
-      await postRef.collection('likes').doc(currentUserId).delete();
-    } else {
-      await postRef.collection('likes').doc(currentUserId).set({
-        'userId': currentUserId,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      // Fetch likerName asynchronously
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUserId)
-          .get()
-          .then((userDoc) async {
-        final String likerName = userDoc.data()?['username'] ?? 'Someone';
-
-        final postDoc = await postRef.get();
-        final String postAuthorId = postDoc.data()?['userId'] ?? '';
-
-        await FirebaseFirestore.instance.collection('notifications').add({
-          'receiverId': postAuthorId,
-          'senderId': currentUserId,
-          'senderName': likerName,
-          'postId': widget.postId,
-          'collection': widget.collectionName,
-          'message': "$likerName liked your post",
+    try {
+      if (!isLiked) {
+        // Unlike post
+        await postRef.collection('likes').doc(currentUserId).delete();
+      } else {
+        // Like post
+        await postRef.collection('likes').doc(currentUserId).set({
+          'userId': currentUserId,
           'timestamp': FieldValue.serverTimestamp(),
-          'type': 'like',
-          'isRead': false,
         });
+
+        // Fetch likerName asynchronously
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .get()
+            .then((userDoc) async {
+          final String likerName = userDoc.data()?['username'] ?? 'Someone';
+
+          final postDoc = await postRef.get();
+          final String postAuthorId = postDoc.data()?['userId'] ?? '';
+
+          // Only send notification if post author is not the current user
+          if (postAuthorId.isNotEmpty && postAuthorId != currentUserId) {
+            await FirebaseFirestore.instance.collection('notifications').add({
+              'receiverId': postAuthorId,
+              'senderId': currentUserId,
+              'senderName': likerName,
+              'postId': widget.postId,
+              'collection': widget.collectionName,
+              'message': "$likerName liked your post",
+              'timestamp': FieldValue.serverTimestamp(),
+              'type': 'like',
+              'isRead': false,
+            });
+          }
+        });
+      }
+
+      // Update like count in the post document
+      await postRef.update({'likes': likeCount});
+    } catch (error) {
+      // If there's an error, revert the UI changes
+      setState(() {
+        isLiked = !isLiked;
+        likeCount = isLiked ? likeCount + 1 : likeCount - 1;
+        if (likeCount < 0) likeCount = 0;
       });
+      print('Error updating like: $error');
     }
   }
 
@@ -521,11 +541,11 @@ class _PostCardState extends State<PostCard> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Like count with heart icon
+                          // Like count with heart icon - only show when likes > 0
                           if (likeCount > 0)
                             Row(
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.favorite,
                                   color: Colors.red,
                                   size: 14,
@@ -647,6 +667,7 @@ class _CommentSectionState extends State<CommentSection> {
 
     _commentController.clear();
 
+    // Only send notification if post author is not the current user
     if (postAuthorId.isNotEmpty && postAuthorId != _userId) {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/search_results.dart';
 import 'package:intl/intl.dart';
+import 'profileimage.dart'; // Add this import for the ProfileAvatar component
 
 class NotificationScreen extends StatelessWidget {
   const NotificationScreen({super.key});
@@ -109,19 +110,39 @@ class NotificationScreen extends StatelessWidget {
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16.0, vertical: 8.0),
-                      leading: CircleAvatar(
-                        backgroundColor: data['type'] == 'like'
-                            ? Colors.red.shade100
-                            : Colors.blue.shade100,
-                        radius: 24, // Slightly larger avatar
-                        child: Icon(
-                          data['type'] == 'like'
-                              ? Icons.favorite
-                              : Icons.comment,
-                          color:
-                              data['type'] == 'like' ? Colors.red : Colors.blue,
-                          size: 20,
-                        ),
+                      leading: Stack(
+                        children: [
+                          // Profile avatar of the sender
+                          ProfileAvatar(
+                            userId: data['senderId'] ?? '',
+                            radius: 24,
+                          ),
+                          // Small icon overlay at bottom right of the avatar
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: data['type'] == 'like'
+                                    ? Colors.red.shade100
+                                    : Colors.blue.shade100,
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: Icon(
+                                data['type'] == 'like'
+                                    ? Icons.favorite
+                                    : Icons.comment,
+                                color: data['type'] == 'like'
+                                    ? Colors.red
+                                    : Colors.blue,
+                                size: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       title: RichText(
                         text: TextSpan(

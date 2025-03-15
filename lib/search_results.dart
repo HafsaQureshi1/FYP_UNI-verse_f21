@@ -225,55 +225,89 @@ class _PostDetailViewState extends State<PostDetailView> {
     final postRef = FirebaseFirestore.instance
         .collection(widget.post['collection'])
         .doc(widget.post['id']);
-    final postAuthorId = widget.post['userId'] ?? '';
 
-    if (isLiked) {
-      // Unlike post
-      await postRef.collection('likes').doc(currentUserId).delete();
-      setState(() {
-        isLiked = false;
-        likeCount--;
-      });
-    } else {
-      // Like post
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUserId)
-          .get();
-      final String likerName = userDoc.data()?['username'] ?? 'Someone';
+    // Update UI immediately for responsiveness
+    setState(() {
+      isLiked = !isLiked;
+      likeCount = isLiked ? likeCount + 1 : likeCount - 1;
+      if (likeCount < 0) likeCount = 0; // Prevent negative counts
+    });
 
-      await postRef.collection('likes').doc(currentUserId).set({
-        'userId': currentUserId,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      setState(() {
-        isLiked = true;
-        likeCount++;
-      });
-
-      // Only send notification if the post author is not the current user
-      if (postAuthorId.isNotEmpty && postAuthorId != currentUserId) {
-        // Send FCM Notification
-        _fcmService.sendNotificationToUser(
-            postAuthorId, likerName, "liked your post!");
-
-        // Store Notification in Firestore
-        await FirebaseFirestore.instance.collection('notifications').add({
-          'receiverId': postAuthorId,
-          'senderId': currentUserId,
-          'senderName': likerName,
-          'postId': widget.post['id'],
-          'message': "$likerName liked your post!",
+    try {
+      if (!isLiked) {
+        // Unlike post
+        await postRef.collection('likes').doc(currentUserId).delete();
+      } else {
+        // Like post
+        await postRef.collection('likes').doc(currentUserId).set({
+          'userId': currentUserId,
           'timestamp': FieldValue.serverTimestamp(),
-          'type': 'like',
-          'isRead': false,
+        });
+
+        // Get current user's name for notification
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .get();
+        final String likerName = userDoc.data()?['username'] ?? 'Someone';
+
+        final postAuthorId = widget.post['userId'] ?? '';
+
+        // Only send notification if the post author is not the current user
+        if (postAuthorId.isNotEmpty && postAuthorId != currentUserId) {
+          // Send FCM Notification
+          _fcmService.sendNotificationToUser(
+              postAuthorId, likerName, "liked your post!");
+
+          // Store Notification in Firestore
+          await FirebaseFirestore.instance.collection('notifications').add({
+            'receiverId': postAuthorId,
+            'senderId': currentUserId,
+            'senderName': likerName,
+            'postId': widget.post['id'],
+            'collection': widget.post['collection'],
+            'message': "$likerName liked your post!",
+            'timestamp': FieldValue.serverTimestamp(),
+            'type': 'like',
+            'isRead': false,
+          });
+        }
+      }
+
+      // Update like count in the post document
+      await postRef.update({'likes': likeCount});
+
+      // Get accurate count
+      int actualCount = await _getLikeCount();
+      if (mounted && actualCount != likeCount) {
+        setState(() {
+          likeCount = actualCount;
         });
       }
+    } catch (error) {
+      // If there's an error, revert the UI changes
+      setState(() {
+        isLiked = !isLiked;
+        likeCount = isLiked ? likeCount + 1 : likeCount - 1;
+        if (likeCount < 0) likeCount = 0;
+      });
+      print('Error updating like: $error');
     }
+  }
 
-    // Update like count in the post document
-    await postRef.update({'likes': likeCount});
+  // Helper method to get accurate like count
+  Future<int> _getLikeCount() async {
+    try {
+      QuerySnapshot likes = await FirebaseFirestore.instance
+          .collection(widget.post['collection'])
+          .doc(widget.post['id'])
+          .collection('likes')
+          .get();
+      return likes.size;
+    } catch (e) {
+      print('Error getting like count: $e');
+      return likeCount; // Return current count if there's an error
+    }
   }
 
   // Fetch comment count
@@ -390,11 +424,11 @@ class _PostDetailViewState extends State<PostDetailView> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Like count with heart icon
+                              // Like count with heart icon - only show when likes > 0
                               if (likeCount > 0)
                                 Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.favorite,
                                       color: Colors.red,
                                       size: 14,
