@@ -38,7 +38,7 @@ class _PostCardState extends State<PostCard> {
   String? profileImageUrl;
   String currentUsername = '';
   String? imageUrl;
-  // Check if the post belongs to the current user
+  int commentCount = 0; // Add a comment counter
   bool isOwner = false;
 
   @override
@@ -46,7 +46,6 @@ class _PostCardState extends State<PostCard> {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
     likeCount = widget.likes;
-    // Set isOwner by comparing post's userId with currentUserId
     isOwner = currentUserId == widget.userId;
 
     _fetchUsername();
@@ -54,6 +53,7 @@ class _PostCardState extends State<PostCard> {
     _fetchPostTime();
     _checkIfUserLiked();
     _fetchImageUrl();
+    _fetchCommentCount(); // Fetch comment count
   }
 
   /// ✅ Fetches user details dynamically
@@ -164,6 +164,22 @@ class _PostCardState extends State<PostCard> {
         isLiked = likeDoc.exists;
       });
     }
+  }
+
+  // Fetch comment count from Firestore
+  void _fetchCommentCount() {
+    FirebaseFirestore.instance
+        .collection(widget.collectionName)
+        .doc(widget.postId)
+        .collection('comments')
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          commentCount = snapshot.size;
+        });
+      }
+    });
   }
 
   void _toggleLike() async {
@@ -495,32 +511,78 @@ class _PostCardState extends State<PostCard> {
                     ),
                   ),
 
-                // Like and Comment Buttons
+                // Like and Comment Buttons with updated like count display
                 Padding(
                   padding: const EdgeInsets.only(top: 12.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TextButton.icon(
-                        onPressed: _toggleLike,
-                        icon: Icon(
-                            isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: Colors.red),
-                        label: Text('$likeCount Likes'),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            builder: (context) => CommentSection(
-                              postId: widget.postId,
-                              collectionName: widget.collectionName,
+                      // Left side - Like button with count above as icon + number
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Like count with heart icon
+                          if (likeCount > 0)
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.favorite,
+                                  color: Colors.red,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '$likeCount',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
-                          );
-                        },
-                        icon: const Icon(Icons.comment, color: Colors.blue),
-                        label: const Text('Comment'),
+                          const SizedBox(height: 4),
+                          // Like button
+                          TextButton.icon(
+                            onPressed: _toggleLike,
+                            icon: Icon(
+                              isLiked ? Icons.favorite : Icons.favorite_border,
+                              color: Colors.red,
+                            ),
+                            label: const Text('Like'),
+                          ),
+                        ],
+                      ),
+
+                      // Right side - Comment section
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Comment count indicator above the button
+                          if (commentCount > 0)
+                            Text(
+                              '$commentCount ${commentCount == 1 ? 'comment' : 'comments'}',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          const SizedBox(height: 4),
+                          // Comment button
+                          TextButton.icon(
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                builder: (context) => CommentSection(
+                                  postId: widget.postId,
+                                  collectionName: widget.collectionName,
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.comment, color: Colors.blue),
+                            label: const Text('Comment'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
