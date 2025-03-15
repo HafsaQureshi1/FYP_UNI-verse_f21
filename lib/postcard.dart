@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/fcm-service.dart';
 import 'package:intl/intl.dart';
-import 'profileimage.dart';class PostCard extends StatefulWidget {
+import 'profileimage.dart';
+class PostCard extends StatefulWidget {
   final String postId;
   final String userId;
   final String username;
@@ -233,13 +234,15 @@ class _PostCardState extends State<PostCard> {
                       .collection(widget.collectionName)
                       .doc(widget.postId)
                       .update({
-                        'content': updatedContent,
+                        'postContent': updatedContent,
                         'editedAt': FieldValue.serverTimestamp(),
                       });
+                      Navigator.pop(context);
                   
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Post updated successfully')),
+                      
                     );
                   }
                 }
