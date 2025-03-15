@@ -519,32 +519,38 @@ class _PostCardState extends State<PostCard> {
   }
 
   /// Toggles the like status and updates Firestore
-  void _toggleLike() async {
-    if (currentUserId == null) return;
+ void _toggleLike() async {
+  if (currentUserId == null) return;
 
-    final postRef = FirebaseFirestore.instance
-        .collection('lostfoundposts')
-        .doc(widget.postId);
+  final postRef = FirebaseFirestore.instance
+      .collection('lostfoundposts')
+      .doc(widget.postId);
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUserId)
-        .get();
-    final String likerName = userDoc.data()?['username'] ?? 'Someone';
+  // Update UI immediately to prevent UI flickering or blank state
+  setState(() {
+    isLiked = !isLiked;
+    likeCount = isLiked ? likeCount + 1 : likeCount - 1;
+  });
 
-    if (isLiked) {
-      await postRef.collection('likes').doc(currentUserId).delete();
-    } else {
-      await postRef.collection('likes').doc(currentUserId).set({
-        'userId': currentUserId,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+  if (!isLiked) {
+    // Unlike the post
+    await postRef.collection('likes').doc(currentUserId).delete();
+  } else {
+    // Like the post
+    await postRef.collection('likes').doc(currentUserId).set({
+      'userId': currentUserId,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
 
+    // Fetch likerName without blocking UI update
+    FirebaseFirestore.instance.collection('users').doc(currentUserId).get().then((userDoc) async {
+      final String likerName = userDoc.data()?['username'] ?? 'Someone';
+
+      // Fetch post author ID
       final postDoc = await postRef.get();
       final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
-      _fcmService.sendNotificationToUser(
-          postAuthorId, likerName, "liked your post!");
+      _fcmService.sendNotificationToUser(postAuthorId, likerName, "liked your post!");
 
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
@@ -557,8 +563,9 @@ class _PostCardState extends State<PostCard> {
         'type': 'like',
         'isRead': false,
       });
-    }
+    });
   }
+}
 
 
   @override
