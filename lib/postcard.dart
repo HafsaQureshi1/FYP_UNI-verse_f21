@@ -3,14 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/fcm-service.dart';
 import 'package:intl/intl.dart';
-import 'profileimage.dart';
-class PostCard extends StatefulWidget {
+import 'profileimage.dart';class PostCard extends StatefulWidget {
   final String postId;
   final String userId;
   final String username;
   final String content;
   final int likes;
-  final String collectionName; // ✅ Generalized collection name
+  final String collectionName;
   final String? imageUrl;
 
   const PostCard({
@@ -20,7 +19,7 @@ class PostCard extends StatefulWidget {
     required this.username,
     required this.content,
     required this.likes,
-    required this.collectionName, // ✅ Required parameter
+    required this.collectionName,
     this.imageUrl,
   });
 
@@ -36,12 +35,16 @@ class _PostCardState extends State<PostCard> {
   String? profileImageUrl;
   String currentUsername = '';
   String? imageUrl;
+  // Check if the post belongs to the current user
+  bool isOwner = false;
 
   @override
   void initState() {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
     likeCount = widget.likes;
+    // Set isOwner by comparing post's userId with currentUserId
+    isOwner = currentUserId == widget.userId;
 
     _fetchUsername();
     _fetchProfileImage();
@@ -81,7 +84,7 @@ class _PostCardState extends State<PostCard> {
 
   void _fetchImageUrl() {
     FirebaseFirestore.instance
-        .collection(widget.collectionName) // ✅ Use dynamic collection name
+        .collection(widget.collectionName)
         .doc(widget.postId)
         .snapshots()
         .listen((postDoc) {
@@ -95,7 +98,7 @@ class _PostCardState extends State<PostCard> {
 
   Future<void> _fetchPostTime() async {
     final postDoc = await FirebaseFirestore.instance
-        .collection(widget.collectionName) // ✅ Dynamic collection reference
+        .collection(widget.collectionName)
         .doc(widget.postId)
         .get();
 
@@ -132,7 +135,7 @@ class _PostCardState extends State<PostCard> {
     if (currentUserId == null) return;
 
     final likeDoc = await FirebaseFirestore.instance
-        .collection(widget.collectionName) // ✅ Dynamic collection reference
+        .collection(widget.collectionName)
         .doc(widget.postId)
         .collection('likes')
         .doc(currentUserId)
@@ -145,15 +148,13 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
-  /// ✅ **Generalized Like Toggle Function**
   void _toggleLike() async {
     if (currentUserId == null) return;
 
     final postRef = FirebaseFirestore.instance
-        .collection(widget.collectionName) // ✅ Use dynamic collection name
+        .collection(widget.collectionName)
         .doc(widget.postId);
 
-    // ✅ Update UI immediately
     setState(() {
       isLiked = !isLiked;
       likeCount = isLiked ? likeCount + 1 : likeCount - 1;
@@ -179,7 +180,7 @@ class _PostCardState extends State<PostCard> {
           'senderId': currentUserId,
           'senderName': likerName,
           'postId': widget.postId,
-          'collection': widget.collectionName, // ✅ Dynamic collection
+          'collection': widget.collectionName,
           'message': "$likerName liked your post",
           'timestamp': FieldValue.serverTimestamp(),
           'type': 'like',
@@ -187,6 +188,148 @@ class _PostCardState extends State<PostCard> {
         });
       });
     }
+  }
+
+  // ✅ Edit Post Function
+  void _editPost() async {
+    if (!isOwner) return;
+
+    // Fetch current post content
+    final postDoc = await FirebaseFirestore.instance
+        .collection(widget.collectionName)
+        .doc(widget.postId)
+        .get();
+    
+    if (!postDoc.exists) return;
+    
+    final currentContent = postDoc.data()?['content'] ?? '';
+    final TextEditingController contentController = TextEditingController(text: currentContent);
+    
+    // Show edit dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Edit Post'),
+          content: TextField(
+            controller: contentController,
+            decoration: const InputDecoration(
+              hintText: "Update your post content...",
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 5,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final updatedContent = contentController.text.trim();
+                if (updatedContent.isNotEmpty) {
+                  // Update post in Firestore
+                  await FirebaseFirestore.instance
+                      .collection(widget.collectionName)
+                      .doc(widget.postId)
+                      .update({
+                        'content': updatedContent,
+                        'editedAt': FieldValue.serverTimestamp(),
+                      });
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Post updated successfully')),
+                    );
+                  }
+                }
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ✅ Delete Post Function
+  void _deletePost() async {
+    if (!isOwner) return;
+
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Post'),
+          content: const Text('Are you sure you want to delete this post? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              onPressed: () async {
+                // Delete post from Firestore
+                await FirebaseFirestore.instance
+                    .collection(widget.collectionName)
+                    .doc(widget.postId)
+                    .delete();
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Post deleted successfully')),
+                  );
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ✅ Show Options Menu
+  void _showOptionsMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit Post'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _editPost();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete Post', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deletePost();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text('Cancel'),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -205,42 +348,66 @@ class _PostCardState extends State<PostCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// ✅ User details
+                // User details with options menu for owner
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    CircleAvatar(
-                      radius: 20.0,
-                      backgroundColor: Colors.grey[300],
-                      child: profileImageUrl == null
-                          ? const CircularProgressIndicator()
-                          : ClipOval(
-                              child: Image.network(
-                                profileImageUrl!,
-                                fit: BoxFit.cover,
-                                width: 40.0,
-                                height: 40.0,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Icon(Icons.person, size: 20.0, color: Colors.grey[600]),
-                              ),
+                    // User info
+                    Expanded(
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 20.0,
+                            backgroundColor: Colors.grey[300],
+                            child: profileImageUrl == null
+                                ? const CircularProgressIndicator()
+                                : ClipOval(
+                                    child: Image.network(
+                                      profileImageUrl!,
+                                      fit: BoxFit.cover,
+                                      width: 40.0,
+                                      height: 40.0,
+                                      errorBuilder: (context, error, stackTrace) =>
+                                          Icon(Icons.person, size: 20.0, color: Colors.grey[600]),
+                                    ),
+                                  ),
+                          ),
+                          const SizedBox(width: 15.0),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  currentUsername, 
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  postTime, 
+                                  style: const TextStyle(fontSize: 12.0, color: Colors.grey)
+                                ),
+                              ],
                             ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 15.0),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(currentUsername, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        Text(postTime, style: const TextStyle(fontSize: 12.0, color: Colors.grey)),
-                      ],
-                    ),
+                    
+                    // ✅ Options menu (only visible to post owner)
+                    if (isOwner)
+                      IconButton(
+                        icon: const Icon(Icons.more_vert),
+                        onPressed: _showOptionsMenu,
+                      ),
                   ],
                 ),
 
                 const SizedBox(height: 10.0),
 
-                /// ✅ Post Content
+                // Post Content
                 Text(widget.content, style: const TextStyle(fontSize: 16.0)),
 
-                /// ✅ Image (if available)
+                // Image (if available)
                 if (imageUrl != null && imageUrl!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 15.0),
@@ -251,39 +418,45 @@ class _PostCardState extends State<PostCard> {
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: 200.0,
+                        errorBuilder: (context, error, stackTrace) => 
+                            Container(
+                              height: 200.0,
+                              width: double.infinity,
+                              color: Colors.grey[300],
+                              child: const Center(child: Icon(Icons.broken_image)),
+                            ),
                       ),
                     ),
                   ),
 
-                /// ✅ Like and Comment Buttons
-               Padding(
-  padding: const  EdgeInsets.only(top: 12.0),  // Added vertical padding
-  child: Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      TextButton.icon(
-        onPressed: _toggleLike,
-        icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border, color: Colors.red),
-        label: Text('$likeCount Likes'),
-      ),
-      TextButton.icon(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            builder: (context) => CommentSection(
-              postId: widget.postId,
-              collectionName: widget.collectionName,
-            ),
-          );
-        },
-        icon: const Icon(Icons.comment, color: Colors.blue),
-        label: const Text('Comment'),
-      ),
-    ],
-  ),
-)
-
+                // Like and Comment Buttons
+                Padding(
+                  padding: const EdgeInsets.only(top: 12.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _toggleLike,
+                        icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+                        label: Text('$likeCount Likes'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (context) => CommentSection(
+                              postId: widget.postId,
+                              collectionName: widget.collectionName,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.comment, color: Colors.blue),
+                        label: const Text('Comment'),
+                      ),
+                    ],
+                  ),
+                )
               ],
             ),
           ),
@@ -292,7 +465,6 @@ class _PostCardState extends State<PostCard> {
     );
   }
 }
-
 class CommentSection extends StatefulWidget {
   final String postId;
   final String collectionName; // Generalized collection name
