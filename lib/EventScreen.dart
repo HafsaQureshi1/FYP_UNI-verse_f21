@@ -88,9 +88,23 @@ class EventsJobsScreen extends StatelessWidget {
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
+                  isDismissible: true,
+                  enableDrag: true,
+                  backgroundColor: Colors.transparent,
                   builder: (context) {
-                    return const CreateNewPostScreen(
-                      collectionName: 'Eventposts',
+                    return FractionallySizedBox(
+                      heightFactor: 0.95, // Updated to 95% of screen height
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(25),
+                          ),
+                        ),
+                        child: const CreateNewPostScreen(
+                          collectionName: 'Eventposts',
+                        ),
+                      ),
                     );
                   },
                 );
