@@ -143,7 +143,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post created successfully!')),
+          const SnackBar(content: Text('Posted!')),
         );
 
         Navigator.of(context).pop();
