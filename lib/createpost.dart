@@ -1,20 +1,15 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_application_1/fcm-service.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
-import 'profileimage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:http/http.dart' as http;
 
 class CreateNewPostScreen extends StatefulWidget {
-  final String collectionName; // Accepts collection name dynamically
+  final String collectionName;
 
   const CreateNewPostScreen({super.key, required this.collectionName});
 
@@ -87,19 +82,22 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
         DocumentSnapshot userDoc = await _firestore.collection('users').doc(user.uid).get();
         String username = userDoc.exists ? userDoc['username'] : 'Anonymous';
 
-        // Upload image if selected
+        String? uploadedImageUrl;
+
+        // If an image is selected, upload asynchronously
         if (_imageFile != null || _webImage != null) {
           Uint8List imageBytes = kIsWeb ? _webImage! : await _imageFile!.readAsBytes();
-          _uploadedImageUrl = await _uploadImageToCloudinary(imageBytes);
+          uploadedImageUrl = await _uploadImageToCloudinary(imageBytes);
         }
 
+        // Store post in Firestore
         await _firestore.collection(widget.collectionName).add({
           'userId': user.uid,
           'userName': username,
           'userEmail': user.email,
           'likes': 0,
           'postContent': postContent,
-          'imageUrl': _uploadedImageUrl ?? '',
+          'imageUrl': uploadedImageUrl ?? '',
           'timestamp': FieldValue.serverTimestamp(),
         });
 

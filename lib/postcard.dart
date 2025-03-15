@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/fcm-service.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'profileimage.dart';
 class PostCard extends StatefulWidget {
@@ -245,7 +243,7 @@ class _PostCardState extends State<PostCard> {
                 /// ✅ Image (if available)
                 if (imageUrl != null && imageUrl!.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 10.0),
+                    padding: const EdgeInsets.only(top: 15.0),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8.0),
                       child: Image.network(
@@ -258,26 +256,34 @@ class _PostCardState extends State<PostCard> {
                   ),
 
                 /// ✅ Like and Comment Buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton.icon(
-                      onPressed: _toggleLike,
-                      icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border, color: Colors.red),
-                      label: Text('$likeCount Likes'),
-                    ),
-                    TextButton.icon(
-                      onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          builder: (context) => CommentSection(postId: widget.postId, collectionName: widget.collectionName,),
-                        );},
-                      icon: const Icon(Icons.comment, color: Colors.blue),
-                      label: const Text('Comment'),
-                    ),
-                  ],
-                ),
+               Padding(
+  padding: const  EdgeInsets.only(top: 12.0),  // Added vertical padding
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      TextButton.icon(
+        onPressed: _toggleLike,
+        icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+        label: Text('$likeCount Likes'),
+      ),
+      TextButton.icon(
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            builder: (context) => CommentSection(
+              postId: widget.postId,
+              collectionName: widget.collectionName,
+            ),
+          );
+        },
+        icon: const Icon(Icons.comment, color: Colors.blue),
+        label: const Text('Comment'),
+      ),
+    ],
+  ),
+)
+
               ],
             ),
           ),

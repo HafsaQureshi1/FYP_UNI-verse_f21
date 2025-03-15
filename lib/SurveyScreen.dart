@@ -15,7 +15,6 @@ class SurveysScreen extends StatelessWidget {
         children: [
           Column(
             children: [
-              const CategoryChips(),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -86,48 +85,6 @@ class SurveysScreen extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class CategoryChips extends StatelessWidget {
-  const CategoryChips({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            CategoryChip(label: "General"),
-            CategoryChip(label: "Electronics"),
-            CategoryChip(label: "Books"),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class CategoryChip extends StatelessWidget {
-  final String label;
-
-  const CategoryChip({super.key, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
-      child: Chip(
-        label: Text(label),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Colors.grey, width: 1.2),
-          borderRadius: BorderRadius.circular(20),
-        ),
       ),
     );
   }
