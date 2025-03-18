@@ -199,7 +199,10 @@ class _PostCardState extends State<PostCard> {
 
         final postDoc = await postRef.get();
         final String postAuthorId = postDoc.data()?['userId'] ?? '';
-
+ if (postAuthorId == currentUserId) {
+        print("🔹 Self-like detected. No notification will be saved.");
+        return; // Exit the function early
+      }
         await FirebaseFirestore.instance.collection('notifications').add({
           'receiverId': postAuthorId,
           'senderId': currentUserId,

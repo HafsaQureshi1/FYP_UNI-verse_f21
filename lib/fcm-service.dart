@@ -67,6 +67,10 @@ class FCMService {
 
   Future<void> sendNotificationToUser(
     String userId, String likerName, String message) async {
+      if (FirebaseAuth.instance.currentUser?.uid == userId) {
+    print("🔹 Self-like detected. No notification sent.");
+    return;
+  }
   final userDoc =
       await FirebaseFirestore.instance.collection('users').doc(userId).get();
 
