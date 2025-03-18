@@ -50,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final List<Widget> _screens = [
-    const LostFoundScreen(),
+    LostFoundScreen(),
     const PeerAssistanceScreen(),
     const EventsJobsScreen(),
     const SurveysScreen(),
@@ -280,10 +280,13 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 }
-
-class LostFoundScreen extends StatelessWidget {
-  const LostFoundScreen({super.key});
-
+class LostFoundScreen extends StatefulWidget {
+  @override
+  _LostFoundScreenState createState() => _LostFoundScreenState();
+}
+class  _LostFoundScreenState extends State<LostFoundScreen>{
+  
+ final ScrollController _scrollController = ScrollController();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -306,50 +309,24 @@ class LostFoundScreen extends StatelessWidget {
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return const Center(child: Text('No posts found'));
                     }
+
                     var posts = snapshot.data!.docs;
 
                     return ListView.builder(
+                      controller: _scrollController,
                       padding: const EdgeInsets.all(16.0),
                       itemCount: posts.length,
                       itemBuilder: (context, index) {
-                        var post = posts[index];
-                        return StreamBuilder<DocumentSnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('lostfoundposts')
-                              .doc(post.id)
-                              .snapshots(),
-                          builder: (context, postSnapshot) {
-                            if (postSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const SizedBox.shrink();
-                            }
-                            if (!postSnapshot.hasData ||
-                                !postSnapshot.data!.exists) {
-                              return const SizedBox.shrink();
-                            }
-
-                            var postData = postSnapshot.data!;
-                            // Use safe access pattern for imageUrl
-                            String? imageUrl;
-                            try {
-                              final data =
-                                  postData.data() as Map<String, dynamic>?;
-                              imageUrl = data?['imageUrl'] as String?;
-                            } catch (e) {
-                              // Handle error silently
-                              print('Error accessing imageUrl: $e');
-                            }
-
-                            return PostCard(
-                              username: postData['userName'] ?? 'Anonymous',
-                              content: postData['postContent'] ?? '',
-                              postId: postData.id,
-                              likes: postData['likes'] ?? 0,
-                              userId: postData['userId'],
-                              collectionName: 'lostfoundposts',
-                              imageUrl: imageUrl,
-                            );
-                          },
+                        var postData = posts[index].data() as Map<String, dynamic>;
+                        return PostCard(
+                          key: ValueKey(posts[index].id), // Keep track of items
+                          username: postData['userName'] ?? 'Anonymous',
+                          content: postData['postContent'] ?? '',
+                          postId: posts[index].id,
+                          likes: postData['likes'] ?? 0,
+                          userId: postData['userId'],
+                          collectionName: 'lostfoundposts',
+                          imageUrl: postData['imageUrl'] ?? '',
                         );
                       },
                     );

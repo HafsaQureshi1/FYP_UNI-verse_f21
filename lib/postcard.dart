@@ -7,6 +7,7 @@ import 'profileimage.dart';
 import 'image_viewer_screen.dart';
 
 class PostCard extends StatefulWidget {
+  
   final String postId;
   final String userId;
   final String username;
@@ -16,7 +17,7 @@ class PostCard extends StatefulWidget {
   final String? imageUrl;
 
   const PostCard({
-    super.key,
+    Key? key, // Add this
     required this.postId,
     required this.userId,
     required this.username,
