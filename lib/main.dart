@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -96,6 +99,117 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+class GoogleSignUpButton extends StatefulWidget {
+  final Function(UserCredential) onSuccess;
+
+  const GoogleSignUpButton({super.key, required this.onSuccess});
+
+  @override
+  State<GoogleSignUpButton> createState() => _GoogleSignUpButtonState();
+}
+
+class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
+  bool _isLoading = false;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
+    scopes: ['email', 'profile'],
+  );
+
+  Future<void> _handleGoogleSignUp() async {
+    try {
+      setState(() => _isLoading = true);
+
+      await _googleSignIn.signOut();
+      await FirebaseAuth.instance.signOut();
+
+      final GoogleSignInAccount? newGoogleUser = await _googleSignIn.signIn();
+      if (newGoogleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth = await newGoogleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Check if the email is already registered
+      final String email = newGoogleUser.email;
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .get();
+
+      if (userDoc.docs.isNotEmpty) {
+        // User already exists
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account already exists with this email! Please sign in.')),
+        );
+        return;
+      }
+
+      // Check if email exists in Firebase Authentication
+      try {
+        final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+        if (methods.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('An account already exists with this email. Please sign in.')),
+          );
+          return;
+        }
+      } catch (e) {
+        debugPrint("Error checking auth methods: $e");
+      }
+
+      // Create a new user with Google credentials
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+
+      if (userCredential.user != null) {
+        // Save user details to Firestore
+        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+          'uid': userCredential.user!.uid,
+          'username': userCredential.user!.displayName ?? 'User',
+          'email': userCredential.user!.email ?? '',
+          'role': 'student', // Default role
+          'profilePicture': userCredential.user!.photoURL ??
+              'https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/default_profile.png?alt=media', // Default profile picture
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        widget.onSuccess(userCredential);
+      }
+    } catch (e) {
+      debugPrint('Google Sign Up Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: _isLoading ? null : _handleGoogleSignUp,
+      icon: _isLoading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Image.asset('assets/images/google_logo.png', height: 24),
+      label: Text(
+        _isLoading ? 'Signing up...' : 'Sign Up with Google',
+        style: const TextStyle(fontSize: 16),
+      ),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        side: const BorderSide(color: Colors.grey),
+      ),
+    );
+  }
+}
+
 
 class GoogleSignInButton extends StatefulWidget {
   final Function(UserCredential) onSuccess;
@@ -109,12 +223,18 @@ class GoogleSignInButton extends StatefulWidget {
   State<GoogleSignInButton> createState() => _GoogleSignInButtonState();
 }
 
+
 class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   bool _isLoading = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '267004637492-9fj3m3cuchvn145cc27r5r4eannq8ign.apps.googleusercontent.com'
-,scopes: ['email', 'profile'],
-  );
+  clientId: kIsWeb
+      ? '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com' // ✅ Web Client ID
+      : (Platform.isAndroid
+          ? '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com' // ✅ Android Client ID
+          :null), // Other platforms (default null)
+  scopes: ['email', 'profile'],
+);
+  
 
  Future<void> _handleGoogleSignIn() async {
   try {
@@ -391,7 +511,7 @@ const SizedBox(height: 10),
                 ),
                 const SizedBox(height: 10),
 
-                GoogleSignInButton(
+                GoogleSignUpButton(
                   onSuccess: (UserCredential userCredential) {
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -513,7 +633,7 @@ class _SignInPageState extends State<SignInPage> {
                     color: Colors.grey,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
 
                 // Email Field
                 TextField(
@@ -527,7 +647,8 @@ class _SignInPageState extends State<SignInPage> {
                       borderRadius: BorderRadius.circular(20.0),
                     ),
                     prefixIcon: const Icon(Icons.email, color: Colors.grey),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
@@ -545,7 +666,8 @@ class _SignInPageState extends State<SignInPage> {
                       borderRadius: BorderRadius.circular(20.0),
                     ),
                     prefixIcon: const Icon(Icons.lock, color: Colors.grey),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
                   ),
                   obscureText: true,
                 ),
@@ -569,10 +691,24 @@ class _SignInPageState extends State<SignInPage> {
                           style: TextStyle(fontSize: 18, color: Colors.white),
                         ),
                 ),
+
+                const SizedBox(height: 10),
+
+                // Google Sign-In Button
+                GoogleSignInButton(
+                  onSuccess: (UserCredential userCredential) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (context) => const HomeScreen()),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 10),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Dont have an account? "),
+                    const Text("Don't have an account? "),
                     TextButton(
                       onPressed: () {
                         Navigator.pushReplacement(
