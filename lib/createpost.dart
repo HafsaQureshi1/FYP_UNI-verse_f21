@@ -1,14 +1,17 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/LocationPicker.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'profileimage.dart';
-
+import 'categorize.dart';
 class CreateNewPostScreen extends StatefulWidget {
   final String collectionName;
 
@@ -23,6 +26,8 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isPosting = false;
+LatLng? _selectedLocation;
+String _selectedAddress = "No location selected";
 
   String _username = '';
   String? _userId;
@@ -35,6 +40,190 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
     super.initState();
     _fetchUserInfo();
   }
+  
+
+Future<void> _pickLocation() async {
+  final LatLng? location = await Navigator.push(
+    context,
+    MaterialPageRoute(builder: (context) => LocationPicker()),
+  );
+
+  if (location != null) {
+    setState(() {
+      _selectedLocation = location;
+      _updateAddress(location);
+    });
+  }
+}
+Future<String> _classifyPostWithHuggingFace(String postText) async {
+  print("🔹 Sending request to Hugging Face...");
+
+  final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+  final headers = {
+    "Authorization": "Bearer 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",  
+    "Content-Type": "application/json"
+  };
+
+  final body = jsonEncode({
+  "inputs": postText,  // ✅ Corrected: "inputs" instead of "sequence"
+  "parameters": {
+    "candidate_labels": [  // ✅ Moved inside "parameters"
+     "Electronics",
+      "Clothing & Accessories",
+      "Documents",
+      "Books & Stationery",
+      "Personal Items",
+      "Miscellaneous"
+    ]
+  }
+});
+
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+
+    print("🔹 API Response Status Code: ${response.statusCode}");
+    print("🔹 API Response Body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      print("🔹 Parsed JSON: $responseData");  // Print JSON to debug
+
+      List<dynamic> labels = responseData["labels"];
+      List<dynamic> scores = responseData["scores"];
+
+      if (labels.isNotEmpty && scores.isNotEmpty) {
+        String bestCategory = labels[0];  // Get highest confidence category
+        double confidence = scores[0];
+
+        print("✅ AI Category: $bestCategory (Confidence: ${confidence.toStringAsFixed(2)})");
+        return confidence > 0.3 ? bestCategory : "Miscellaneous";  // Confidence threshold
+      }
+    } else {
+      print("❌ AI Classification Failed. Response: ${response.body}");
+    }
+  } catch (e) {
+    print("❌ Hugging Face API Exception: $e");
+  }
+
+  return "Miscellaneous";  // Default if API fails
+}
+Future<void> _createPost() async {
+  print("🚀 _createPost() started");
+  print("📂 Collection Name: ${widget.collectionName}");
+
+  // Extract only the main collection name
+  String mainCollection = widget.collectionName.split('/')[0];
+  print("📂 Extracted Main Collection: $mainCollection");
+
+  String postContent = _postController.text.trim();
+  if (postContent.isEmpty) {
+    print("⚠️ Post content is empty, exiting...");
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Post cannot be empty!')),
+    );
+    return;
+  }
+
+  setState(() {
+    _isPosting = true;
+  });
+
+  try {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(user.uid).get();
+      String username = userDoc.exists ? userDoc['username'] : 'Anonymous';
+
+      String? uploadedImageUrl;
+
+      // Upload image if selected
+      if (_imageFile != null || _webImage != null) {
+        Uint8List imageBytes =
+            kIsWeb ? _webImage! : await _imageFile!.readAsBytes();
+        uploadedImageUrl = await _uploadImageToCloudinary(imageBytes);
+      }
+
+      // Create post data
+      final postData = {
+        'userId': user.uid,
+        'userName': username,
+        'userEmail': user.email,
+        'likes': 0,
+        'postContent': postContent,
+        'imageUrl': uploadedImageUrl ?? '',
+        'timestamp': FieldValue.serverTimestamp(),
+        "location": _selectedLocation != null
+            ? {
+                "latitude": _selectedLocation!.latitude,
+                "longitude": _selectedLocation!.longitude,
+                "address": _selectedAddress,
+              }
+            : null,
+      };
+
+      // Firestore transaction to store posts
+      await _firestore.runTransaction((transaction) async {
+        // ✅ **Step 1: Store in the "All" subcollection**
+        final allPostsRef = _firestore
+            .collection(mainCollection)
+            .doc("All")
+            .collection("posts")
+            .doc();
+        transaction.set(allPostsRef, postData);
+
+        // ✅ **Step 2: AI Categorization (ONLY for lostfoundposts)**
+        if (mainCollection == "lostfoundposts") {
+          print("🔹 Preparing to send post to AI...");
+          String subCollectionName = await _classifyPostWithHuggingFace(postContent);
+          print("✅ AI Categorized as: $subCollectionName");
+
+          // 🔥 **Store the same post in the AI-categorized subcollection**
+          final categorizedRef = _firestore
+              .collection(mainCollection)
+              .doc(subCollectionName) // AI-generated category
+              .collection("posts")
+              .doc();
+
+          transaction.set(categorizedRef, postData);
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Posted!')),
+      );
+
+      Navigator.of(context).pop();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not logged in!')),
+      );
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: $e')),
+    );
+  } finally {
+    setState(() {
+      _isPosting = false;
+    });
+  }
+}
+
+Future<void> _updateAddress(LatLng position) async {
+  try {
+    List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude, position.longitude);
+    if (placemarks.isNotEmpty) {
+      setState(() {
+        _selectedAddress = placemarks.first.street ?? "Unknown Address";
+      });
+    }
+  } catch (e) {
+    print("Error fetching address: $e");
+  }
+}
 
   // Fetch current user information
   Future<void> _fetchUserInfo() async {
@@ -102,67 +291,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
   }
 
   // Create and save post to Firestore
-  Future<void> _createPost() async {
-    String postContent = _postController.text.trim();
-    if (postContent.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Post cannot be empty!')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isPosting = true;
-    });
-
-    try {
-      User? user = _auth.currentUser;
-      if (user != null) {
-        DocumentSnapshot userDoc =
-            await _firestore.collection('users').doc(user.uid).get();
-        String username = userDoc.exists ? userDoc['username'] : 'Anonymous';
-
-        String? uploadedImageUrl;
-
-        // Upload image if selected
-        if (_imageFile != null || _webImage != null) {
-          Uint8List imageBytes =
-              kIsWeb ? _webImage! : await _imageFile!.readAsBytes();
-          uploadedImageUrl = await _uploadImageToCloudinary(imageBytes);
-        }
-
-        // Store post in Firestore
-        await _firestore.collection(widget.collectionName).add({
-          'userId': user.uid,
-          'userName': username,
-          'userEmail': user.email,
-          'likes': 0,
-          'postContent': postContent,
-          'imageUrl': uploadedImageUrl ?? '',
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Posted!')),
-        );
-
-        Navigator.of(context).pop();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User not logged in!')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    } finally {
-      setState(() {
-        _isPosting = false;
-      });
-    }
-  }
-
   // Get user-friendly post type label
   String _getPostTypeLabel(String collectionName) {
     switch (collectionName) {
@@ -412,7 +540,58 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                       ),
                       const Spacer(),
                     ],
-                  ),
+                  ),Row(
+  children: [
+    GestureDetector(
+      onTap: _pickLocation,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.location_on, color: Colors.blue),
+            const SizedBox(width: 8),
+            Text("Add Location",
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
+                )),
+          ],
+        ),
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 12),
+
+// Display selected location
+if (_selectedLocation != null)
+  Container(
+    padding: EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      border: Border.all(color: Colors.grey.shade300),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      children: [
+        Icon(Icons.location_on, color: Colors.redAccent),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            _selectedAddress,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    ),
+  ),
+
 
                   const SizedBox(height: 20),
 
