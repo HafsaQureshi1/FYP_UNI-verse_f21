@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/fcm-service.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'profileimage.dart';
 import 'image_viewer_screen.dart';
@@ -58,6 +61,59 @@ class _PostCardState extends State<PostCard> {
     _fetchImageUrl();
     _fetchCommentCount(); // Add method call to fetch comment count
   }
+Future<String> _classifyPostWithHuggingFace(String postText) async {
+  print("🔹 Sending request to Hugging Face...");
+
+  final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+  final headers = {
+    "Authorization": "Bearer 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",  
+    "Content-Type": "application/json"
+  };
+
+  final body = jsonEncode({
+  "inputs": postText,  // ✅ Corrected: "inputs" instead of "sequence"
+  "parameters": {
+    "candidate_labels": [  // ✅ Moved inside "parameters"
+     "Electronics",
+      "Clothing & Accessories",
+      "Documents",
+      "Books & Stationery",
+      "Personal Items",
+      "Miscellaneous"
+    ]
+  }
+});
+
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+
+    print("🔹 API Response Status Code: ${response.statusCode}");
+    print("🔹 API Response Body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      print("🔹 Parsed JSON: $responseData");  // Print JSON to debug
+
+      List<dynamic> labels = responseData["labels"];
+      List<dynamic> scores = responseData["scores"];
+
+      if (labels.isNotEmpty && scores.isNotEmpty) {
+        String bestCategory = labels[0];  // Get highest confidence category
+        double confidence = scores[0];
+
+        print("✅ AI Category: $bestCategory (Confidence: ${confidence.toStringAsFixed(2)})");
+        return confidence > 0.3 ? bestCategory : "Miscellaneous";  // Confidence threshold
+      }
+    } else {
+      print("❌ AI Classification Failed. Response: ${response.body}");
+    }
+  } catch (e) {
+    print("❌ Hugging Face API Exception: $e");
+  }
+
+  return "Miscellaneous";  // Default if API fails
+}
 
   /// ✅ Fetches user details dynamically
   void _fetchUsername() {
@@ -206,50 +262,30 @@ class _PostCardState extends State<PostCard> {
       });
     }
   }
-
-  void _editPost() async {
+void _editPost() async {
   if (!isOwner) return;
 
   try {
-    DocumentSnapshot postDoc = await FirebaseFirestore.instance
+    final postRef = FirebaseFirestore.instance
         .collection(widget.collectionName)
         .doc("All")
         .collection("posts")
-        .doc(widget.postId)
-        .get();
+        .doc(widget.postId);
 
-    String category = "All";
+    final postDoc = await postRef.get();
 
     if (!postDoc.exists) {
-      QuerySnapshot categories = await FirebaseFirestore.instance
-          .collection(widget.collectionName)
-          .get();
-
-      for (var doc in categories.docs) {
-        DocumentSnapshot subPost = await FirebaseFirestore.instance
-            .collection(widget.collectionName)
-            .doc(doc.id)
-            .collection("posts")
-            .doc(widget.postId)
-            .get();
-
-        if (subPost.exists) {
-          category = doc.id;
-          postDoc = subPost;
-          break;
-        }
-      }
+      print("❌ Post not found!");
+      return;
     }
 
-    if (!postDoc.exists) return;
-
-    // 🔥 **Fix: Cast data to Map<String, dynamic>**
     final Map<String, dynamic>? postData =
         postDoc.data() as Map<String, dynamic>?;
 
     if (postData == null) return;
 
     final currentContent = postData['postContent'] ?? '';
+    final currentCategory = postData['category'] ?? 'Uncategorized';
 
     final TextEditingController contentController =
         TextEditingController(text: currentContent);
@@ -276,13 +312,16 @@ class _PostCardState extends State<PostCard> {
               onPressed: () async {
                 final updatedContent = contentController.text.trim();
                 if (updatedContent.isNotEmpty) {
-                  await FirebaseFirestore.instance
-                      .collection(widget.collectionName)
-                      .doc(category)
-                      .collection("posts")
-                      .doc(widget.postId)
-                      .update({
+                  // 🔥 AI Re-Categorization (Optional)
+                  String newCategory = currentCategory;
+                  if (widget.collectionName == "lostfoundposts") {
+                    newCategory = await _classifyPostWithHuggingFace(updatedContent);
+                  }
+
+                  // ✅ Update post in Firestore
+                  await postRef.update({
                     'postContent': updatedContent,
+                    'category': newCategory, // Update category if needed
                     'editedAt': FieldValue.serverTimestamp(),
                   });
 
@@ -304,25 +343,32 @@ class _PostCardState extends State<PostCard> {
     print("❌ Error editing post: $e");
   }
 }
+
+
 void _deletePost() async {
   if (!isOwner) return;
 
   try {
-    DocumentSnapshot postDoc = await FirebaseFirestore.instance
+    String category = "All";
+    DocumentSnapshot? postDoc;
+
+    // 🔍 Step 1: Check in "All/posts"
+    postDoc = await FirebaseFirestore.instance
         .collection(widget.collectionName)
         .doc("All")
         .collection("posts")
         .doc(widget.postId)
         .get();
 
-    String category = "All";
-
+    // 🔍 Step 2: If not found, search other subcollections
     if (!postDoc.exists) {
       QuerySnapshot categories = await FirebaseFirestore.instance
           .collection(widget.collectionName)
           .get();
 
       for (var doc in categories.docs) {
+        if (doc.id == "All") continue; // Skip "All", already checked
+
         DocumentSnapshot subPost = await FirebaseFirestore.instance
             .collection(widget.collectionName)
             .doc(doc.id)
@@ -338,7 +384,10 @@ void _deletePost() async {
       }
     }
 
-    if (!postDoc.exists) return;
+    if (postDoc == null || !postDoc.exists) {
+      print("❌ Post not found in any subcollection!");
+      return;
+    }
 
     showDialog(
       context: context,
@@ -355,13 +404,24 @@ void _deletePost() async {
             TextButton(
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               onPressed: () async {
+                // ✅ **Delete from "All/posts"**
                 await FirebaseFirestore.instance
                     .collection(widget.collectionName)
-                    .doc(category)
+                    .doc("All")
                     .collection("posts")
                     .doc(widget.postId)
                     .delete();
 
+                // ✅ **Delete from AI-categorized subcollection**
+                if (category != "All") {
+                  await FirebaseFirestore.instance
+                      .collection(widget.collectionName)
+                      .doc(category)
+                      .collection("posts")
+                      .doc(widget.postId)
+                      .delete();
+                }
+Navigator.pop(context);
                 if (mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(

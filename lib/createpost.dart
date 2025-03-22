@@ -109,16 +109,10 @@ Future<String> _classifyPostWithHuggingFace(String postText) async {
   return "Miscellaneous";  // Default if API fails
 }
 Future<void> _createPost() async {
-  print("🚀 _createPost() started");
-  print("📂 Collection Name: ${widget.collectionName}");
-
-  // Extract only the main collection name
-  String mainCollection = widget.collectionName.split('/')[0];
-  print("📂 Extracted Main Collection: $mainCollection");
-
+  print("Original widget.collectionName: ${widget.collectionName}");
+  
   String postContent = _postController.text.trim();
   if (postContent.isEmpty) {
-    print("⚠️ Post content is empty, exiting...");
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Post cannot be empty!')),
     );
@@ -145,7 +139,21 @@ Future<void> _createPost() async {
         uploadedImageUrl = await _uploadImageToCloudinary(imageBytes);
       }
 
-      // Create post data
+      // 🔹 **AI Categorization (Only for Lost & Found)**
+      String category = "Uncategorized"; // Default category
+      if (widget.collectionName.startsWith("lostfoundposts")) {
+        print("🔹 Classifying post with AI...");
+        category = await _classifyPostWithHuggingFace(postContent);
+        print("✅ AI Categorized as: $category");
+      }
+
+      // 🔹 **CORRECT FIX - Use the collection name directly WITHOUT modification**
+      // Just use widget.collectionName directly since it already contains the full path
+     String collectionPath = "lostfoundposts/All/posts"; 
+      print("🚀 Posting to: $collectionPath"); // Debugging path
+
+      // ✅ Firestore Reference
+      final generalRef = _firestore.collection(collectionPath).doc();
       final postData = {
         'userId': user.uid,
         'userName': username,
@@ -154,6 +162,7 @@ Future<void> _createPost() async {
         'postContent': postContent,
         'imageUrl': uploadedImageUrl ?? '',
         'timestamp': FieldValue.serverTimestamp(),
+        "category": category, // ✅ Store category as a field
         "location": _selectedLocation != null
             ? {
                 "latitude": _selectedLocation!.latitude,
@@ -163,32 +172,9 @@ Future<void> _createPost() async {
             : null,
       };
 
-      // Firestore transaction to store posts
-      await _firestore.runTransaction((transaction) async {
-        // ✅ **Step 1: Store in the "All" subcollection**
-        final allPostsRef = _firestore
-            .collection(mainCollection)
-            .doc("All")
-            .collection("posts")
-            .doc();
-        transaction.set(allPostsRef, postData);
+      print("📝 Document ID: ${generalRef.id}"); // ✅ Debugging
 
-        // ✅ **Step 2: AI Categorization (ONLY for lostfoundposts)**
-        if (mainCollection == "lostfoundposts") {
-          print("🔹 Preparing to send post to AI...");
-          String subCollectionName = await _classifyPostWithHuggingFace(postContent);
-          print("✅ AI Categorized as: $subCollectionName");
-
-          // 🔥 **Store the same post in the AI-categorized subcollection**
-          final categorizedRef = _firestore
-              .collection(mainCollection)
-              .doc(subCollectionName) // AI-generated category
-              .collection("posts")
-              .doc();
-
-          transaction.set(categorizedRef, postData);
-        }
-      });
+      await generalRef.set(postData);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Posted!')),
@@ -201,6 +187,7 @@ Future<void> _createPost() async {
       );
     }
   } catch (e) {
+    print("❌ Firestore Error: $e"); // ✅ Debugging Firestore errors
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Error: $e')),
     );
@@ -210,7 +197,6 @@ Future<void> _createPost() async {
     });
   }
 }
-
 Future<void> _updateAddress(LatLng position) async {
   try {
     List<Placemark> placemarks = await placemarkFromCoordinates(

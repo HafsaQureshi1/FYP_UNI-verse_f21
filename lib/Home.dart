@@ -291,16 +291,28 @@ class LostFoundScreen extends StatefulWidget {
 }
 class  _LostFoundScreenState extends State<LostFoundScreen>{
    Stream<QuerySnapshot> _getPostsStream() {
-   
-      // Fetch posts from the selected category's subcollection
-      return FirebaseFirestore.instance
-          .collection('lostfoundposts')
-          .doc(selectedCategory) // Reference to selected category
-          .collection('posts') // Subcollection
-          .orderBy('timestamp', descending: true)
-          .snapshots();
-    
+  print("📢 Fetching posts for category: $selectedCategory");
+
+  final collectionRef = FirebaseFirestore.instance.collection('lostfoundposts');
+
+  if (selectedCategory == "All") {
+    // If "All" is selected, fetch all posts from all categories
+    return collectionRef
+        .doc("All") // ✅ Fetch from "All" category
+        .collection("posts")
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  } else {
+    // Fetch posts only from the selected category
+    return collectionRef
+        .doc("All") // ✅ All posts are inside "All"
+        .collection("posts")
+        .where("category", isEqualTo: selectedCategory) // ✅ Filter by category field
+        .orderBy('timestamp', descending: true)
+        .snapshots();
   }
+}
+
  final ScrollController _scrollController = ScrollController();
  String selectedCategory = "All"; // Default selection
   @override
@@ -424,8 +436,9 @@ class _CategoryChipsState extends State<CategoryChips> {
       return ["All",    // ✅ Moved inside "parameters"
     "Electronics",
       "Documents",
-      "Personal Items",
       "Clothing & Accessories",
+      "Personal Items",
+      
       "Books & Stationery",
       "Miscellaneous"
     ];

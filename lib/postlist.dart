@@ -32,6 +32,7 @@ class _PostListState extends State<PostList> {
           child: StreamBuilder<QuerySnapshot>(
             stream: _getFilteredStream(),
             builder: (context, snapshot) {
+               print("👀 StreamBuilder is rebuilding..."); 
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
@@ -67,28 +68,25 @@ class _PostListState extends State<PostList> {
 
   /// **Fetches posts from Firestore with category filtering**
  /// **Fetches posts from Firestore with category filtering**
-Stream<QuerySnapshot> _getFilteredStream() {
-  if ((widget.collectionName == "lostfoundposts" || widget.collectionName == "peerposts") &&
-      selectedCategory == "All") {
-    // 🔹 Fetch posts only from the "All" subcollection
-    return FirebaseFirestore.instance
-        .collection(widget.collectionName)
-        .doc("All") // Fetch from the "All" subcollection
-        .collection("posts")
-        .orderBy('timestamp', descending: true)
-        .snapshots();
-  } else if (selectedCategory != "All") {
-    // 🔹 Fetch only from the selected category's subcollection
-    return FirebaseFirestore.instance
-        .collection(widget.collectionName)
-        .doc(selectedCategory)
-        .collection("posts")
+ Stream<QuerySnapshot> _getFilteredStream() {
+    print("⚡ _getFilteredStream() called!"); // ✅ Debugging
+  CollectionReference postsRef = FirebaseFirestore.instance
+      .collection(widget.collectionName) // 🔹 Make sure this is correct
+      .doc("All")
+      .collection("posts");
+
+  // 🔥 Print collection path for debugging
+  print("Fetching from: ${postsRef.path}");
+  print("Selected Category: $selectedCategory");
+
+  if (selectedCategory == "All") {
+    return postsRef.orderBy('timestamp', descending: true).snapshots();
+  } else {
+    return postsRef
+        .where("category", isEqualTo: selectedCategory) // 🔥 Filter by category
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
-
-  // Default: return empty stream (should not reach here)
-  return Stream.empty();
 }
 
 
