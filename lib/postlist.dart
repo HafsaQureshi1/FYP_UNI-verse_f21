@@ -17,7 +17,9 @@ class _PostListState extends State<PostList> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      
       children: [
+        
         if (widget.collectionName == "lostfoundposts" ||
             widget.collectionName == "peerposts")
           CategoryChips(

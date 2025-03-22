@@ -110,7 +110,7 @@ Future<String> _classifyPostWithHuggingFace(String postText) async {
 }
 Future<void> _createPost() async {
   print("Original widget.collectionName: ${widget.collectionName}");
-  
+
   String postContent = _postController.text.trim();
   if (postContent.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -139,18 +139,29 @@ Future<void> _createPost() async {
         uploadedImageUrl = await _uploadImageToCloudinary(imageBytes);
       }
 
-      // 🔹 **AI Categorization (Only for Lost & Found)**
-      String category = "Uncategorized"; // Default category
+      // 🔹 **Determine Collection Path**
+      String collectionPath;
+      String category = "Uncategorized"; // Default category (only for Lost & Found)
+
       if (widget.collectionName.startsWith("lostfoundposts")) {
+        // 🔹 **AI Categorization for Lost & Found**
         print("🔹 Classifying post with AI...");
         category = await _classifyPostWithHuggingFace(postContent);
         print("✅ AI Categorized as: $category");
+        collectionPath = "lostfoundposts/All/posts";
+      } else if (widget.collectionName.startsWith("Peerposts")) {
+        collectionPath = "Peerposts/All/posts";
+      } else if (widget.collectionName.startsWith("Eventposts")) {
+        collectionPath = "Eventposts/All/posts";
+      } else if (widget.collectionName.startsWith("Surveyposts")) {
+        collectionPath = "Surveyposts/All/posts";
+      } else {
+        print("❌ Invalid collection name: ${widget.collectionName}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid collection name!')),
+        );
+        return;
       }
-
-      // 🔹 **CORRECT FIX - Use the collection name directly WITHOUT modification**
-      // Just use widget.collectionName directly since it already contains the full path
-     String collectionPath = "lostfoundposts/All/posts"; 
-      print("🚀 Posting to: $collectionPath"); // Debugging path
 
       // ✅ Firestore Reference
       final generalRef = _firestore.collection(collectionPath).doc();
@@ -162,7 +173,8 @@ Future<void> _createPost() async {
         'postContent': postContent,
         'imageUrl': uploadedImageUrl ?? '',
         'timestamp': FieldValue.serverTimestamp(),
-        "category": category, // ✅ Store category as a field
+        if (widget.collectionName.startsWith("lostfoundposts"))
+          "category": category, // ✅ Store category only for Lost & Found
         "location": _selectedLocation != null
             ? {
                 "latitude": _selectedLocation!.latitude,
@@ -172,7 +184,8 @@ Future<void> _createPost() async {
             : null,
       };
 
-      print("📝 Document ID: ${generalRef.id}"); // ✅ Debugging
+      print("🚀 Posting to: $collectionPath"); // Debugging path
+      print("📝 Document ID: ${generalRef.id}"); // Debugging ID
 
       await generalRef.set(postData);
 
@@ -187,7 +200,7 @@ Future<void> _createPost() async {
       );
     }
   } catch (e) {
-    print("❌ Firestore Error: $e"); // ✅ Debugging Firestore errors
+    print("❌ Firestore Error: $e");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Error: $e')),
     );
@@ -197,6 +210,7 @@ Future<void> _createPost() async {
     });
   }
 }
+
 Future<void> _updateAddress(LatLng position) async {
   try {
     List<Placemark> placemarks = await placemarkFromCoordinates(

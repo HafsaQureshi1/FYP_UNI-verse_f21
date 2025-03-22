@@ -55,8 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     LostFoundScreen(),
     const PeerAssistanceScreen(),
-    const EventsJobsScreen(),
-    const SurveysScreen(),
+    EventsJobsScreen(),
+    SurveysScreen(),
   ];
 
   void _onItemTapped(int index) {

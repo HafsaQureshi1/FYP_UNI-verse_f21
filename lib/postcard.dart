@@ -143,125 +143,159 @@ Future<String> _classifyPostWithHuggingFace(String postText) async {
       }
     });
   }
+void _fetchImageUrl() async {
+  String collectionPath = _getCollectionPath();
+  String postId = widget.postId;
 
-  void _fetchImageUrl() {
-    FirebaseFirestore.instance
-        .collection(widget.collectionName)
-        .doc(widget.postId)
-        .snapshots()
-        .listen((postDoc) {
-      if (postDoc.exists && mounted) {
-        setState(() {
-          imageUrl = postDoc.data()?['imageUrl'];
-        });
-      }
-    });
+  print("📢 Checking document at path: $collectionPath/$postId");
+
+  final postRef = FirebaseFirestore.instance.collection(collectionPath).doc(postId);
+  
+  final postDoc = await postRef.get();
+
+  if (!postDoc.exists) {
+    print("❌ Document $postId not found in $collectionPath");
+    return; // Stop execution if the document does not exist
   }
 
-  Future<void> _fetchPostTime() async {
-    final postDoc = await FirebaseFirestore.instance
-        .collection(widget.collectionName)
-        .doc(widget.postId)
-        .get();
+  print("✅ Document found. Data: ${postDoc.data()}");
 
-    if (postDoc.exists) {
-      final Timestamp? timestamp = postDoc.data()?['timestamp'];
-      if (timestamp != null && mounted) {
-        final DateTime date = timestamp.toDate();
-        final String formattedDate =
-            "${date.day} ${_getMonthName(date.month)} ${date.year}, ${_formatTime(date)}";
-        setState(() {
-          postTime = formattedDate;
-        });
-      }
-    }
-  }
-
-  String _getMonthName(int month) {
-    const monthNames = [
-      "",
-      "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"
-    ];
-    return monthNames[month];
-  }
-
-  String _formatTime(DateTime date) {
-    int hour = date.hour;
-    int minute = date.minute;
-    String period = hour >= 12 ? "PM" : "AM";
-    hour = hour > 12
-        ? hour - 12
-        : hour == 0
-            ? 12
-            : hour;
-    return "$hour:${minute.toString().padLeft(2, '0')} $period";
-  }
-
-  Future<void> _checkIfUserLiked() async {
-    if (currentUserId == null) return;
-
-    final likeDoc = await FirebaseFirestore.instance
-        .collection(widget.collectionName)
-        .doc(widget.postId)
-        .collection('likes')
-        .doc(currentUserId)
-        .get();
-
-    if (mounted) {
+  // Listen for updates
+  postRef.snapshots().listen((postDoc) {
+    if (postDoc.exists && mounted) {
       setState(() {
-        isLiked = likeDoc.exists;
+        imageUrl = postDoc.data()?['imageUrl'];
+      });
+    }
+  });
+}
+Future<void> _fetchPostTime() async {
+  String collectionPath = _getCollectionPath();
+
+  final postDoc = await FirebaseFirestore.instance
+      .collection(collectionPath)
+      .doc(widget.postId)
+      .get();
+
+  if (postDoc.exists) {
+    final Timestamp? timestamp = postDoc.data()?['timestamp'];
+    if (timestamp != null && mounted) {
+      final DateTime date = timestamp.toDate();
+      final String formattedDate =
+          "${date.day} ${_getMonthName(date.month)} ${_formatTime(date)}";
+      setState(() {
+        postTime = formattedDate;
       });
     }
   }
+}
 
-  void _toggleLike() async {
-    if (currentUserId == null) return;
+String _getMonthName(int month) {
+  const monthNames = [
+    "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  return monthNames[month];
+}
 
-    final postRef = FirebaseFirestore.instance
-        .collection(widget.collectionName)
-        .doc(widget.postId);
+String _formatTime(DateTime date) {
+  int hour = date.hour;
+  int minute = date.minute;
+  String period = hour >= 12 ? "PM" : "AM";
+  hour = hour > 12 ? hour - 12 : hour == 0 ? 12 : hour;
+  return "$hour:${minute.toString().padLeft(2, '0')} $period";
+}
 
+Future<void> _checkIfUserLiked() async {
+  if (currentUserId == null) return;
+
+  String collectionPath = _getCollectionPath();
+
+  final likeDoc = await FirebaseFirestore.instance
+      .collection(collectionPath)
+      .doc(widget.postId)
+      .collection('likes')
+      .doc(currentUserId)
+      .get();
+
+  if (mounted) {
     setState(() {
-      isLiked = !isLiked;
-      likeCount = isLiked ? likeCount + 1 : likeCount - 1;
+      isLiked = likeDoc.exists;
+    });
+  }
+}
+
+void _toggleLike() async {
+  if (currentUserId == null) return;
+
+  String collectionPath = _getCollectionPath();
+  
+  final postRef = FirebaseFirestore.instance
+      .collection(collectionPath)
+      .doc(widget.postId);
+
+  setState(() {
+    isLiked = !isLiked;
+    likeCount = isLiked ? likeCount + 1 : likeCount - 1;
+  });
+
+  if (!isLiked) {
+    await postRef.collection('likes').doc(currentUserId).delete();
+  } else {
+    await postRef.collection('likes').doc(currentUserId).set({
+      'userId': currentUserId,
+      'timestamp': FieldValue.serverTimestamp(),
     });
 
-    if (!isLiked) {
-      await postRef.collection('likes').doc(currentUserId).delete();
-    } else {
-      await postRef.collection('likes').doc(currentUserId).set({
-        'userId': currentUserId,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+    // Fetch likerName asynchronously
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserId)
+        .get()
+        .then((userDoc) async {
+      final String likerName = userDoc.data()?['username'] ?? 'Someone';
 
-      // Fetch likerName asynchronously
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUserId)
-          .get()
-          .then((userDoc) async {
-        final String likerName = userDoc.data()?['username'] ?? 'Someone';
+      final postDoc = await postRef.get();
+      final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
-        final postDoc = await postRef.get();
-        final String postAuthorId = postDoc.data()?['userId'] ?? '';
- if (postAuthorId == currentUserId) {
+      if (postAuthorId == currentUserId) {
         print("🔹 Self-like detected. No notification will be saved.");
         return; // Exit the function early
       }
-        await FirebaseFirestore.instance.collection('notifications').add({
-          'receiverId': postAuthorId,
-          'senderId': currentUserId,
-          'senderName': likerName,
-          'postId': widget.postId,
-          'collection': widget.collectionName,
-          'message': "$likerName liked your post",
-          'timestamp': FieldValue.serverTimestamp(),
-          'type': 'like',
-          'isRead': false,
-        });
+
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'receiverId': postAuthorId,
+        'senderId': currentUserId,
+        'senderName': likerName,
+        'postId': widget.postId,
+        'collection': widget.collectionName,
+        'message': "$likerName liked your post",
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'like',
+        'isRead': false,
       });
+    });
+  }
+}
+
+// 🔹 **Helper Function to Get Correct Collection Path**
+  String _getCollectionPath() {
+    print("🔍 Checking collection for: ${widget.collectionName}");
+    if (widget.collectionName.startsWith("lostfoundposts")) {
+      return "lostfoundposts/All/posts";
+    } else if (widget.collectionName.startsWith("Peerposts")) {
+      return "Peerposts/All/posts";
+    } else if (widget.collectionName.startsWith("Eventposts")) {
+      return "Eventposts/All/posts";
+    } else if (widget.collectionName.startsWith("Surveyposts")) {
+      return "Surveyposts/All/posts";
+    } else {
+      print("❌ Invalid collection name: ${widget.collectionName}");
+      throw Exception("Invalid collection name: ${widget.collectionName}");
     }
   }
+
+
 void _editPost() async {
   if (!isOwner) return;
 
@@ -682,8 +716,7 @@ class CommentSection extends StatefulWidget {
   final String postId;
   final String collectionName; // Generalized collection name
 
-  const CommentSection(
-      {super.key, required this.postId, required this.collectionName});
+  const CommentSection({super.key, required this.postId, required this.collectionName});
 
   @override
   _CommentSectionState createState() => _CommentSectionState();
@@ -712,8 +745,10 @@ class _CommentSectionState extends State<CommentSection> {
   void _addComment(String commentText) async {
     if (commentText.trim().isEmpty || _userId == null) return;
 
+    String collectionPath = _getCollectionPath();
+    
     final postRef = FirebaseFirestore.instance
-        .collection(widget.collectionName) // Use dynamic collection
+        .collection(collectionPath)
         .doc(widget.postId);
 
     final postDoc = await postRef.get();
@@ -737,8 +772,7 @@ class _CommentSectionState extends State<CommentSection> {
       final String currentUsername =
           userDoc.data()?['username'] ?? 'Unknown User';
 
-      _fcmService.sendNotificationOnComment(
-          widget.postId, currentUsername, commentRef.id);
+      _fcmService.sendNotificationOnComment(widget.postId, currentUsername, commentRef.id);
 
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
@@ -758,19 +792,17 @@ class _CommentSectionState extends State<CommentSection> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: 400,
         padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
-            const Text("Comments",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text("Comments", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection(widget.collectionName)
+                    .collection(_getCollectionPath())
                     .doc(widget.postId)
                     .collection('comments')
                     .orderBy('timestamp', descending: true)
@@ -794,35 +826,23 @@ class _CommentSectionState extends State<CommentSection> {
 
                       if (timestamp != null) {
                         DateTime date = timestamp.toDate();
-                        formattedTime =
-                            DateFormat('MMM d, yyyy • h:mm a').format(date);
+                        formattedTime = DateFormat('MMM d, yyyy • h:mm a').format(date);
                       }
 
                       return StreamBuilder<DocumentSnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(commenterId)
-                            .snapshots(),
+                        stream: FirebaseFirestore.instance.collection('users').doc(commenterId).snapshots(),
                         builder: (context, usernameSnapshot) {
-                          if (!usernameSnapshot.hasData ||
-                              !usernameSnapshot.data!.exists) {
+                          if (!usernameSnapshot.hasData || !usernameSnapshot.data!.exists) {
                             return const SizedBox();
                           }
-                          String username =
-                              usernameSnapshot.data!.get('username') ??
-                                  'Unknown User';
+                          String username = usernameSnapshot.data!.get('username') ?? 'Unknown User';
                           return ListTile(
-                            leading:
-                                ProfileAvatar(userId: commenterId, radius: 18),
-                            title: Text(username,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
+                            leading: ProfileAvatar(userId: commenterId, radius: 18),
+                            title: Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(formattedTime,
-                                    style: const TextStyle(
-                                        fontSize: 12, color: Colors.grey)),
+                                Text(formattedTime, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                                 Text(comment['comment'] ?? ''),
                               ],
                             ),
@@ -859,5 +879,22 @@ class _CommentSectionState extends State<CommentSection> {
         ),
       ),
     );
+  }
+
+  // 🔹 **Helper Function to Get Correct Collection Path**
+ String _getCollectionPath() {
+  print("🔍 Checking collection for: ${widget.collectionName}");
+    if (widget.collectionName.startsWith("lostfoundposts")) {
+      return "lostfoundposts/All/posts";
+    } else if (widget.collectionName.startsWith("Peerposts")) {
+      return "Peerposts/All/posts";
+    } else if (widget.collectionName.startsWith("Eventposts")) {
+      return "Eventposts/All/posts";
+    } else if (widget.collectionName.startsWith("Surveyposts")) {
+      return "Surveyposts/All/posts";
+    } else {
+      print("❌ Invalid collection name: ${widget.collectionName}");
+      throw Exception("Invalid collection name: ${widget.collectionName}");
+    }
   }
 }

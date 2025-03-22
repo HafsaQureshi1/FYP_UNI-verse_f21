@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
-// For formatting timestamps
 import 'postcard.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'createpost.dart';
 
-
 class SurveysScreen extends StatelessWidget {
-  const SurveysScreen({super.key});
+  // ✅ Update this to the correct Firestore collection path
+  final String collectionName = "Surveyposts/All/posts";
+
+  SurveysScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    print("Fetching posts from collection: $collectionName"); // ✅ Debugging
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(64, 236, 236, 236),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('Surveyposts')
+            .collection(collectionName) // ✅ Updated collection path
             .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -34,14 +37,14 @@ class SurveysScreen extends StatelessWidget {
               var postData = posts[index].data() as Map<String, dynamic>;
 
               return PostCard(
-                key: ValueKey(posts[index].id), // ✅ Prevents UI flickering
+                key: ValueKey(posts[index].id),
                 username: postData['userName'] ?? 'Anonymous',
                 content: postData['postContent'] ?? '',
                 postId: posts[index].id,
                 likes: postData['likes'] ?? 0,
                 userId: postData['userId'],
                 imageUrl: postData['imageUrl'] ?? '',
-                collectionName: 'Surveyposts',
+                collectionName: collectionName, // ✅ Pass new collection name
               );
             },
           );
@@ -54,7 +57,7 @@ class SurveysScreen extends StatelessWidget {
             context: context,
             isScrollControlled: true,
             builder: (context) {
-              return const CreateNewPostScreen(collectionName: 'Surveyposts');
+              return CreateNewPostScreen(collectionName: collectionName); // ✅ Updated
             },
           );
         },
