@@ -1,4 +1,5 @@
 import 'package:flutter_application_1/search_results.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'postcard.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,6 +19,8 @@ import 'createpost.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await GeolocatorPlatform.instance.checkPermission();  // Ensure Geolocator initializes properly
+ 
   runApp(const MyApp());
 }
 
@@ -281,45 +284,70 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 class LostFoundScreen extends StatefulWidget {
+  const LostFoundScreen({super.key});
+
   @override
   _LostFoundScreenState createState() => _LostFoundScreenState();
 }
 class  _LostFoundScreenState extends State<LostFoundScreen>{
-  
+   Stream<QuerySnapshot> _getPostsStream() {
+   
+      // Fetch posts from the selected category's subcollection
+      return FirebaseFirestore.instance
+          .collection('lostfoundposts')
+          .doc(selectedCategory) // Reference to selected category
+          .collection('posts') // Subcollection
+          .orderBy('timestamp', descending: true)
+          .snapshots();
+    
+  }
  final ScrollController _scrollController = ScrollController();
+ String selectedCategory = "All"; // Default selection
   @override
-  Widget build(BuildContext context) {
+   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromARGB(64, 236, 236, 236),
       body: Stack(
         children: [
           Column(
             children: [
-              const CategoryChips(),
+              // Category Chips for Filtering
+              CategoryChips(
+                collectionName: 'lostfoundposts',
+                onCategorySelected: (category) {
+                  setState(() {
+                    selectedCategory = category;
+                  });
+                },
+              ),
+
+              // Posts List
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('lostfoundposts')
-                      .orderBy('timestamp', descending: true)
-                      .snapshots(),
+                  stream: _getPostsStream(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Center(child: Text('No posts found'));
+                      return const Center(
+                        child: Text(
+                          'No posts found',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      );
                     }
 
                     var posts = snapshot.data!.docs;
 
                     return ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                       itemCount: posts.length,
                       itemBuilder: (context, index) {
                         var postData = posts[index].data() as Map<String, dynamic>;
                         return PostCard(
-                          key: ValueKey(posts[index].id), // Keep track of items
+                          key: ValueKey(posts[index].id),
                           username: postData['userName'] ?? 'Anonymous',
                           content: postData['postContent'] ?? '',
                           postId: posts[index].id,
@@ -335,6 +363,8 @@ class  _LostFoundScreenState extends State<LostFoundScreen>{
               ),
             ],
           ),
+
+          // Floating Action Button for Creating New Post
           Positioned(
             bottom: 16.0,
             right: 16.0,
@@ -349,16 +379,14 @@ class  _LostFoundScreenState extends State<LostFoundScreen>{
                   backgroundColor: Colors.transparent,
                   builder: (context) {
                     return FractionallySizedBox(
-                      heightFactor: 0.95, // Updated to 95% of screen height
+                      heightFactor: 0.95, // 95% of screen height
                       child: Container(
                         decoration: const BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(25),
-                          ),
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
                         ),
-                        child: const CreateNewPostScreen(
-                          collectionName: 'lostfoundposts',
+                        child: CreateNewPostScreen(
+                          collectionName: 'lostfoundposts/$selectedCategory/posts',
                         ),
                       ),
                     );
@@ -373,45 +401,79 @@ class  _LostFoundScreenState extends State<LostFoundScreen>{
     );
   }
 }
+class CategoryChips extends StatefulWidget {
+  final String collectionName;
+  final Function(String) onCategorySelected;
 
-class CategoryChips extends StatelessWidget {
-  const CategoryChips({super.key});
+  const CategoryChips({
+    super.key,
+    required this.collectionName,
+    required this.onCategorySelected,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            CategoryChip(label: "General"),
-            CategoryChip(label: "Electronics"),
-            CategoryChip(label: "Books"),
-          ],
-        ),
-      ),
-    );
-  }
+  _CategoryChipsState createState() => _CategoryChipsState();
 }
 
-class CategoryChip extends StatelessWidget {
-  final String label;
+class _CategoryChipsState extends State<CategoryChips> {
+  String selectedCategory = "All"; // Default selection
 
-  const CategoryChip({super.key, required this.label});
+  // Define categories based on the selected collection
+  List<String> getCategories() {
+    if (widget.collectionName == "lostfoundposts") {
+      return ["All",    // ✅ Moved inside "parameters"
+    "Electronics",
+      "Documents",
+      "Personal Items",
+      "Clothing & Accessories",
+      "Books & Stationery",
+      "Miscellaneous"
+    ];
+    } else if (widget.collectionName == "peerposts") {
+      return ["All", "Academics", "Career Advice", "Social Life"];
+    }
+    return [];
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
-      child: Chip(
-        label: Text(label),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Colors.grey, width: 1.2),
-          borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-    );
+    List<String> categories = getCategories();
+
+    return categories.isEmpty
+        ? const SizedBox.shrink()
+        : Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: categories.map((category) {
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedCategory = category;
+                      });
+                      widget.onCategorySelected(category);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Chip(
+                        label: Text(category),
+                        backgroundColor:
+                            selectedCategory == category ? Colors.blue : Colors.white,
+                        labelStyle: TextStyle(
+                            color: selectedCategory == category ? Colors.white : Colors.black),
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(
+                              color: selectedCategory == category ? Colors.blue : Colors.grey,
+                              width: 1.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          );
   }
 }
