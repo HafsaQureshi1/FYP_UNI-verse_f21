@@ -50,11 +50,16 @@ dependencies:
   file_picker: ^9.0.3
   flutter_image_compress: ^2.4.0
   photo_view: ^0.14.0
-
+  geolocator: ^13.0.3
+  google_maps_flutter: ^2.6.0
+  geocoding: ^2.1.0
+  permission_handler: ^11.0.1
+  flutter_map: ^8.1.1
+  latlong2: ^0.9.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your

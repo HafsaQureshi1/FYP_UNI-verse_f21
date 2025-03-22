@@ -124,18 +124,7 @@ class _PostCardState extends State<PostCard> {
   String _getMonthName(int month) {
     const monthNames = [
       "",
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec"
+      "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"
     ];
     return monthNames[month];
   }
@@ -218,23 +207,53 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
-  // ✅ Edit Post Function
   void _editPost() async {
-    if (!isOwner) return;
+  if (!isOwner) return;
 
-    // Fetch current post content
-    final postDoc = await FirebaseFirestore.instance
+  try {
+    DocumentSnapshot postDoc = await FirebaseFirestore.instance
         .collection(widget.collectionName)
+        .doc("All")
+        .collection("posts")
         .doc(widget.postId)
         .get();
 
+    String category = "All";
+
+    if (!postDoc.exists) {
+      QuerySnapshot categories = await FirebaseFirestore.instance
+          .collection(widget.collectionName)
+          .get();
+
+      for (var doc in categories.docs) {
+        DocumentSnapshot subPost = await FirebaseFirestore.instance
+            .collection(widget.collectionName)
+            .doc(doc.id)
+            .collection("posts")
+            .doc(widget.postId)
+            .get();
+
+        if (subPost.exists) {
+          category = doc.id;
+          postDoc = subPost;
+          break;
+        }
+      }
+    }
+
     if (!postDoc.exists) return;
 
-    final currentContent = postDoc.data()?['content'] ?? '';
+    // 🔥 **Fix: Cast data to Map<String, dynamic>**
+    final Map<String, dynamic>? postData =
+        postDoc.data() as Map<String, dynamic>?;
+
+    if (postData == null) return;
+
+    final currentContent = postData['postContent'] ?? '';
+
     final TextEditingController contentController =
         TextEditingController(text: currentContent);
 
-    // Show edit dialog
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -257,25 +276,22 @@ class _PostCardState extends State<PostCard> {
               onPressed: () async {
                 final updatedContent = contentController.text.trim();
                 if (updatedContent.isNotEmpty) {
-                  // Update post in Firestore
                   await FirebaseFirestore.instance
                       .collection(widget.collectionName)
+                      .doc(category)
+                      .collection("posts")
                       .doc(widget.postId)
                       .update({
                     'postContent': updatedContent,
                     'editedAt': FieldValue.serverTimestamp(),
                   });
-                  Navigator.pop(context);
 
                   if (mounted) {
+                    Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Post updated successfully')),
+                      const SnackBar(content: Text('Post updated successfully')),
                     );
                   }
-                }
-                if (mounted) {
-                  Navigator.pop(context);
                 }
               },
               child: const Text('Update'),
@@ -284,13 +300,46 @@ class _PostCardState extends State<PostCard> {
         );
       },
     );
+  } catch (e) {
+    print("❌ Error editing post: $e");
   }
+}
+void _deletePost() async {
+  if (!isOwner) return;
 
-  // ✅ Delete Post Function
-  void _deletePost() async {
-    if (!isOwner) return;
+  try {
+    DocumentSnapshot postDoc = await FirebaseFirestore.instance
+        .collection(widget.collectionName)
+        .doc("All")
+        .collection("posts")
+        .doc(widget.postId)
+        .get();
 
-    // Show confirmation dialog
+    String category = "All";
+
+    if (!postDoc.exists) {
+      QuerySnapshot categories = await FirebaseFirestore.instance
+          .collection(widget.collectionName)
+          .get();
+
+      for (var doc in categories.docs) {
+        DocumentSnapshot subPost = await FirebaseFirestore.instance
+            .collection(widget.collectionName)
+            .doc(doc.id)
+            .collection("posts")
+            .doc(widget.postId)
+            .get();
+
+        if (subPost.exists) {
+          category = doc.id;
+          postDoc = subPost;
+          break;
+        }
+      }
+    }
+
+    if (!postDoc.exists) return;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -306,17 +355,18 @@ class _PostCardState extends State<PostCard> {
             TextButton(
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               onPressed: () async {
-                // Delete post from Firestore
                 await FirebaseFirestore.instance
                     .collection(widget.collectionName)
+                    .doc(category)
+                    .collection("posts")
                     .doc(widget.postId)
                     .delete();
 
                 if (mounted) {
+                  Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Post deleted successfully')),
                   );
-                  Navigator.pop(context);
                 }
               },
               child: const Text('Delete'),
@@ -325,7 +375,11 @@ class _PostCardState extends State<PostCard> {
         );
       },
     );
+  } catch (e) {
+    print("❌ Error deleting post: $e");
   }
+}
+
 
   // ✅ Show Options Menu
   void _showOptionsMenu() {

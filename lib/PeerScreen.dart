@@ -4,8 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'postcard.dart';
 import 'createpost.dart';
 
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PeerAssistanceScreen extends StatelessWidget {
   const PeerAssistanceScreen({super.key});
