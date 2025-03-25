@@ -291,7 +291,6 @@ class LostFoundScreen extends StatefulWidget {
 }
 class  _LostFoundScreenState extends State<LostFoundScreen>{
    Stream<QuerySnapshot> _getPostsStream() {
-  print("📢 Fetching posts for category: $selectedCategory");
 
   final collectionRef = FirebaseFirestore.instance.collection('lostfoundposts');
 
@@ -434,12 +433,12 @@ class _CategoryChipsState extends State<CategoryChips> {
   List<String> getCategories() {
     if (widget.collectionName == "lostfoundposts") {
       return ["All",    // ✅ Moved inside "parameters"
-    "Electronics",
-      "Documents",
-      "Clothing & Accessories",
-      "Personal Items",
-      
-      "Books & Stationery",
+     "Electronics",
+      "Clothes & Bags",
+      "Official Documents",
+      "Books",
+      "Stationery & Supplies",
+      "Wallets & Keys ",
       "Miscellaneous"
     ];
     } else if (widget.collectionName == "peerposts") {

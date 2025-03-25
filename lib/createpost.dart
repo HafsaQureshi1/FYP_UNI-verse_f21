@@ -41,6 +41,27 @@ String _selectedAddress = "No location selected";
     _fetchUserInfo();
   }
   
+String _ruleBasedClassification(String postText) {
+  Map<String, List<String>> categoryKeywords = {
+    "Stationery & Supplies": ["pen", "pencil", "geometry", "notebook", "calculator"],
+    "Electronics": ["laptop", "mobile", "charger", "headphones"],
+    "Clothing & Accessories": ["bag", "jacket", "shoes", "watch"],
+    "Documents": ["id card", "certificate", "passport", "paper"],
+    "Books": ["book", "textbook", "novel", "magazine"],
+  };
+
+  postText = postText.toLowerCase();  // Convert to lowercase
+
+  for (var entry in categoryKeywords.entries) {
+    for (var keyword in entry.value) {
+      if (postText.contains(keyword)) {
+        return entry.key;  // Assign category if a keyword is found
+      }
+    }
+  }
+
+  return "Miscellaneous";  // If no match is found
+}
 
 Future<void> _pickLocation() async {
   final LatLng? location = await Navigator.push(
@@ -55,49 +76,68 @@ Future<void> _pickLocation() async {
     });
   }
 }
+
 Future<String> _classifyPostWithHuggingFace(String postText) async {
   print("🔹 Sending request to Hugging Face...");
 
-  final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
-  final headers = {
+ final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+
+
+ final headers = {
     "Authorization": "Bearer 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",  
     "Content-Type": "application/json"
   };
 
   final body = jsonEncode({
-  "inputs": postText,  // ✅ Corrected: "inputs" instead of "sequence"
-  "parameters": {
-    "candidate_labels": [  // ✅ Moved inside "parameters"
-     "Electronics",
-      "Clothing & Accessories",
-      "Documents",
-      "Books & Stationery",
-      "Personal Items",
-      "Miscellaneous"
-    ]
-  }
-});
+    "inputs": postText,  
+    "parameters": {
+      "candidate_labels": [
+       
+        "Electronics",
+        "Clothes & Bags",
+        "Official Documents",
+           "Wallets & Keys ",
+        "Books ",
+        "Stationery & Supplies",
+        "Miscellaneous"
+      ],
+        "hypothesis_template": "This item is related to {}."
+    }
+    
+  });
 
-
-  try {
+   try {
     final response = await http.post(url, headers: headers, body: body);
-
     print("🔹 API Response Status Code: ${response.statusCode}");
-    print("🔹 API Response Body: ${response.body}");
 
     if (response.statusCode == 200) {
       final responseData = jsonDecode(response.body);
-      print("🔹 Parsed JSON: $responseData");  // Print JSON to debug
-
       List<dynamic> labels = responseData["labels"];
       List<dynamic> scores = responseData["scores"];
 
       if (labels.isNotEmpty && scores.isNotEmpty) {
-        String bestCategory = labels[0];  // Get highest confidence category
-        double confidence = scores[0];
+        // Print labels and scores
+        for (int i = 0; i < labels.length; i++) {
+          print("🔹 ${labels[i]}: ${scores[i].toStringAsFixed(4)}");
+        }
 
-        print("✅ AI Category: $bestCategory (Confidence: ${confidence.toStringAsFixed(2)})");
-        return confidence > 0.3 ? bestCategory : "Miscellaneous";  // Confidence threshold
+        // Find the best category excluding "Miscellaneous"
+        String bestCategory = "Miscellaneous";
+        double bestConfidence = 0.0;
+
+        for (int i = 0; i < labels.length; i++) {
+          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+            bestCategory = labels[i];
+            bestConfidence = scores[i];
+          }
+        }
+        if (bestConfidence < 0.2) {
+  bestCategory = "Miscellaneous";
+}
+
+        print("✅ Selected Category: $bestCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
+
+        return bestCategory;
       }
     } else {
       print("❌ AI Classification Failed. Response: ${response.body}");

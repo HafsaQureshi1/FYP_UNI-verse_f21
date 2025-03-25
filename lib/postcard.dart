@@ -75,10 +75,11 @@ Future<String> _classifyPostWithHuggingFace(String postText) async {
   "parameters": {
     "candidate_labels": [  // ✅ Moved inside "parameters"
      "Electronics",
-      "Clothing & Accessories",
-      "Documents",
-      "Books & Stationery",
-      "Personal Items",
+      "Clothes & Bags",
+      "Official Documents",
+      "Books ",
+         "Wallets & Keys "
+        "Stationery & Supplies",
       "Miscellaneous"
     ]
   }
@@ -111,10 +112,8 @@ Future<String> _classifyPostWithHuggingFace(String postText) async {
   } catch (e) {
     print("❌ Hugging Face API Exception: $e");
   }
-
   return "Miscellaneous";  // Default if API fails
-}
-
+  }
   /// ✅ Fetches user details dynamically
   void _fetchUsername() {
     FirebaseFirestore.instance
@@ -147,19 +146,17 @@ void _fetchImageUrl() async {
   String collectionPath = _getCollectionPath();
   String postId = widget.postId;
 
-  print("📢 Checking document at path: $collectionPath/$postId");
-
+  
   final postRef = FirebaseFirestore.instance.collection(collectionPath).doc(postId);
   
   final postDoc = await postRef.get();
 
   if (!postDoc.exists) {
-    print("❌ Document $postId not found in $collectionPath");
+   
     return; // Stop execution if the document does not exist
   }
 
-  print("✅ Document found. Data: ${postDoc.data()}");
-
+  
   // Listen for updates
   postRef.snapshots().listen((postDoc) {
     if (postDoc.exists && mounted) {
@@ -280,7 +277,6 @@ void _toggleLike() async {
 
 // 🔹 **Helper Function to Get Correct Collection Path**
   String _getCollectionPath() {
-    print("🔍 Checking collection for: ${widget.collectionName}");
     if (widget.collectionName.startsWith("lostfoundposts")) {
       return "lostfoundposts/All/posts";
     } else if (widget.collectionName.startsWith("Peerposts")) {
@@ -455,7 +451,7 @@ void _deletePost() async {
                       .doc(widget.postId)
                       .delete();
                 }
-Navigator.pop(context);
+
                 if (mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
