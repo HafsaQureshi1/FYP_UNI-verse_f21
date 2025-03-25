@@ -441,8 +441,14 @@ class _CategoryChipsState extends State<CategoryChips> {
       "Wallets & Keys ",
       "Miscellaneous"
     ];
-    } else if (widget.collectionName == "peerposts") {
-      return ["All", "Academics", "Career Advice", "Social Life"];
+    } else if (widget.collectionName == "Peerposts") {
+      return ["All", "Computer Science & Computer Systems",
+        "Education & Physical Education",
+        "Business Department",
+        "Electrical Engineering",
+        "Mathematics",
+        "Media & Communication",
+        "Miscellaneous"];
     }
     return [];
   }

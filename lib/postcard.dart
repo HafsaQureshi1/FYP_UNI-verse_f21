@@ -114,6 +114,84 @@ Future<String> _classifyPostWithHuggingFace(String postText) async {
   }
   return "Miscellaneous";  // Default if API fails
   }
+
+Map<String, String> categoryMapping = {
+  "Programming & Software & AI & Machine learning (Computer Science & Computer Systems)": "Computer Science & Computer Systems",
+  "Electronics & Circuits (Electrical Engineering)": "Electrical Engineering",
+  "Teaching Methods (Education & Physical Education)": "Education & Physical Education",
+  "Business Strategy (Business Department)": "Business Department",
+  "Statistics & Calculus (Mathematics)": "Mathematics",
+  "Journalism & Broadcasting (Media & Communication)": "Media & Communication",
+  "Miscellaneous": "Miscellaneous"
+};
+Future<String> _classifyPeerAssistancePost(String postText) async {
+  print("🔹 Sending request to Hugging Face for Peer Assistance...");
+
+  final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+  final headers = {
+    "Authorization": "Bearer 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",
+    "Content-Type": "application/json"
+  };
+
+  final body = jsonEncode({
+    "inputs": postText,
+    "parameters": {
+      "candidate_labels": [
+        "Programming & Software & Artifical Intelligence (Computer Science & Computer Systems)",
+        "Electronics & Circuits (Electrical Engineering)",
+        "Teaching Methods (Education & Physical Education)",
+        "Business Strategy (Business Department)",
+        "Statistics & Calculus (Mathematics)",
+        "Journalism & Broadcasting (Media & Communication)",
+        "Miscellaneous"
+      ],
+      "hypothesis_template": "This post is related to {}."
+    }
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+    print("🔹 API Response Status Code: ${response.statusCode}");
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      List<dynamic> labels = responseData["labels"];
+      List<dynamic> scores = responseData["scores"];
+
+      if (labels.isNotEmpty && scores.isNotEmpty) {
+        // Find the best category excluding "Miscellaneous"
+        String bestCategory = "Miscellaneous";
+        double bestConfidence = 0.0;
+
+        for (int i = 0; i < labels.length; i++) {
+          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+            bestCategory = labels[i];
+            bestConfidence = scores[i];
+          }
+        }
+
+        if (bestConfidence < 0.2) {
+          bestCategory = "Miscellaneous";
+        }
+
+        // 🔹 **Map AI Label to Original Chip Name**
+        String mappedCategory = categoryMapping[bestCategory] ?? "Miscellaneous";
+
+        print("✅ Selected Category: $mappedCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
+        return mappedCategory;
+      }
+    } else {
+      print("❌ AI Classification Failed. Response: ${response.body}");
+    }
+  } catch (e) {
+    print("❌ Hugging Face API Exception: $e");
+  }
+
+  return "Miscellaneous"; // Default if API fails
+}
+
+
+
   /// ✅ Fetches user details dynamically
   void _fetchUsername() {
     FirebaseFirestore.instance
@@ -291,7 +369,6 @@ void _toggleLike() async {
     }
   }
 
-
 void _editPost() async {
   if (!isOwner) return;
 
@@ -342,16 +419,24 @@ void _editPost() async {
               onPressed: () async {
                 final updatedContent = contentController.text.trim();
                 if (updatedContent.isNotEmpty) {
-                  // 🔥 AI Re-Categorization (Optional)
+                  
+                  // 🔥 AI Re-Categorization Based on Collection Name
                   String newCategory = currentCategory;
-                  if (widget.collectionName == "lostfoundposts") {
+
+                  if (widget.collectionName.startsWith("lostfoundposts")) {
+                    print("🔹 Reclassifying Lost & Found Post...");
                     newCategory = await _classifyPostWithHuggingFace(updatedContent);
+                    print("✅ AI Categorized as: $newCategory");
+                  } else if (widget.collectionName.startsWith("Peerposts")) {
+                    print("🔹 Reclassifying Peer Assistance Post...");
+                    newCategory = await _classifyPeerAssistancePost(updatedContent);
+                    print("✅ AI Categorized as: $newCategory");
                   }
 
                   // ✅ Update post in Firestore
                   await postRef.update({
                     'postContent': updatedContent,
-                    'category': newCategory, // Update category if needed
+                    'category': newCategory, // AI updated category
                     'editedAt': FieldValue.serverTimestamp(),
                   });
 

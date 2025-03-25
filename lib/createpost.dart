@@ -76,6 +76,16 @@ Future<void> _pickLocation() async {
     });
   }
 }
+Map<String, String> categoryMapping = {
+  "Programming & Software & AI & Machine learning (Computer Science & Computer Systems)": "Computer Science & Computer Systems",
+  "Electronics & Circuits (Electrical Engineering)": "Electrical Engineering",
+  "Teaching Methods (Education & Physical Education)": "Education & Physical Education",
+  "Business Strategy (Business Department)": "Business Department",
+  "Statistics & Calculus (Mathematics)": "Mathematics",
+  "Journalism & Broadcasting (Media & Communication)": "Media & Communication",
+  "Miscellaneous": "Miscellaneous"
+};
+
 
 Future<String> _classifyPostWithHuggingFace(String postText) async {
   print("🔹 Sending request to Hugging Face...");
@@ -148,6 +158,71 @@ Future<String> _classifyPostWithHuggingFace(String postText) async {
 
   return "Miscellaneous";  // Default if API fails
 }
+Future<String> _classifyPeerAssistancePost(String postText) async {
+  print("🔹 Sending request to Hugging Face for Peer Assistance...");
+
+  final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+  final headers = {
+    "Authorization": "Bearer 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",
+    "Content-Type": "application/json"
+  };
+
+  final body = jsonEncode({
+    "inputs": postText,
+    "parameters": {
+      "candidate_labels": [
+        "Programming & Software & Artifical Intelligence (Computer Science & Computer Systems)",
+        "Electronics & Circuits (Electrical Engineering)",
+        "Teaching Methods (Education & Physical Education)",
+        "Business Strategy (Business Department)",
+        "Statistics & Calculus (Mathematics)",
+        "Journalism & Broadcasting (Media & Communication)",
+        "Miscellaneous"
+      ],
+      "hypothesis_template": "This post is related to {}."
+    }
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+    print("🔹 API Response Status Code: ${response.statusCode}");
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      List<dynamic> labels = responseData["labels"];
+      List<dynamic> scores = responseData["scores"];
+
+      if (labels.isNotEmpty && scores.isNotEmpty) {
+        // Find the best category excluding "Miscellaneous"
+        String bestCategory = "Miscellaneous";
+        double bestConfidence = 0.0;
+
+        for (int i = 0; i < labels.length; i++) {
+          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+            bestCategory = labels[i];
+            bestConfidence = scores[i];
+          }
+        }
+
+        if (bestConfidence < 0.2) {
+          bestCategory = "Miscellaneous";
+        }
+
+        // 🔹 **Map AI Label to Original Chip Name**
+        String mappedCategory = categoryMapping[bestCategory] ?? "Miscellaneous";
+
+        print("✅ Selected Category: $mappedCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
+        return mappedCategory;
+      }
+    } else {
+      print("❌ AI Classification Failed. Response: ${response.body}");
+    }
+  } catch (e) {
+    print("❌ Hugging Face API Exception: $e");
+  }
+
+  return "Miscellaneous"; // Default if API fails
+}
 Future<void> _createPost() async {
   print("Original widget.collectionName: ${widget.collectionName}");
 
@@ -181,7 +256,7 @@ Future<void> _createPost() async {
 
       // 🔹 **Determine Collection Path**
       String collectionPath;
-      String category = "Uncategorized"; // Default category (only for Lost & Found)
+      String category = "Uncategorized"; // Default category (for AI-categorized posts)
 
       if (widget.collectionName.startsWith("lostfoundposts")) {
         // 🔹 **AI Categorization for Lost & Found**
@@ -190,6 +265,10 @@ Future<void> _createPost() async {
         print("✅ AI Categorized as: $category");
         collectionPath = "lostfoundposts/All/posts";
       } else if (widget.collectionName.startsWith("Peerposts")) {
+        // 🔹 **AI Categorization for Peer Assistance**
+        print("🔹 Classifying peer assistance post with AI...");
+        category = await _classifyPeerAssistancePost(postContent);
+        print("✅ AI Categorized as: $category");
         collectionPath = "Peerposts/All/posts";
       } else if (widget.collectionName.startsWith("Eventposts")) {
         collectionPath = "Eventposts/All/posts";
@@ -213,8 +292,9 @@ Future<void> _createPost() async {
         'postContent': postContent,
         'imageUrl': uploadedImageUrl ?? '',
         'timestamp': FieldValue.serverTimestamp(),
-        if (widget.collectionName.startsWith("lostfoundposts"))
-          "category": category, // ✅ Store category only for Lost & Found
+        if (widget.collectionName.startsWith("lostfoundposts") ||
+            widget.collectionName.startsWith("Peerposts"))
+          "category": category, // ✅ Store category for AI-categorized posts
         "location": _selectedLocation != null
             ? {
                 "latitude": _selectedLocation!.latitude,
