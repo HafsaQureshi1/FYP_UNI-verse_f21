@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -221,9 +222,12 @@ class NotificationScreen extends StatelessWidget {
 
       for (String collection in collections) {
         DocumentSnapshot postDoc = await FirebaseFirestore.instance
-            .collection(collection)
-            .doc(postId)
-            .get();
+    .collection(collection)
+    .doc("All")
+    .collection("posts")
+    .doc(postId)
+    .get();
+
 
         if (postDoc.exists) {
           await FirebaseFirestore.instance
@@ -302,84 +306,71 @@ class NotificationScreen extends StatelessWidget {
 
     await batch.commit();
   }
-
-  // Handle notification tap
-  Future<void> _handleNotificationTap(BuildContext context,
-      String notificationId, Map<String, dynamic> data) async {
+Future<void> _handleNotificationTap(BuildContext context, String notificationId, Map<String, dynamic> data) async {
+  try {
     // Mark notification as read
-    await FirebaseFirestore.instance
-        .collection('notifications')
-        .doc(notificationId)
-        .update({'isRead': true}).catchError((error) {
-      // Silent error handling
-    });
+    await FirebaseFirestore.instance.collection('notifications').doc(notificationId).update({'isRead': true});
 
-    // Navigate to the post
-    if (data['postId'] != null) {
-      String postId = data['postId'];
-      String? collectionName;
+    // Check if postId exists
+    if (data['postId'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid notification data')));
+      return;
+    }
 
-      // Check if collection name is available in notification
-      if (data.containsKey('collection') && data['collection'] != null) {
-        collectionName = data['collection'];
-      } else {
-        // Try to determine collection
-        List<String> collections = [
-          'lostfoundposts',
-          'Peerposts',
-          'Eventposts',
-          'Surveyposts',
-        ];
+    String postId = data['postId'];
+    String? collectionName = data['collection'];
 
-        for (String collection in collections) {
-          DocumentSnapshot postDoc = await FirebaseFirestore.instance
-              .collection(collection)
-              .doc(postId)
-              .get();
+    // If collection name is not provided, determine it
+    if (collectionName == null) {
+      List<String> collections = ['lost n found', 'peer posts', 'events', 'survey posts', 'jobs'];
 
-          if (postDoc.exists) {
-            collectionName = collection;
-
-            // Update notification with correct collection
-            await FirebaseFirestore.instance
-                .collection('notifications')
-                .doc(notificationId)
-                .update({'collection': collection});
-            break;
-          }
-        }
-      }
-
-      // If we found the collection, navigate to post
-      if (collectionName != null) {
+      for (String collection in collections) {
         DocumentSnapshot postDoc = await FirebaseFirestore.instance
-            .collection(collectionName)
+            .collection(collection)
+            .doc("All")
+            .collection("posts")
             .doc(postId)
             .get();
 
         if (postDoc.exists) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PostDetailView(
-                post: {
-                  ...postDoc.data() as Map<String, dynamic>,
-                  'id': postDoc.id,
-                  'collection': collectionName,
-                },
-              ),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Post no longer exists')),
-          );
+          collectionName = collection;
+
+          // Update notification with correct collection
+          await FirebaseFirestore.instance.collection('notifications').doc(notificationId).update({'collection': collection});
+          break;
         }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not find the post')),
-        );
       }
     }
+
+    // If collection name is found, navigate to post
+    if (collectionName != null) {
+      DocumentSnapshot postDoc = await FirebaseFirestore.instance
+          .collection(collectionName)
+          .doc("All")
+          .collection("posts")
+          .doc(postId)
+          .get();
+
+      if (postDoc.exists) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PostDetailView(
+              post: {
+                ...postDoc.data() as Map<String, dynamic>,
+                'id': postDoc.id,
+                'collection': collectionName,
+              },
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post no longer exists')));
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not find the post')));
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error handling notification: $e')));
   }
-}
+}}
