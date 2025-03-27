@@ -56,8 +56,21 @@ class SurveysScreen extends StatelessWidget {
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
+            isDismissible: true,
+            enableDrag: true,
+            backgroundColor: Colors.transparent,
             builder: (context) {
-              return CreateNewPostScreen(collectionName: collectionName); // ✅ Updated
+              return FractionallySizedBox(
+                heightFactor: 0.95, // 95% of screen height
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(25)),
+                  ),
+                  child: CreateNewPostScreen(collectionName: collectionName),
+                ),
+              );
             },
           );
         },

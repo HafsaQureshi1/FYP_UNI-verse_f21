@@ -12,6 +12,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'profileimage.dart';
 import 'categorize.dart';
+
 class CreateNewPostScreen extends StatefulWidget {
   final String collectionName;
 
@@ -26,8 +27,8 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isPosting = false;
-LatLng? _selectedLocation;
-String _selectedAddress = "No location selected";
+  LatLng? _selectedLocation;
+  String _selectedAddress = "No location selected";
 
   String _username = '';
   String? _userId;
@@ -40,315 +41,330 @@ String _selectedAddress = "No location selected";
     super.initState();
     _fetchUserInfo();
   }
-  
-String _ruleBasedClassification(String postText) {
-  Map<String, List<String>> categoryKeywords = {
-    "Stationery & Supplies": ["pen", "pencil", "geometry", "notebook", "calculator"],
-    "Electronics": ["laptop", "mobile", "charger", "headphones"],
-    "Clothing & Accessories": ["bag", "jacket", "shoes", "watch"],
-    "Documents": ["id card", "certificate", "passport", "paper"],
-    "Books": ["book", "textbook", "novel", "magazine"],
-  };
 
-  postText = postText.toLowerCase();  // Convert to lowercase
-
-  for (var entry in categoryKeywords.entries) {
-    for (var keyword in entry.value) {
-      if (postText.contains(keyword)) {
-        return entry.key;  // Assign category if a keyword is found
-      }
-    }
-  }
-
-  return "Miscellaneous";  // If no match is found
-}
-
-Future<void> _pickLocation() async {
-  final LatLng? location = await Navigator.push(
-    context,
-    MaterialPageRoute(builder: (context) => LocationPicker()),
-  );
-
-  if (location != null) {
-    setState(() {
-      _selectedLocation = location;
-      _updateAddress(location);
-    });
-  }
-}
-Map<String, String> categoryMapping = {
-  "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)": "Computer Science & Computer Systems",
-  "Electronics & Circuits (Electrical Engineering)": "Electrical Engineering",
-  "Teaching Methods (Education & Physical Education)": "Education & Physical Education",
-  "Business Strategy (Business Department)": "Business Department",
-  "Statistics & Calculus (Mathematics)": "Mathematics",
-  "Journalism & Broadcasting (Media & Communication)": "Media & Communication",
-  "Miscellaneous": "Miscellaneous"
-};
-
-
-Future<String> _classifyPostWithHuggingFace(String postText) async {
-  print("🔹 Sending request to Hugging Face...");
-
- final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
-
-
- final headers = {
-    "Authorization": "Bearer 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",  
-    "Content-Type": "application/json"
-  };
-
-  final body = jsonEncode({
-    "inputs": postText,  
-    "parameters": {
-      "candidate_labels": [
-       
-        "Electronics",
-        "Clothes & Bags",
-        "Official Documents",
-           "Wallets & Keys ",
-        "Books ",
-        "Stationery & Supplies",
-        "Miscellaneous"
+  String _ruleBasedClassification(String postText) {
+    Map<String, List<String>> categoryKeywords = {
+      "Stationery & Supplies": [
+        "pen",
+        "pencil",
+        "geometry",
+        "notebook",
+        "calculator"
       ],
-        "hypothesis_template": "This item is related to {}."
-    }
-    
-  });
+      "Electronics": ["laptop", "mobile", "charger", "headphones"],
+      "Clothing & Accessories": ["bag", "jacket", "shoes", "watch"],
+      "Documents": ["id card", "certificate", "passport", "paper"],
+      "Books": ["book", "textbook", "novel", "magazine"],
+    };
 
-   try {
-    final response = await http.post(url, headers: headers, body: body);
-    print("🔹 API Response Status Code: ${response.statusCode}");
+    postText = postText.toLowerCase(); // Convert to lowercase
 
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      List<dynamic> labels = responseData["labels"];
-      List<dynamic> scores = responseData["scores"];
-
-      if (labels.isNotEmpty && scores.isNotEmpty) {
-        // Print labels and scores
-        for (int i = 0; i < labels.length; i++) {
-          print("🔹 ${labels[i]}: ${scores[i].toStringAsFixed(4)}");
+    for (var entry in categoryKeywords.entries) {
+      for (var keyword in entry.value) {
+        if (postText.contains(keyword)) {
+          return entry.key; // Assign category if a keyword is found
         }
-
-        // Find the best category excluding "Miscellaneous"
-        String bestCategory = "Miscellaneous";
-        double bestConfidence = 0.0;
-
-        for (int i = 0; i < labels.length; i++) {
-          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
-            bestCategory = labels[i];
-            bestConfidence = scores[i];
-          }
-        }
-        if (bestConfidence < 0.2) {
-  bestCategory = "Miscellaneous";
-}
-
-        print("✅ Selected Category: $bestCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
-
-        return bestCategory;
       }
-    } else {
-      print("❌ AI Classification Failed. Response: ${response.body}");
     }
-  } catch (e) {
-    print("❌ Hugging Face API Exception: $e");
+
+    return "Miscellaneous"; // If no match is found
   }
 
-  return "Miscellaneous";  // Default if API fails
-}
-Future<String> _classifyPeerAssistancePost(String postText) async {
-  print("🔹 Sending request to Hugging Face for Peer Assistance...");
-
-  final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
-  final headers = {
-    "Authorization": "Bearer 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",
-    "Content-Type": "application/json"
-  };
-
-  final body = jsonEncode({
-    "inputs": postText,
-    "parameters": {
-      "candidate_labels": [
-        "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)",
-        "Electronics & Circuits (Electrical Engineering)",
-        "Teaching Methods (Education & Physical Education)",
-        "Business Strategy (Business Department)",
-        "Statistics & Calculus (Mathematics)",
-        "Journalism & Broadcasting (Media & Communication)",
-        "Miscellaneous"
-      ],
-      "hypothesis_template": "This post is related to {}."
-    }
-  });
-
-  try {
-    final response = await http.post(url, headers: headers, body: body);
-    print("🔹 API Response Status Code: ${response.statusCode}");
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      List<dynamic> labels = responseData["labels"];
-      List<dynamic> scores = responseData["scores"];
-
-      print("🔹 AI Response Labels: $labels");
-      print("🔹 AI Response Scores: $scores");
-
-      if (labels.isNotEmpty && scores.isNotEmpty) {
-        // Find the best category excluding "Miscellaneous"
-        String bestCategory = "Miscellaneous";
-        double bestConfidence = 0.0;
-
-        for (int i = 0; i < labels.length; i++) {
-          print("🔹 Checking: ${labels[i]} (Score: ${scores[i].toStringAsFixed(4)})");
-
-          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
-            bestCategory = labels[i];
-            bestConfidence = scores[i];
-          }
-        }
-
-        if (bestConfidence < 0.2) {
-          bestCategory = "Miscellaneous";
-        }
-
-        // 🔹 **Map AI Label to Original Chip Name**
-        String mappedCategory = categoryMapping[bestCategory] ?? "Miscellaneous";
-
-        print("✅ Selected Category: $mappedCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
-        return mappedCategory;
-      }
-    } else {
-      print("❌ AI Classification Failed. Response: ${response.body}");
-    }
-  } catch (e) {
-    print("❌ Hugging Face API Exception: $e");
-  }
-
-  return "Miscellaneous"; // Default if API fails
-}
-Future<void> _createPost() async {
-  print("Original widget.collectionName: ${widget.collectionName}");
-
-  String postContent = _postController.text.trim();
-  if (postContent.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Post cannot be empty!')),
+  Future<void> _pickLocation() async {
+    final LatLng? location = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => LocationPicker()),
     );
-    return;
-  }
 
-  setState(() {
-    _isPosting = true;
-  });
-
-  try {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(user.uid).get();
-      String username = userDoc.exists ? userDoc['username'] : 'Anonymous';
-
-      String? uploadedImageUrl;
-
-      // Upload image if selected
-      if (_imageFile != null || _webImage != null) {
-        Uint8List imageBytes =
-            kIsWeb ? _webImage! : await _imageFile!.readAsBytes();
-        uploadedImageUrl = await _uploadImageToCloudinary(imageBytes);
-      }
-
-      // 🔹 **Determine Collection Path**
-      String collectionPath;
-      String category = "Uncategorized"; // Default category (for AI-categorized posts)
-
-      if (widget.collectionName.startsWith("lostfoundposts")) {
-        // 🔹 **AI Categorization for Lost & Found**
-        print("🔹 Classifying post with AI...");
-        category = await _classifyPostWithHuggingFace(postContent);
-        print("✅ AI Categorized as: $category");
-        collectionPath = "lostfoundposts/All/posts";
-      } else if (widget.collectionName.startsWith("Peerposts")) {
-        // 🔹 **AI Categorization for Peer Assistance**
-        print("🔹 Classifying peer assistance post with AI...");
-        category = await _classifyPeerAssistancePost(postContent);
-        print("✅ AI Categorized as: $category");
-        collectionPath = "Peerposts/All/posts";
-      } else if (widget.collectionName.startsWith("Eventposts")) {
-        collectionPath = "Eventposts/All/posts";
-      } else if (widget.collectionName.startsWith("Surveyposts")) {
-        collectionPath = "Surveyposts/All/posts";
-      } else {
-        print("❌ Invalid collection name: ${widget.collectionName}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid collection name!')),
-        );
-        return;
-      }
-
-      // ✅ Firestore Reference
-      final generalRef = _firestore.collection(collectionPath).doc();
-      final postData = {
-        'userId': user.uid,
-        'userName': username,
-        'userEmail': user.email,
-        'likes': 0,
-        'postContent': postContent,
-        'imageUrl': uploadedImageUrl ?? '',
-        'timestamp': FieldValue.serverTimestamp(),
-        if (widget.collectionName.startsWith("lostfoundposts") ||
-            widget.collectionName.startsWith("Peerposts"))
-          "category": category, // ✅ Store category for AI-categorized posts
-        "location": _selectedLocation != null
-            ? {
-                "latitude": _selectedLocation!.latitude,
-                "longitude": _selectedLocation!.longitude,
-                "address": _selectedAddress,
-              }
-            : null,
-      };
-
-      print("🚀 Posting to: $collectionPath"); // Debugging path
-      print("📝 Document ID: ${generalRef.id}"); // Debugging ID
-
-      await generalRef.set(postData);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Posted!')),
-      );
-
-      Navigator.of(context).pop();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not logged in!')),
-      );
-    }
-  } catch (e) {
-    print("❌ Firestore Error: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e')),
-    );
-  } finally {
-    setState(() {
-      _isPosting = false;
-    });
-  }
-}
-
-Future<void> _updateAddress(LatLng position) async {
-  try {
-    List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude, position.longitude);
-    if (placemarks.isNotEmpty) {
+    if (location != null) {
       setState(() {
-        _selectedAddress = placemarks.first.street ?? "Unknown Address";
+        _selectedLocation = location;
+        _updateAddress(location);
       });
     }
-  } catch (e) {
-    print("Error fetching address: $e");
   }
-}
+
+  Map<String, String> categoryMapping = {
+    "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)":
+        "Computer Science & Computer Systems",
+    "Electronics & Circuits (Electrical Engineering)": "Electrical Engineering",
+    "Teaching Methods (Education & Physical Education)":
+        "Education & Physical Education",
+    "Business Strategy (Business Department)": "Business Department",
+    "Statistics & Calculus (Mathematics)": "Mathematics",
+    "Journalism & Broadcasting (Media & Communication)":
+        "Media & Communication",
+    "Miscellaneous": "Miscellaneous"
+  };
+
+  Future<String> _classifyPostWithHuggingFace(String postText) async {
+    print("🔹 Sending request to Hugging Face...");
+
+    final url = Uri.parse(
+        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+
+    final headers = {
+      "Authorization": "Bearer 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",
+      "Content-Type": "application/json"
+    };
+
+    final body = jsonEncode({
+      "inputs": postText,
+      "parameters": {
+        "candidate_labels": [
+          "Electronics",
+          "Clothes & Bags",
+          "Official Documents",
+          "Wallets & Keys ",
+          "Books ",
+          "Stationery & Supplies",
+          "Miscellaneous"
+        ],
+        "hypothesis_template": "This item is related to {}."
+      }
+    });
+
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+      print("🔹 API Response Status Code: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        List<dynamic> labels = responseData["labels"];
+        List<dynamic> scores = responseData["scores"];
+
+        if (labels.isNotEmpty && scores.isNotEmpty) {
+          // Print labels and scores
+          for (int i = 0; i < labels.length; i++) {
+            print("🔹 ${labels[i]}: ${scores[i].toStringAsFixed(4)}");
+          }
+
+          // Find the best category excluding "Miscellaneous"
+          String bestCategory = "Miscellaneous";
+          double bestConfidence = 0.0;
+
+          for (int i = 0; i < labels.length; i++) {
+            if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+              bestCategory = labels[i];
+              bestConfidence = scores[i];
+            }
+          }
+          if (bestConfidence < 0.2) {
+            bestCategory = "Miscellaneous";
+          }
+
+          print(
+              "✅ Selected Category: $bestCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
+
+          return bestCategory;
+        }
+      } else {
+        print("❌ AI Classification Failed. Response: ${response.body}");
+      }
+    } catch (e) {
+      print("❌ Hugging Face API Exception: $e");
+    }
+
+    return "Miscellaneous"; // Default if API fails
+  }
+
+  Future<String> _classifyPeerAssistancePost(String postText) async {
+    print("🔹 Sending request to Hugging Face for Peer Assistance...");
+
+    final url = Uri.parse(
+        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+    final headers = {
+      "Authorization": "Bearer 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",
+      "Content-Type": "application/json"
+    };
+
+    final body = jsonEncode({
+      "inputs": postText,
+      "parameters": {
+        "candidate_labels": [
+          "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)",
+          "Electronics & Circuits (Electrical Engineering)",
+          "Teaching Methods (Education & Physical Education)",
+          "Business Strategy (Business Department)",
+          "Statistics & Calculus (Mathematics)",
+          "Journalism & Broadcasting (Media & Communication)",
+          "Miscellaneous"
+        ],
+        "hypothesis_template": "This post is related to {}."
+      }
+    });
+
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+      print("🔹 API Response Status Code: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        List<dynamic> labels = responseData["labels"];
+        List<dynamic> scores = responseData["scores"];
+
+        print("🔹 AI Response Labels: $labels");
+        print("🔹 AI Response Scores: $scores");
+
+        if (labels.isNotEmpty && scores.isNotEmpty) {
+          // Find the best category excluding "Miscellaneous"
+          String bestCategory = "Miscellaneous";
+          double bestConfidence = 0.0;
+
+          for (int i = 0; i < labels.length; i++) {
+            print(
+                "🔹 Checking: ${labels[i]} (Score: ${scores[i].toStringAsFixed(4)})");
+
+            if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+              bestCategory = labels[i];
+              bestConfidence = scores[i];
+            }
+          }
+
+          if (bestConfidence < 0.2) {
+            bestCategory = "Miscellaneous";
+          }
+
+          // 🔹 **Map AI Label to Original Chip Name**
+          String mappedCategory =
+              categoryMapping[bestCategory] ?? "Miscellaneous";
+
+          print(
+              "✅ Selected Category: $mappedCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
+          return mappedCategory;
+        }
+      } else {
+        print("❌ AI Classification Failed. Response: ${response.body}");
+      }
+    } catch (e) {
+      print("❌ Hugging Face API Exception: $e");
+    }
+
+    return "Miscellaneous"; // Default if API fails
+  }
+
+  Future<void> _createPost() async {
+    print("Original widget.collectionName: ${widget.collectionName}");
+
+    String postContent = _postController.text.trim();
+    if (postContent.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post cannot be empty!')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isPosting = true;
+    });
+
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        DocumentSnapshot userDoc =
+            await _firestore.collection('users').doc(user.uid).get();
+        String username = userDoc.exists ? userDoc['username'] : 'Anonymous';
+
+        String? uploadedImageUrl;
+
+        // Upload image if selected
+        if (_imageFile != null || _webImage != null) {
+          Uint8List imageBytes =
+              kIsWeb ? _webImage! : await _imageFile!.readAsBytes();
+          uploadedImageUrl = await _uploadImageToCloudinary(imageBytes);
+        }
+
+        // 🔹 **Determine Collection Path**
+        String collectionPath;
+        String category =
+            "Uncategorized"; // Default category (for AI-categorized posts)
+
+        if (widget.collectionName.startsWith("lostfoundposts")) {
+          // 🔹 **AI Categorization for Lost & Found**
+          print("🔹 Classifying post with AI...");
+          category = await _classifyPostWithHuggingFace(postContent);
+          print("✅ AI Categorized as: $category");
+          collectionPath = "lostfoundposts/All/posts";
+        } else if (widget.collectionName.startsWith("Peerposts")) {
+          // 🔹 **AI Categorization for Peer Assistance**
+          print("🔹 Classifying peer assistance post with AI...");
+          category = await _classifyPeerAssistancePost(postContent);
+          print("✅ AI Categorized as: $category");
+          collectionPath = "Peerposts/All/posts";
+        } else if (widget.collectionName.startsWith("Eventposts")) {
+          collectionPath = "Eventposts/All/posts";
+        } else if (widget.collectionName.startsWith("Surveyposts")) {
+          collectionPath = "Surveyposts/All/posts";
+        } else {
+          print("❌ Invalid collection name: ${widget.collectionName}");
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid collection name!')),
+          );
+          return;
+        }
+
+        // ✅ Firestore Reference
+        final generalRef = _firestore.collection(collectionPath).doc();
+        final postData = {
+          'userId': user.uid,
+          'userName': username,
+          'userEmail': user.email,
+          'likes': 0,
+          'postContent': postContent,
+          'imageUrl': uploadedImageUrl ?? '',
+          'timestamp': FieldValue.serverTimestamp(),
+          if (widget.collectionName.startsWith("lostfoundposts") ||
+              widget.collectionName.startsWith("Peerposts"))
+            "category": category, // ✅ Store category for AI-categorized posts
+          "location": _selectedLocation != null
+              ? {
+                  "latitude": _selectedLocation!.latitude,
+                  "longitude": _selectedLocation!.longitude,
+                  "address": _selectedAddress,
+                }
+              : null,
+        };
+
+        print("🚀 Posting to: $collectionPath"); // Debugging path
+        print("📝 Document ID: ${generalRef.id}"); // Debugging ID
+
+        await generalRef.set(postData);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Posted!')),
+        );
+
+        Navigator.of(context).pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not logged in!')),
+        );
+      }
+    } catch (e) {
+      print("❌ Firestore Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() {
+        _isPosting = false;
+      });
+    }
+  }
+
+  Future<void> _updateAddress(LatLng position) async {
+    try {
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
+      if (placemarks.isNotEmpty) {
+        setState(() {
+          _selectedAddress = placemarks.first.street ?? "Unknown Address";
+        });
+      }
+    } catch (e) {
+      print("Error fetching address: $e");
+    }
+  }
 
   // Fetch current user information
   Future<void> _fetchUserInfo() async {
@@ -418,17 +434,17 @@ Future<void> _updateAddress(LatLng position) async {
   // Create and save post to Firestore
   // Get user-friendly post type label
   String _getPostTypeLabel(String collectionName) {
-    switch (collectionName) {
-      case 'lostfoundposts':
-        return 'Lost & Found';
-      case 'Eventposts':
-        return 'Events & Jobs';
-      case 'Peerposts':
-        return 'Peer Assistance';
-      case 'Surveyposts':
-        return 'Surveys';
-      default:
-        return 'Posts';
+    // Extract the base collection name from the path
+    if (collectionName.startsWith('lostfoundposts')) {
+      return 'Lost & Found';
+    } else if (collectionName.startsWith('Eventposts')) {
+      return 'Events & Jobs';
+    } else if (collectionName.startsWith('Peerposts')) {
+      return 'Peer Assistance';
+    } else if (collectionName.startsWith('Surveyposts')) {
+      return 'Survey';
+    } else {
+      return 'Post';
     }
   }
 
@@ -665,58 +681,62 @@ Future<void> _updateAddress(LatLng position) async {
                       ),
                       const Spacer(),
                     ],
-                  ),Row(
-  children: [
-    GestureDetector(
-      onTap: _pickLocation,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.location_on, color: Colors.blue),
-            const SizedBox(width: 8),
-            Text("Add Location",
-                style: TextStyle(
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w500,
-                )),
-          ],
-        ),
-      ),
-    ),
-  ],
-),
+                  ),
 
-const SizedBox(height: 12),
+                  const SizedBox(height: 16), // Added spacing between buttons
+
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: _pickLocation,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.location_on, color: Colors.blue),
+                              const SizedBox(width: 8),
+                              Text("Add Location",
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w500,
+                                  )),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
 
 // Display selected location
-if (_selectedLocation != null)
-  Container(
-    padding: EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border.all(color: Colors.grey.shade300),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Row(
-      children: [
-        Icon(Icons.location_on, color: Colors.redAccent),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            _selectedAddress,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    ),
-  ),
-
+                  if (_selectedLocation != null)
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on, color: Colors.redAccent),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _selectedAddress,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   const SizedBox(height: 20),
 
