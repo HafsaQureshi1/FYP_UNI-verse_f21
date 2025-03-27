@@ -279,50 +279,48 @@ String _formatTime(DateTime date) {
   String period = hour >= 12 ? "PM" : "AM";
   hour = hour > 12 ? hour - 12 : hour == 0 ? 12 : hour;
   return "$hour:${minute.toString().padLeft(2, '0')} $period";
-}
 
-Future<void> _checkIfUserLiked() async {
+}Future<void> _checkIfUserLiked() async {
   if (currentUserId == null) return;
 
   String collectionPath = _getCollectionPath();
+  final postRef = FirebaseFirestore.instance.collection(collectionPath).doc(widget.postId);
 
-  final likeDoc = await FirebaseFirestore.instance
-      .collection(collectionPath)
-      .doc(widget.postId)
-      .collection('likes')
-      .doc(currentUserId)
-      .get();
-
-  if (mounted) {
-    setState(() {
-      isLiked = likeDoc.exists;
-    });
-  }
+  postRef.snapshots().listen((postDoc) {
+    if (postDoc.exists && mounted) {
+      setState(() {
+        isLiked = postDoc.data()?['likes'] != null && postDoc.data()?['likes'] > 0;
+        likeCount = postDoc.data()?['likes'] ?? 0;
+      });
+    }
+  }, onError: (error) {
+    print("Error fetching like status: $error");
+  });
 }
+
 
 void _toggleLike() async {
   if (currentUserId == null) return;
 
   String collectionPath = _getCollectionPath();
+  final postRef = FirebaseFirestore.instance.collection(collectionPath).doc(widget.postId);
+
+  final postDoc = await postRef.get();
+  List<dynamic> likedBy = List.from(postDoc.data()?['likedBy'] ?? []);
   
-  final postRef = FirebaseFirestore.instance
-      .collection(collectionPath)
-      .doc(widget.postId);
+  bool currentlyLiked = likedBy.contains(currentUserId);
 
   setState(() {
-    isLiked = !isLiked;
+    isLiked = !currentlyLiked;
     likeCount = isLiked ? likeCount + 1 : likeCount - 1;
   });
 
-  if (!isLiked) {
-    await postRef.collection('likes').doc(currentUserId).delete();
-  } else {
-    await postRef.collection('likes').doc(currentUserId).set({
-      'userId': currentUserId,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+  await postRef.update({
+    'likes': FieldValue.increment(isLiked ? 1 : -1),
+    'likedBy': isLiked ? FieldValue.arrayUnion([currentUserId]) : FieldValue.arrayRemove([currentUserId])
+  });
 
-    // Fetch likerName asynchronously
+  if (isLiked) {
     FirebaseFirestore.instance
         .collection('users')
         .doc(currentUserId)
@@ -330,13 +328,8 @@ void _toggleLike() async {
         .then((userDoc) async {
       final String likerName = userDoc.data()?['username'] ?? 'Someone';
 
-      final postDoc = await postRef.get();
-      final String postAuthorId = postDoc.data()?['userId'] ?? '';
-
-      if (postAuthorId == currentUserId) {
-        print("🔹 Self-like detected. No notification will be saved.");
-        return; // Exit the function early
-      }
+      final postAuthorId = postDoc.data()?['userId'] ?? '';
+      if (postAuthorId == currentUserId) return;
 
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
@@ -352,6 +345,7 @@ void _toggleLike() async {
     });
   }
 }
+
 
 // 🔹 **Helper Function to Get Correct Collection Path**
   String _getCollectionPath() {
@@ -594,21 +588,32 @@ void _deletePost() async {
     );
   }
 
-  // Add method to fetch comment count
-  Future<void> _fetchCommentCount() async {
-    FirebaseFirestore.instance
-        .collection(widget.collectionName)
-        .doc(widget.postId)
-        .collection('comments')
-        .snapshots()
-        .listen((snapshot) {
-      if (mounted) {
-        setState(() {
-          commentCount = snapshot.docs.length;
-        });
-      }
-    });
+Future<void> _fetchCommentCount() async {
+  String collectionPath = widget.collectionName;
+
+  // If "All/posts" is already in the collection name, don't append it again
+  if (!collectionPath.contains("/All/posts")) {
+    collectionPath = "$collectionPath/All/posts";
   }
+
+  print("Fetching comments from: $collectionPath/${widget.postId}/comments");
+
+  FirebaseFirestore.instance
+      .collection(collectionPath)
+      .doc(widget.postId)
+      .collection("comments")
+      .snapshots()
+      .listen((snapshot) {
+    if (mounted) {
+      setState(() {
+        commentCount = snapshot.docs.length;
+      });
+    }
+  }, onError: (error) {
+    print("Error fetching comment count: $error");
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {

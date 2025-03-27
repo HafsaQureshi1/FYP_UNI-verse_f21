@@ -77,7 +77,7 @@ Future<void> _pickLocation() async {
   }
 }
 Map<String, String> categoryMapping = {
-  "Programming & Software & AI & Machine learning (Computer Science & Computer Systems)": "Computer Science & Computer Systems",
+  "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)": "Computer Science & Computer Systems",
   "Electronics & Circuits (Electrical Engineering)": "Electrical Engineering",
   "Teaching Methods (Education & Physical Education)": "Education & Physical Education",
   "Business Strategy (Business Department)": "Business Department",
@@ -171,7 +171,7 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
     "inputs": postText,
     "parameters": {
       "candidate_labels": [
-        "Programming & Software & Artifical Intelligence (Computer Science & Computer Systems)",
+        "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)",
         "Electronics & Circuits (Electrical Engineering)",
         "Teaching Methods (Education & Physical Education)",
         "Business Strategy (Business Department)",
@@ -192,12 +192,17 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
       List<dynamic> labels = responseData["labels"];
       List<dynamic> scores = responseData["scores"];
 
+      print("🔹 AI Response Labels: $labels");
+      print("🔹 AI Response Scores: $scores");
+
       if (labels.isNotEmpty && scores.isNotEmpty) {
         // Find the best category excluding "Miscellaneous"
         String bestCategory = "Miscellaneous";
         double bestConfidence = 0.0;
 
         for (int i = 0; i < labels.length; i++) {
+          print("🔹 Checking: ${labels[i]} (Score: ${scores[i].toStringAsFixed(4)})");
+
           if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
             bestCategory = labels[i];
             bestConfidence = scores[i];

@@ -41,6 +41,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       for (String collection in collections) {
         final querySnapshot = await FirebaseFirestore.instance
             .collection(collection)
+            .doc("All")
+            .collection("posts")
             .get(); // Get all documents first
 
         // Filter documents locally
@@ -204,59 +206,68 @@ class _PostDetailViewState extends State<PostDetailView> {
   }
 
   Future<void> _fetchCommentCount() async {
-    try {
-      final commentSnapshot = await FirebaseFirestore.instance
-          .collection(widget.post['collection'])
-          .doc(widget.post['id'])
-          .collection('comments')
-          .get();
-
-      if (mounted) {
-        setState(() {
-          commentCount = commentSnapshot.docs.length;
-        });
-      }
-    } catch (e) {
-      print("Error fetching comment count: $e");
-    }
-  }
-
-  Future<void> _checkIfUserLiked() async {
-    if (currentUserId == null) return;
-
-    try {
-      final likeDoc = await FirebaseFirestore.instance
-          .collection(widget.post['collection'])
-          .doc(widget.post['id'])
-          .collection('likes')
-          .doc(currentUserId)
-          .get();
-
-      if (mounted) {
-        setState(() {
-          isLiked = likeDoc.exists;
-        });
-      }
-    } catch (e) {
-      print("Error checking like status: $e");
-    }
-  }
-
-  Future<void> _toggleLike() async {
-    if (currentUserId == null) return;
-
-    final postRef = FirebaseFirestore.instance
+  try {
+    final commentSnapshot = await FirebaseFirestore.instance
         .collection(widget.post['collection'])
-        .doc(widget.post['id']);
-    final postAuthorId = widget.post['userId'] ?? '';
+        .doc('All')
+        .collection('posts')
+        .doc(widget.post['id'])
+        .collection('comments')
+        .get();
 
+    if (mounted) {
+      setState(() {
+        commentCount = commentSnapshot.docs.length;
+      });
+    }
+  } catch (e) {
+    print("Error fetching comment count: $e");
+  }
+}
+
+Future<void> _checkIfUserLiked() async {
+  if (currentUserId == null) return;
+
+  try {
+    final likeDoc = await FirebaseFirestore.instance
+        .collection(widget.post['collection'])
+        .doc('All')
+        .collection('posts')
+        .doc(widget.post['id'])
+        .collection('likes')
+        .doc(currentUserId)
+        .get();
+
+    if (mounted) {
+      setState(() {
+        isLiked = likeDoc.exists;
+      });
+    }
+  } catch (e) {
+    print("Error checking like status: $e");
+  }
+}
+
+Future<void> _toggleLike() async {
+  if (currentUserId == null) return;
+
+  final postRef = FirebaseFirestore.instance
+      .collection(widget.post['collection'])
+      .doc('All')
+      .collection('posts')
+      .doc(widget.post['id']);
+  final postAuthorId = widget.post['userId'] ?? '';
+
+  try {
     if (isLiked) {
       // Unlike post
       await postRef.collection('likes').doc(currentUserId).delete();
-      setState(() {
-        isLiked = false;
-        likeCount--;
-      });
+      if (mounted) {
+        setState(() {
+          isLiked = false;
+          likeCount--;
+        });
+      }
     } else {
       // Like post
       final userDoc = await FirebaseFirestore.instance
@@ -270,23 +281,24 @@ class _PostDetailViewState extends State<PostDetailView> {
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      setState(() {
-        isLiked = true;
-        likeCount++;
-      });
+      if (mounted) {
+        setState(() {
+          isLiked = true;
+          likeCount++;
+        });
+      }
 
-      // Only send notification if the post author is not the current user
+      // Notify post author (if different)
       if (postAuthorId.isNotEmpty && postAuthorId != currentUserId) {
-        // Send FCM Notification
         _fcmService.sendNotificationToUser(
             postAuthorId, likerName, "liked your post!");
 
-        // Store Notification in Firestore
         await FirebaseFirestore.instance.collection('notifications').add({
           'receiverId': postAuthorId,
           'senderId': currentUserId,
           'senderName': likerName,
           'postId': widget.post['id'],
+          'collection': widget.post['collection'],
           'message': "$likerName liked your post!",
           'timestamp': FieldValue.serverTimestamp(),
           'type': 'like',
@@ -297,15 +309,21 @@ class _PostDetailViewState extends State<PostDetailView> {
 
     // Update like count in the post document
     await postRef.update({'likes': likeCount});
+  } catch (e) {
+    print("Error toggling like: $e");
   }
+}
 
-  void _addComment(String commentText) async {
-    if (commentText.trim().isEmpty || currentUserId == null) return;
+Future<void> _addComment(String commentText) async {
+  if (commentText.trim().isEmpty || currentUserId == null) return;
 
-    final postRef = FirebaseFirestore.instance
-        .collection(widget.post['collection'])
-        .doc(widget.post['id']);
+  final postRef = FirebaseFirestore.instance
+      .collection(widget.post['collection'])
+      .doc('All')
+      .collection('posts')
+      .doc(widget.post['id']);
 
+  try {
     final postDoc = await postRef.get();
     if (!postDoc.exists) return;
 
@@ -318,8 +336,9 @@ class _PostDetailViewState extends State<PostDetailView> {
     });
 
     _commentController.clear();
-    _fetchCommentCount(); // Refresh comment count after adding
+    _fetchCommentCount(); // Refresh comment count
 
+    // Notify post author if not commenting on their own post
     if (postAuthorId.isNotEmpty && postAuthorId != currentUserId) {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -344,7 +363,11 @@ class _PostDetailViewState extends State<PostDetailView> {
         'isRead': false,
       });
     }
+  } catch (e) {
+    print("Error adding comment: $e");
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -497,7 +520,10 @@ class _PostDetailViewState extends State<PostDetailView> {
                           StreamBuilder<QuerySnapshot>(
                             stream: FirebaseFirestore.instance
                                 .collection(widget.post['collection'])
+                                .doc("All")
+                                .collection("posts")
                                 .doc(widget.post['id'])
+                      
                                 .collection('comments')
                                 .orderBy('timestamp', descending: true)
                                 .snapshots(),
