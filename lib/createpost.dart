@@ -172,7 +172,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
     print("🔹 Sending request to Hugging Face for Peer Assistance...");
 
     final url = Uri.parse(
-        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+        "https://api-inference.huggingface.co/models/MoritzLaurer/deberta-v3-large-zeroshot-v1");
     final headers = {
       "Authorization": "Bearer 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",
       "Content-Type": "application/json"
@@ -182,12 +182,12 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
       "inputs": postText,
       "parameters": {
         "candidate_labels": [
-          "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)",
-          "Electronics & Circuits (Electrical Engineering)",
-          "Teaching Methods (Education & Physical Education)",
-          "Business Strategy (Business Department)",
-          "Statistics & Calculus (Mathematics)",
-          "Journalism & Broadcasting (Media & Communication)",
+           "Computer Science",
+          "Electrical Engineering)",
+          "Education & Physical Education)",
+          "Business ",
+          "Mathematics",
+          "Media ",
           "Miscellaneous"
         ],
         "hypothesis_template": "This post is related to {}."
@@ -230,8 +230,8 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
               categoryMapping[bestCategory] ?? "Miscellaneous";
 
           print(
-              "✅ Selected Category: $mappedCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
-          return mappedCategory;
+              "✅ Selected Category: $bestCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
+          return bestCategory;
         }
       } else {
         print("❌ AI Classification Failed. Response: ${response.body}");

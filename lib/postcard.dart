@@ -137,13 +137,13 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
     "inputs": postText,
     "parameters": {
       "candidate_labels": [
-        "Programming & Software & Artifical Intelligence (Computer Science & Computer Systems)",
-        "Electronics & Circuits (Electrical Engineering)",
-        "Teaching Methods (Education & Physical Education)",
-        "Business Strategy (Business Department)",
-        "Statistics & Calculus (Mathematics)",
-        "Journalism & Broadcasting (Media & Communication)",
-        "Miscellaneous"
+         "Computer Science",
+          "Electrical Engineering)",
+          "Education & Physical Education)",
+          "Business ",
+          "Mathematics",
+          "Media ",
+          "Miscellaneous"
       ],
       "hypothesis_template": "This post is related to {}."
     }
@@ -175,10 +175,9 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
         }
 
         // 🔹 **Map AI Label to Original Chip Name**
-        String mappedCategory = categoryMapping[bestCategory] ?? "Miscellaneous";
-
-        print("✅ Selected Category: $mappedCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
-        return mappedCategory;
+       
+        print("✅ Selected Category: $bestCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
+        return bestCategory;
       }
     } else {
       print("❌ AI Classification Failed. Response: ${response.body}");
