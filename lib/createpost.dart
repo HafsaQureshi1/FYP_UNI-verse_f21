@@ -172,7 +172,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
     print("🔹 Sending request to Hugging Face for Peer Assistance...");
 
     final url = Uri.parse(
-        "https://api-inference.huggingface.co/models/MoritzLaurer/deberta-v3-large-zeroshot-v1");
+        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
     final headers = {
       "Authorization": "Bearer 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",
       "Content-Type": "application/json"
@@ -182,12 +182,12 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
       "inputs": postText,
       "parameters": {
         "candidate_labels": [
-           "Computer Science",
-          "Electrical Engineering)",
-          "Education & Physical Education)",
-          "Business ",
-          "Mathematics",
-          "Media ",
+          "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)",
+          "Electronics & Circuits (Electrical Engineering)",
+          "Teaching Methods (Education & Physical Education)",
+          "Business Strategy (Business Department)",
+          "Statistics & Calculus (Mathematics)",
+          "Journalism & Broadcasting (Media & Communication)",
           "Miscellaneous"
         ],
         "hypothesis_template": "This post is related to {}."
@@ -230,8 +230,8 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
               categoryMapping[bestCategory] ?? "Miscellaneous";
 
           print(
-              "✅ Selected Category: $bestCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
-          return bestCategory;
+              "✅ Selected Category: $mappedCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
+          return mappedCategory;
         }
       } else {
         print("❌ AI Classification Failed. Response: ${response.body}");
@@ -434,17 +434,20 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
   // Create and save post to Firestore
   // Get user-friendly post type label
   String _getPostTypeLabel(String collectionName) {
-    // Extract the base collection name from the path
-    if (collectionName.startsWith('lostfoundposts')) {
-      return 'Lost & Found';
-    } else if (collectionName.startsWith('Eventposts')) {
-      return 'Events & Jobs';
-    } else if (collectionName.startsWith('Peerposts')) {
-      return 'Peer Assistance';
-    } else if (collectionName.startsWith('Surveyposts')) {
-      return 'Survey';
-    } else {
-      return 'Post';
+    // Extract the base collection name without the path components
+    String baseCollection = collectionName.split('/').first;
+
+    switch (baseCollection) {
+      case 'lostfoundposts':
+        return 'Lost & Found';
+      case 'Eventposts':
+        return 'Events & Jobs';
+      case 'Peerposts':
+        return 'Peer Assistance';
+      case 'Surveyposts':
+        return 'Survey';
+      default:
+        return 'Post';
     }
   }
 
@@ -683,8 +686,10 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 16), // Added spacing between buttons
+                  // Add spacing between buttons
+                  const SizedBox(height: 16),
 
+                  // Add location button
                   Row(
                     children: [
                       GestureDetector(
