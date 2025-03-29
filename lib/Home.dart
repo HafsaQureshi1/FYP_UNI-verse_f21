@@ -19,8 +19,9 @@ import 'createpost.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  await GeolocatorPlatform.instance.checkPermission();  // Ensure Geolocator initializes properly
- 
+  await GeolocatorPlatform.instance
+      .checkPermission(); // Ensure Geolocator initializes properly
+
   runApp(const MyApp());
 }
 
@@ -249,27 +250,56 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white,
+        selectedItemColor: Colors.white, // Keep selected items white
+        unselectedItemColor: const Color.fromARGB(
+            180, 255, 255, 255), // Make unselected items slightly transparent
         backgroundColor: const Color.fromARGB(255, 0, 58, 92),
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        items: const [
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 11,
+        ),
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: Icon(_selectedIndex == 0
+                ? Icons.home
+                : Icons
+                    .home_outlined), // Use filled icon for selected, outlined for unselected
             label: "Lost/Found",
+            backgroundColor: _selectedIndex == 0
+                ? const Color.fromARGB(
+                    255, 0, 77, 122) // Darker shade for selected tab
+                : null,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
+            icon: Icon(_selectedIndex == 1
+                ? Icons.dashboard
+                : Icons.dashboard_outlined),
             label: "Peer Assistance",
+            backgroundColor: _selectedIndex == 1
+                ? const Color.fromARGB(255, 0, 77, 122)
+                : null,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.document_scanner),
+            icon: Icon(_selectedIndex == 2
+                ? Icons.document_scanner
+                : Icons.document_scanner_outlined),
             label: "Events/Jobs",
+            backgroundColor: _selectedIndex == 2
+                ? const Color.fromARGB(255, 0, 77, 122)
+                : null,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
+            icon:
+                Icon(_selectedIndex == 3 ? Icons.person : Icons.person_outline),
             label: "Surveys",
+            backgroundColor: _selectedIndex == 3
+                ? const Color.fromARGB(255, 0, 77, 122)
+                : null,
           ),
         ],
       ),
@@ -283,39 +313,42 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 }
+
 class LostFoundScreen extends StatefulWidget {
   const LostFoundScreen({super.key});
 
   @override
   _LostFoundScreenState createState() => _LostFoundScreenState();
 }
-class  _LostFoundScreenState extends State<LostFoundScreen>{
-   Stream<QuerySnapshot> _getPostsStream() {
 
-  final collectionRef = FirebaseFirestore.instance.collection('lostfoundposts');
+class _LostFoundScreenState extends State<LostFoundScreen> {
+  Stream<QuerySnapshot> _getPostsStream() {
+    final collectionRef =
+        FirebaseFirestore.instance.collection('lostfoundposts');
 
-  if (selectedCategory == "All") {
-    // If "All" is selected, fetch all posts from all categories
-    return collectionRef
-        .doc("All") // ✅ Fetch from "All" category
-        .collection("posts")
-        .orderBy('timestamp', descending: true)
-        .snapshots();
-  } else {
-    // Fetch posts only from the selected category
-    return collectionRef
-        .doc("All") // ✅ All posts are inside "All"
-        .collection("posts")
-        .where("category", isEqualTo: selectedCategory) // ✅ Filter by category field
-        .orderBy('timestamp', descending: true)
-        .snapshots();
+    if (selectedCategory == "All") {
+      // If "All" is selected, fetch all posts from all categories
+      return collectionRef
+          .doc("All") // ✅ Fetch from "All" category
+          .collection("posts")
+          .orderBy('timestamp', descending: true)
+          .snapshots();
+    } else {
+      // Fetch posts only from the selected category
+      return collectionRef
+          .doc("All") // ✅ All posts are inside "All"
+          .collection("posts")
+          .where("category",
+              isEqualTo: selectedCategory) // ✅ Filter by category field
+          .orderBy('timestamp', descending: true)
+          .snapshots();
+    }
   }
-}
 
- final ScrollController _scrollController = ScrollController();
- String selectedCategory = "All"; // Default selection
+  final ScrollController _scrollController = ScrollController();
+  String selectedCategory = "All"; // Default selection
   @override
-   Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromARGB(64, 236, 236, 236),
       body: Stack(
@@ -344,7 +377,8 @@ class  _LostFoundScreenState extends State<LostFoundScreen>{
                       return const Center(
                         child: Text(
                           'No posts found',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w500),
                         ),
                       );
                     }
@@ -353,10 +387,12 @@ class  _LostFoundScreenState extends State<LostFoundScreen>{
 
                     return ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
                       itemCount: posts.length,
                       itemBuilder: (context, index) {
-                        var postData = posts[index].data() as Map<String, dynamic>;
+                        var postData =
+                            posts[index].data() as Map<String, dynamic>;
                         return PostCard(
                           key: ValueKey(posts[index].id),
                           username: postData['userName'] ?? 'Anonymous',
@@ -394,10 +430,12 @@ class  _LostFoundScreenState extends State<LostFoundScreen>{
                       child: Container(
                         decoration: const BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(25)),
                         ),
                         child: CreateNewPostScreen(
-                          collectionName: 'lostfoundposts/$selectedCategory/posts',
+                          collectionName:
+                              'lostfoundposts/$selectedCategory/posts',
                         ),
                       ),
                     );
@@ -412,6 +450,7 @@ class  _LostFoundScreenState extends State<LostFoundScreen>{
     );
   }
 }
+
 class CategoryChips extends StatefulWidget {
   final String collectionName;
   final Function(String) onCategorySelected;
@@ -432,23 +471,27 @@ class _CategoryChipsState extends State<CategoryChips> {
   // Define categories based on the selected collection
   List<String> getCategories() {
     if (widget.collectionName == "lostfoundposts") {
-      return ["All",    // ✅ Moved inside "parameters"
-     "Electronics",
-      "Clothes & Bags",
-      "Official Documents",
-      "Books",
-      "Stationery & Supplies",
-      "Wallets & Keys ",
-      "Miscellaneous"
-    ];
+      return [
+        "All", // ✅ Moved inside "parameters"
+        "Electronics",
+        "Clothes & Bags",
+        "Official Documents",
+        "Books",
+        "Stationery & Supplies",
+        "Wallets & Keys ",
+        "Miscellaneous"
+      ];
     } else if (widget.collectionName == "Peerposts") {
-      return ["All", "Computer Science",
+      return [
+        "All",
+        "Computer Science",
         "Education ",
         "Business",
         "Electrical Engineering",
         "Mathematics",
         "Media",
-        "Miscellaneous"];
+        "Miscellaneous"
+      ];
     }
     return [];
   }
@@ -460,7 +503,8 @@ class _CategoryChipsState extends State<CategoryChips> {
     return categories.isEmpty
         ? const SizedBox.shrink()
         : Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -476,13 +520,18 @@ class _CategoryChipsState extends State<CategoryChips> {
                       padding: const EdgeInsets.only(right: 8.0),
                       child: Chip(
                         label: Text(category),
-                        backgroundColor:
-                            selectedCategory == category ? Colors.blue : Colors.white,
+                        backgroundColor: selectedCategory == category
+                            ? Colors.blue
+                            : Colors.white,
                         labelStyle: TextStyle(
-                            color: selectedCategory == category ? Colors.white : Colors.black),
+                            color: selectedCategory == category
+                                ? Colors.white
+                                : Colors.black),
                         shape: RoundedRectangleBorder(
                           side: BorderSide(
-                              color: selectedCategory == category ? Colors.blue : Colors.grey,
+                              color: selectedCategory == category
+                                  ? Colors.blue
+                                  : Colors.grey,
                               width: 1.2),
                           borderRadius: BorderRadius.circular(20),
                         ),
