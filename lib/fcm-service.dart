@@ -121,18 +121,21 @@ class FCMService {
     print("❌ Failed to send notification: ${response.body}");
   }
 }
-
 Future<void> sendNotificationOnComment(
     String postId, String commenterName, String commentId, String collectionName) async {
   try {
-    // Fetch the post document dynamically based on collectionName
+    String postPath = collectionName.contains("All/posts") 
+        ? collectionName // Use directly if already contains 'All/posts'
+        : "$collectionName/All/posts"; // Construct path if missing
+
+    // Fetch the post document dynamically based on the computed path
     final postDoc = await FirebaseFirestore.instance
-        .collection(collectionName)
+        .collection(postPath)
         .doc(postId)
         .get();
 
     if (!postDoc.exists) {
-      print("❌ No post found in $collectionName with ID: $postId");
+      print("❌ No post found in $postPath with ID: $postId");
       return;
     }
 
@@ -210,6 +213,5 @@ Future<void> sendNotificationOnComment(
     print("❌ Error sending comment notification: $e");
   }
 }
-
 
 }

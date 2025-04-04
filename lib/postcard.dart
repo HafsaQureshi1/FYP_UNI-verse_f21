@@ -863,67 +863,66 @@ class _CommentSectionState extends State<CommentSection> {
   }
 
   void _addComment(String commentText) async {
-  if (commentText.trim().isEmpty || _userId == null) return;
+    if (commentText.trim().isEmpty || _userId == null) return;
 
-  // Get the collection path dynamically based on the current post's collection
-  String collectionPath = _getCollectionPath();
+    // Get the collection path dynamically based on the current post's collection
+    String collectionPath = _getCollectionPath();
 
-  // Reference to the specific post document
-  final postRef = FirebaseFirestore.instance
-      .collection(collectionPath)
-      .doc(widget.postId); // Ensure widget.postId is the correct identifier
+    // Reference to the specific post document
+    final postRef = FirebaseFirestore.instance
+        .collection(collectionPath)
+        .doc(widget.postId);
 
-  try {
-    final postDoc = await postRef.get();
-    if (!postDoc.exists) return; // If the post doesn't exist, exit
+    try {
+      final postDoc = await postRef.get();
+      if (!postDoc.exists || postDoc.data() == null) return; // Check for non-existent or null data
 
-    final String postAuthorId = postDoc.data()?['userId'] ?? ''; // Get the post author's ID
+      final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
-    // Add the comment to the post's 'comments' subcollection
-    final commentRef = await postRef.collection('comments').add({
-      'userId': _userId, // Current user's ID who is commenting
-      'comment': commentText, // The text of the comment
-      'timestamp': FieldValue.serverTimestamp(), // Automatically get the timestamp
-    });
-
-    // Clear the comment input controller
-    _commentController.clear();
-
-    // If the post author is not the current user, notify them
-    if (postAuthorId.isNotEmpty && postAuthorId != _userId) {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_userId)
-          .get();
-      final String currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
-
-      // Call the function to send notification to the post author
-      _fcmService.sendNotificationOnComment(
-        widget.postId, 
-        currentUsername, 
-        commentRef.id, 
-        widget.collectionName, // Dynamically pass the collection name
-      );
-
-      // Add a notification document in Firestore for the comment
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'receiverId': postAuthorId,
-        'senderId': _userId,
-        'senderName': currentUsername,
-        'postId': widget.postId, // Store the post ID
-        'commentId': commentRef.id, // Store the comment ID
-        'collection': widget.collectionName, // Store the dynamic collection name
-        'message': "$currentUsername commented on your post", // The message
-        'timestamp': FieldValue.serverTimestamp(), // Timestamp for the notification
-        'type': 'comment', // Type of notification
-        'isRead': false, // Initially, the notification is unread
+      // Add the comment to the post's 'comments' subcollection
+      final commentRef = await postRef.collection('comments').add({
+        'userId': _userId, // Current user's ID who is commenting
+        'comment': commentText, // The text of the comment
+        'timestamp': FieldValue.serverTimestamp(), // Automatically get the timestamp
       });
-    }
-  } catch (e) {
-    print("Error adding comment: $e");
-  }
-}
 
+      // Clear the comment input controller
+      _commentController.clear();
+
+      // If the post author is not the current user, notify them
+      if (postAuthorId.isNotEmpty && postAuthorId != _userId) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_userId)
+            .get();
+        final String currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
+
+        // Send notification to the post author
+        _fcmService.sendNotificationOnComment(
+          widget.postId, 
+          currentUsername, 
+          commentRef.id, 
+          widget.collectionName,
+        );
+
+        // Add a notification document in Firestore for the comment
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'receiverId': postAuthorId,
+          'senderId': _userId,
+          'senderName': currentUsername,
+          'postId': widget.postId, // Store the post ID
+          'commentId': commentRef.id, // Store the comment ID
+          'collection': widget.collectionName, // Store the dynamic collection name
+          'message': "$currentUsername commented on your post", // The message
+          'timestamp': FieldValue.serverTimestamp(), // Timestamp for the notification
+          'type': 'comment', // Type of notification
+          'isRead': false, // Initially, the notification is unread
+        });
+      }
+    } catch (e) {
+      print("Error adding comment: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1017,9 +1016,8 @@ class _CommentSectionState extends State<CommentSection> {
     );
   }
 
-  // 🔹 **Helper Function to Get Correct Collection Path**
- String _getCollectionPath() {
-  print("🔍 Checking collection for: ${widget.collectionName}");
+  String _getCollectionPath() {
+    print("🔍 Checking collection for: ${widget.collectionName}");
     if (widget.collectionName.startsWith("lostfoundposts")) {
       return "lostfoundposts/All/posts";
     } else if (widget.collectionName.startsWith("Peerposts")) {
