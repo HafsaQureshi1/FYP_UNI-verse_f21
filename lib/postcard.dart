@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -8,9 +9,12 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'profileimage.dart';
 import 'image_viewer_screen.dart';
-
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 class PostCard extends StatefulWidget {
-  
   final String postId;
   final String userId;
   final String username;
@@ -20,7 +24,7 @@ class PostCard extends StatefulWidget {
   final String? imageUrl;
 
   const PostCard({ 
-    Key? key, // Add this
+    Key? key,
     required this.postId,
     required this.userId,
     required this.username,
@@ -28,7 +32,7 @@ class PostCard extends StatefulWidget {
     required this.likes,
     required this.collectionName,
     this.imageUrl,
-  });
+  }) : super(key: key);
 
   @override
   _PostCardState createState() => _PostCardState();
@@ -42,158 +46,175 @@ class _PostCardState extends State<PostCard> {
   String? profileImageUrl;
   String currentUsername = '';
   String? imageUrl;
-  // Check if the post belongs to the current user
   bool isOwner = false;
-  int commentCount = 0; // Add comment count variable
+  int commentCount = 0;
+  bool _isLoading = true;
+  List<StreamSubscription> _subscriptions = [];
 
   @override
   void initState() {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
     likeCount = widget.likes;
-    // Set isOwner by comparing post's userId with currentUserId
     isOwner = currentUserId == widget.userId;
 
-    _fetchUsername();
-    _fetchProfileImage();
-    _fetchPostTime();
-    _checkIfUserLiked();
-    _fetchImageUrl();
-    _fetchCommentCount(); // Add method call to fetch comment count
+    _initializeData();
   }
-Future<String> _classifyPostWithHuggingFace(String postText) async {
-  print("🔹 Sending request to Hugging Face...");
 
-  final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
-  final headers = {
-    "Authorization": "Bearer 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",  
-    "Content-Type": "application/json"
-  };
-
-  final body = jsonEncode({
-  "inputs": postText,  // ✅ Corrected: "inputs" instead of "sequence"
-  "parameters": {
-    "candidate_labels": [  // ✅ Moved inside "parameters"
-     "Electronics",
-      "Clothes & Bags",
-      "Official Documents",
-      "Books ",
-         "Wallets & Keys "
-        "Stationery & Supplies",
-      "Miscellaneous"
-    ]
-  }
-});
-
-
-  try {
-    final response = await http.post(url, headers: headers, body: body);
-
-    print("🔹 API Response Status Code: ${response.statusCode}");
-    print("🔹 API Response Body: ${response.body}");
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      print("🔹 Parsed JSON: $responseData");  // Print JSON to debug
-
-      List<dynamic> labels = responseData["labels"];
-      List<dynamic> scores = responseData["scores"];
-
-      if (labels.isNotEmpty && scores.isNotEmpty) {
-        String bestCategory = labels[0];  // Get highest confidence category
-        double confidence = scores[0];
-
-        print("✅ AI Category: $bestCategory (Confidence: ${confidence.toStringAsFixed(2)})");
-        return confidence > 0.3 ? bestCategory : "Miscellaneous";  // Confidence threshold
+  Future<void> _initializeData() async {
+    try {
+      await Future.wait([
+        _fetchUsername(),
+        _fetchProfileImage(),
+        _fetchPostTime(),
+        _checkIfUserLiked(),
+        _fetchImageUrl(),
+        _fetchCommentCount(),
+      ] as Iterable<Future>);
+    } catch (e) {
+      print("Error initializing post data: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
-    } else {
-      print("❌ AI Classification Failed. Response: ${response.body}");
     }
-  } catch (e) {
-    print("❌ Hugging Face API Exception: $e");
-  }
-  return "Miscellaneous";  // Default if API fails
   }
 
-Map<String, String> categoryMapping = {
-  "Programming & Software & AI & Machine learning (Computer Science & Computer Systems)": "Computer Science & Computer Systems",
-  "Electronics & Circuits (Electrical Engineering)": "Electrical Engineering",
-  "Teaching Methods (Education & Physical Education)": "Education & Physical Education",
-  "Business Strategy (Business Department)": "Business Department",
-  "Statistics & Calculus (Mathematics)": "Mathematics",
-  "Journalism & Broadcasting (Media & Communication)": "Media & Communication",
-  "Miscellaneous": "Miscellaneous"
-};
-Future<String> _classifyPeerAssistancePost(String postText) async {
-  print("🔹 Sending request to Hugging Face for Peer Assistance...");
+  @override
+  void didUpdateWidget(PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.postId != widget.postId) {
+      _resetState();
+      _initializeData();
+    }
+  }
 
-  final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
-  final headers = {
-    "Authorization": "Bearer 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",
-    "Content-Type": "application/json"
-  };
+  void _resetState() {
+    setState(() {
+      _isLoading = true;
+      likeCount = widget.likes;
+      isLiked = false;
+      commentCount = 0;
+      profileImageUrl = null;
+      currentUsername = '';
+      postTime = "";
+      imageUrl = null;
+    });
+    
+    // Cancel all previous subscriptions
+    for (var sub in _subscriptions) {
+      sub.cancel();
+    }
+    _subscriptions.clear();
+  }
 
-  final body = jsonEncode({
-    "inputs": postText,
-    "parameters": {
-      "candidate_labels": [
-         "Computer Science",
-          "Electrical Engineering)",
-          "Education & Physical Education)",
-          "Business ",
-          "Mathematics",
-          "Media ",
+  @override
+  void dispose() {
+    for (var sub in _subscriptions) {
+      sub.cancel();
+    }
+    super.dispose();
+  }
+
+  Future<String> _classifyPostWithHuggingFace(String postText) async {
+    final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+    final headers = {
+      "Authorization": "Bearer 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",  
+      "Content-Type": "application/json"
+    };
+
+    final body = jsonEncode({
+      "inputs": postText,
+      "parameters": {
+        "candidate_labels": [
+          "Electronics",
+          "Clothes & Bags",
+          "Official Documents",
+          "Books",
+          "Wallets & Keys",
+          "Stationery & Supplies",
           "Miscellaneous"
-      ],
-      "hypothesis_template": "This post is related to {}."
-    }
-  });
-
-  try {
-    final response = await http.post(url, headers: headers, body: body);
-    print("🔹 API Response Status Code: ${response.statusCode}");
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      List<dynamic> labels = responseData["labels"];
-      List<dynamic> scores = responseData["scores"];
-
-      if (labels.isNotEmpty && scores.isNotEmpty) {
-        // Find the best category excluding "Miscellaneous"
-        String bestCategory = "Miscellaneous";
-        double bestConfidence = 0.0;
-
-        for (int i = 0; i < labels.length; i++) {
-          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
-            bestCategory = labels[i];
-            bestConfidence = scores[i];
-          }
-        }
-
-        if (bestConfidence < 0.2) {
-          bestCategory = "Miscellaneous";
-        }
-
-        // 🔹 **Map AI Label to Original Chip Name**
-       
-        print("✅ Selected Category: $bestCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
-        return bestCategory;
+        ]
       }
-    } else {
-      print("❌ AI Classification Failed. Response: ${response.body}");
+    });
+
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        List<dynamic> labels = responseData["labels"];
+        List<dynamic> scores = responseData["scores"];
+
+        if (labels.isNotEmpty && scores.isNotEmpty) {
+          String bestCategory = labels[0];
+          double confidence = scores[0];
+          return confidence > 0.3 ? bestCategory : "Miscellaneous";
+        }
+      }
+    } catch (e) {
+      print("Hugging Face API Exception: $e");
     }
-  } catch (e) {
-    print("❌ Hugging Face API Exception: $e");
+    return "Miscellaneous";
   }
 
-  return "Miscellaneous"; // Default if API fails
-}
+  Future<String> _classifyPeerAssistancePost(String postText) async {
+    final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+    final headers = {
+      "Authorization": "Bearer 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",
+      "Content-Type": "application/json"
+    };
 
+    final body = jsonEncode({
+      "inputs": postText,
+      "parameters": {
+        "candidate_labels": [
+          "Computer Science",
+          "Electrical Engineering",
+          "Education & Physical Education",
+          "Business",
+          "Mathematics",
+          "Media",
+          "Miscellaneous"
+        ],
+        "hypothesis_template": "This post is related to {}."
+      }
+    });
 
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        List<dynamic> labels = responseData["labels"];
+        List<dynamic> scores = responseData["scores"];
 
-  /// ✅ Fetches user details dynamically
+        if (labels.isNotEmpty && scores.isNotEmpty) {
+          String bestCategory = "Miscellaneous";
+          double bestConfidence = 0.0;
+
+          for (int i = 0; i < labels.length; i++) {
+            if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+              bestCategory = labels[i];
+              bestConfidence = scores[i];
+            }
+          }
+
+          if (bestConfidence < 0.2) {
+            bestCategory = "Miscellaneous";
+          }
+
+          return bestCategory;
+        }
+      }
+    } catch (e) {
+      print("Hugging Face API Exception: $e");
+    }
+    return "Miscellaneous";
+  }
+
   void _fetchUsername() {
-    FirebaseFirestore.instance
+    final sub = FirebaseFirestore.instance
         .collection('users')
         .doc(widget.userId)
         .snapshots()
@@ -204,10 +225,11 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
         });
       }
     });
+    _subscriptions.add(sub);
   }
 
   void _fetchProfileImage() {
-    FirebaseFirestore.instance
+    final sub = FirebaseFirestore.instance
         .collection('users')
         .doc(widget.userId)
         .snapshots()
@@ -218,373 +240,267 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
         });
       }
     });
-  }
-void _fetchImageUrl() async {
-  String collectionPath = _getCollectionPath();
-  String postId = widget.postId;
-
-  
-  final postRef = FirebaseFirestore.instance.collection(collectionPath).doc(postId);
-  
-  final postDoc = await postRef.get();
-
-  if (!postDoc.exists) {
-   
-    return; // Stop execution if the document does not exist
+    _subscriptions.add(sub);
   }
 
-  
-  // Listen for updates
-  postRef.snapshots().listen((postDoc) {
-    if (postDoc.exists && mounted) {
-      setState(() {
-        imageUrl = postDoc.data()?['imageUrl'];
-      });
-    }
-  });
-}
-Future<void> _fetchPostTime() async {
-  String collectionPath = _getCollectionPath();
-
-  final postDoc = await FirebaseFirestore.instance
-      .collection(collectionPath)
-      .doc(widget.postId)
-      .get();
-
-  if (postDoc.exists) {
-    final Timestamp? timestamp = postDoc.data()?['timestamp'];
-    if (timestamp != null && mounted) {
-      final DateTime date = timestamp.toDate();
-      final String formattedDate =
-          "${date.day} ${_getMonthName(date.month)} ${_formatTime(date)}";
-      setState(() {
-        postTime = formattedDate;
-      });
-    }
-  }
-}
-
-String _getMonthName(int month) {
-  const monthNames = [
-    "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-  ];
-  return monthNames[month];
-}
-
-String _formatTime(DateTime date) {
-  int hour = date.hour;
-  int minute = date.minute;
-  String period = hour >= 12 ? "PM" : "AM";
-  hour = hour > 12 ? hour - 12 : hour == 0 ? 12 : hour;
-  return "$hour:${minute.toString().padLeft(2, '0')} $period";
-
-}Future<void> _checkIfUserLiked() async {
-  if (currentUserId == null) return;
-
-  String collectionPath = _getCollectionPath();
-  final postRef = FirebaseFirestore.instance.collection(collectionPath).doc(widget.postId);
-
-  postRef.snapshots().listen((postDoc) {
-    if (postDoc.exists && mounted) {
-      setState(() {
-        isLiked = postDoc.data()?['likes'] != null && postDoc.data()?['likes'] > 0;
-        likeCount = postDoc.data()?['likes'] ?? 0;
-      });
-    }
-  }, onError: (error) {
-    print("Error fetching like status: $error");
-  });
-}
-
-
-void _toggleLike() async {
-  if (currentUserId == null) return;
-
-  String collectionPath = _getCollectionPath();
-  final postRef = FirebaseFirestore.instance.collection(collectionPath).doc(widget.postId);
-
-  final postDoc = await postRef.get();
-  List<dynamic> likedBy = List.from(postDoc.data()?['likedBy'] ?? []);
-
-  bool currentlyLiked = likedBy.contains(currentUserId);
-
-  setState(() {
-    isLiked = !currentlyLiked;
-    likeCount = isLiked ? likeCount + 1 : likeCount - 1;
-  });
-
-  await postRef.update({
-    'likes': FieldValue.increment(isLiked ? 1 : -1),
-    'likedBy': isLiked ? FieldValue.arrayUnion([currentUserId]) : FieldValue.arrayRemove([currentUserId])
-  });
-
-  if (isLiked) {
-    FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUserId)
-        .get()
-        .then((userDoc) async {
-      final String likerName = userDoc.data()?['username'] ?? 'Someone';
-
-      final postAuthorId = postDoc.data()?['userId'] ?? '';
-      if (postAuthorId == currentUserId) return; // Prevent self-notification
-
-      // Save notification to Firestore
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'receiverId': postAuthorId,
-        'senderId': currentUserId,
-        'senderName': likerName,
-        'postId': widget.postId,
-        'collection': widget.collectionName,
-        'message': "$likerName liked your post",
-        'timestamp': FieldValue.serverTimestamp(),
-        'type': 'like',
-        'isRead': false,
-      });
-
-      // Send push notification via FCM
-      await FCMService().sendNotificationToUser(
-        postAuthorId,
-        likerName,
-        "liked your post!"
-      );
+  void _fetchImageUrl() {
+    final sub = FirebaseFirestore.instance
+        .collection(_getCollectionPath())
+        .doc(widget.postId)
+        .snapshots()
+        .listen((postDoc) {
+      if (postDoc.exists && mounted) {
+        setState(() {
+          imageUrl = postDoc.data()?['imageUrl'];
+        });
+      }
     });
+    _subscriptions.add(sub);
   }
-}
 
+  Future<void> _fetchPostTime() async {
+    final postDoc = await FirebaseFirestore.instance
+        .collection(_getCollectionPath())
+        .doc(widget.postId)
+        .get();
 
+    if (postDoc.exists) {
+      final Timestamp? timestamp = postDoc.data()?['timestamp'];
+      if (timestamp != null && mounted) {
+        final DateTime date = timestamp.toDate();
+        final String formattedDate =
+            "${date.day} ${_getMonthName(date.month)} ${_formatTime(date)}";
+        setState(() {
+          postTime = formattedDate;
+        });
+      }
+    }
+  }
 
-// 🔹 **Helper Function to Get Correct Collection Path**
+  String _getMonthName(int month) {
+    const monthNames = [
+      "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    return monthNames[month];
+  }
+
+  String _formatTime(DateTime date) {
+    int hour = date.hour;
+    int minute = date.minute;
+    String period = hour >= 12 ? "PM" : "AM";
+    hour = hour > 12 ? hour - 12 : hour == 0 ? 12 : hour;
+    return "$hour:${minute.toString().padLeft(2, '0')} $period";
+  }
+
+  void _checkIfUserLiked() {
+    if (currentUserId == null) return;
+
+    final sub = FirebaseFirestore.instance
+        .collection(_getCollectionPath())
+        .doc(widget.postId)
+        .snapshots()
+        .listen((postDoc) {
+      if (postDoc.exists && mounted) {
+        final likedBy = List.from(postDoc.data()?['likedBy'] ?? []);
+        setState(() {
+          isLiked = likedBy.contains(currentUserId);
+          likeCount = postDoc.data()?['likes'] ?? 0;
+        });
+      }
+    });
+    _subscriptions.add(sub);
+  }
+
+  void _toggleLike() async {
+    if (currentUserId == null) return;
+
+    final postRef = FirebaseFirestore.instance
+        .collection(_getCollectionPath())
+        .doc(widget.postId);
+
+    final postDoc = await postRef.get();
+    List<dynamic> likedBy = List.from(postDoc.data()?['likedBy'] ?? []);
+
+    bool currentlyLiked = likedBy.contains(currentUserId);
+
+    setState(() {
+      isLiked = !currentlyLiked;
+      likeCount = isLiked ? likeCount + 1 : likeCount - 1;
+    });
+
+    await postRef.update({
+      'likes': FieldValue.increment(isLiked ? 1 : -1),
+      'likedBy': isLiked 
+          ? FieldValue.arrayUnion([currentUserId]) 
+          : FieldValue.arrayRemove([currentUserId])
+    });
+
+    if (isLiked) {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserId)
+          .get();
+          
+      final String likerName = userDoc.data()?['username'] ?? 'Someone';
+      final postAuthorId = postDoc.data()?['userId'] ?? '';
+      
+      if (postAuthorId != currentUserId) {
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'receiverId': postAuthorId,
+          'senderId': currentUserId,
+          'senderName': likerName,
+          'postId': widget.postId,
+          'collection': widget.collectionName,
+          'message': "$likerName liked your post",
+          'timestamp': FieldValue.serverTimestamp(),
+          'type': 'like',
+          'isRead': false,
+        });
+
+        await FCMService().sendNotificationToUser(
+          postAuthorId,
+          likerName,
+          "liked your post!"
+        );
+      }
+    }
+  }
+
   String _getCollectionPath() {
-    if (widget.collectionName.startsWith("lostfoundposts")) {
+    if (widget.collectionName.contains("lostfoundposts")) {
       return "lostfoundposts/All/posts";
-    } else if (widget.collectionName.startsWith("Peerposts")) {
+    } else if (widget.collectionName.contains("Peerposts")) {
       return "Peerposts/All/posts";
-    } else if (widget.collectionName.startsWith("Eventposts")) {
-      return "Eventposts";
-    } else if (widget.collectionName.startsWith("Surveyposts")) {
-      return "Surveyposts";
+    } else if (widget.collectionName.contains("Eventposts")) {
+      return "Eventposts/All/posts";
+    } else if (widget.collectionName.contains("Surveyposts")) {
+      return "Surveyposts/All/posts";
     } else {
-      print("❌ Invalid collection name: ${widget.collectionName}");
       throw Exception("Invalid collection name: ${widget.collectionName}");
     }
   }
-void _deletePost() async {
-  if (!isOwner) return;
 
-  try {
-    String category = "All";
-    DocumentSnapshot? postDoc;
+  void _deletePost() async {
+    if (!isOwner) return;
 
-    // **Handle surveys and events separately since they don't have subcategories**
-    if (widget.collectionName == "Surveyposts/All/posts" || widget.collectionName == "Eventposts/All/posts") {
-      print("collection name: ${widget.collectionName}");
-      // Log the full path to verify correctness
-      print("Looking for post at path: ${widget.collectionName}/All/posts/${widget.postId}");
-      
-      // Check directly in the collection under All/posts
-      postDoc = await FirebaseFirestore.instance
-          .collection(widget.collectionName.split('/')[0])  // Get the main collection, e.g. "Surveyposts"
-          .doc("All")  // "All" document
-          .collection("posts")  // Subcollection "posts"
-          .doc(widget.postId)  // Document ID of the post
-          .get();
-    } else {
-      // Handle Lost & Found and Peer Assistance which have subcategories
-      bool hasSubcategories = widget.collectionName == "lostfoundposts" || widget.collectionName == "Peerposts";
-      print("collection name: ${widget.collectionName}");
+    try {
+      final collectionPath = _getCollectionPath();
+      final postRef = FirebaseFirestore.instance
+          .collection(collectionPath)
+          .doc(widget.postId);
 
-      // Check in "All/posts"
-      postDoc = await FirebaseFirestore.instance
-          .collection(widget.collectionName)
-          .doc("All")
-          .collection("posts")
-          .doc(widget.postId)
-          .get();
-
-      // Check in subcategories if applicable
-      if (!postDoc.exists && hasSubcategories) {
-        QuerySnapshot categories = await FirebaseFirestore.instance
-            .collection(widget.collectionName)
-            .get();
-
-        for (var doc in categories.docs) {
-          if (doc.id == "All") continue;
-
-          DocumentSnapshot subPost = await FirebaseFirestore.instance
-              .collection(widget.collectionName)
-              .doc(doc.id)
-              .collection("posts")
-              .doc(widget.postId)
-              .get();
-
-          if (subPost.exists) {
-            category = doc.id;
-            postDoc = subPost;
-            break;
-          }
-        }
-      }
-    }
-
-    if (postDoc == null || !postDoc.exists) {
-      print("❌ Post not found in any collection!");
-      print("Checking post at path: ${widget.collectionName} .${widget.postId}");
-      return;
-    }
-
-    // Show delete confirmation dialog
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Post'),
-          content: const Text('Are you sure you want to delete this post? This action cannot be undone.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              onPressed: () async {
-                // **Delete from main collection for surveys and events**
-                await FirebaseFirestore.instance
-                    .collection(widget.collectionName.split('/')[0])  // Get the main collection, e.g. "Surveyposts"
-                    .doc("All")
-                    .collection("posts")
-                    .doc(widget.postId)
-                    .delete();
-
-                // **Delete from AI-categorized subcollection (only for lost n found & peer posts)**
-                if (widget.collectionName == "lostfoundposts" || widget.collectionName == "Peerposts") {
-                  if (category != "All") {
-                    await FirebaseFirestore.instance
-                        .collection(widget.collectionName)
-                        .doc(category)
-                        .collection("posts")
-                        .doc(widget.postId)
-                        .delete();
-                  }
-                }
-
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Post deleted successfully')),
-                  );
-                }
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-  } catch (e) {
-    print("❌ Error deleting post: $e");
-  }
-}
-void _editPost() async {
-  if (!isOwner) return;
-
-  try {
-    // Check if the collection has subcollections like "All/posts" (lostfound, peer)
-    String collectionPath = widget.collectionName;
-    bool isSubcollectionRequired = widget.collectionName == 'lostfoundposts' || widget.collectionName == 'Peerposts';
-
-    final postRef = isSubcollectionRequired
-        ? FirebaseFirestore.instance
-            .collection(widget.collectionName) // Main collection (e.g., 'lostfoundposts')
-            .doc("All")  // 'All' document
-            .collection("posts")  // 'posts' subcollection
-            .doc(widget.postId) // The post ID
-        : FirebaseFirestore.instance
-            .collection(widget.collectionName) // Direct collection (e.g., 'surveys', 'events')
-            .doc(widget.postId);  // The post ID
-
-    final postDoc = await postRef.get();
-
-    if (!postDoc.exists) {
-      print("❌ Post not found at path: $collectionPath/${widget.postId}");
-      return;
-    }
-
-    final Map<String, dynamic>? postData = postDoc.data();
-
-    if (postData == null) return;
-
-    final currentContent = postData['postContent'] ?? '';
-    final currentCategory = postData['category'] ?? 'Uncategorized';
-
-    final TextEditingController contentController =
-        TextEditingController(text: currentContent);
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Edit Post'),
-          content: TextField(
-            controller: contentController,
-            decoration: const InputDecoration(
-              hintText: "Update your post content...",
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 5,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final updatedContent = contentController.text.trim();
-                if (updatedContent.isNotEmpty) {
-                  // 🔥 AI Re-Categorization Based on Collection Name
-                  String newCategory = currentCategory;
-
-                  if (widget.collectionName == "lostfoundposts") {
-                    print("🔹 Reclassifying Lost & Found Post...");
-                    newCategory = await _classifyPostWithHuggingFace(updatedContent);
-                    print("✅ AI Categorized as: $newCategory");
-                  } else if (widget.collectionName == "Peerposts") {
-                    print("🔹 Reclassifying Peer Assistance Post...");
-                    newCategory = await _classifyPeerAssistancePost(updatedContent);
-                    print("✅ AI Categorized as: $newCategory");
-                  }
-
-                  // ✅ Update post in Firestore
-                  await postRef.update({
-                    'postContent': updatedContent,
-                    'category': newCategory, // AI updated category
-                    'editedAt': FieldValue.serverTimestamp(),
-                  });
-
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Delete Post'),
+            content: const Text('Are you sure you want to delete this post? This action cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () async {
+                  await postRef.delete();
                   if (mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Post updated successfully')),
+                      const SnackBar(content: Text('Post deleted successfully')),
                     );
                   }
-                }
-              },
-              child: const Text('Update'),
-            ),
-          ],
+                },
+                child: const Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print("Error deleting post: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete post: ${e.toString()}')),
         );
-      },
-    );
-  } catch (e) {
-    print("❌ Error editing post: $e");
+      }
+    }
   }
-}
 
+  void _editPost() async {
+    if (!isOwner) return;
 
+    try {
+      final postRef = FirebaseFirestore.instance
+          .collection(_getCollectionPath())
+          .doc(widget.postId);
 
-  // ✅ Show Options Menu
+      final postDoc = await postRef.get();
+      if (!postDoc.exists) return;
+
+      final postData = postDoc.data();
+      final currentContent = postData?['postContent'] ?? widget.content;
+      final currentCategory = postData?['category'] ?? 'Uncategorized';
+
+      final TextEditingController contentController =
+          TextEditingController(text: currentContent);
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Edit Post'),
+            content: TextField(
+              controller: contentController,
+              decoration: const InputDecoration(
+                hintText: "Update your post content...",
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 5,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final updatedContent = contentController.text.trim();
+                  if (updatedContent.isNotEmpty) {
+                    String newCategory = currentCategory;
+
+                    if (widget.collectionName.contains("lostfoundposts")) {
+                      newCategory = await _classifyPostWithHuggingFace(updatedContent);
+                    } else if (widget.collectionName.contains("Peerposts")) {
+                      newCategory = await _classifyPeerAssistancePost(updatedContent);
+                    }
+
+                    await postRef.update({
+                      'postContent': updatedContent,
+                      'category': newCategory,
+                      'editedAt': FieldValue.serverTimestamp(),
+                    });
+
+                    if (mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Post updated successfully')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Update'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print("Error editing post: $e");
+    }
+  }
+
   void _showOptionsMenu() {
     showModalBottomSheet(
       context: context,
@@ -622,35 +538,30 @@ void _editPost() async {
     );
   }
 
-Future<void> _fetchCommentCount() async {
-  String collectionPath = widget.collectionName;
-
-  // If "All/posts" is already in the collection name, don't append it again
-  if (!collectionPath.contains("/All/posts")) {
-    collectionPath = "$collectionPath/All/posts";
+  void _fetchCommentCount() {
+    final sub = FirebaseFirestore.instance
+        .collection(_getCollectionPath())
+        .doc(widget.postId)
+        .collection("comments")
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          commentCount = snapshot.size;
+        });
+      }
+    }, onError: (error) {
+      print("Error fetching comment count: $error");
+    });
+    _subscriptions.add(sub);
   }
-
-  print("Fetching comments from: $collectionPath/${widget.postId}/comments");
-
-  FirebaseFirestore.instance
-      .collection(collectionPath)
-      .doc(widget.postId)
-      .collection("comments")
-      .snapshots()
-      .listen((snapshot) {
-    if (mounted) {
-      setState(() {
-        commentCount = snapshot.docs.length;
-      });
-    }
-  }, onError: (error) {
-    print("Error fetching comment count: $error");
-  });
-}
-
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Column(
       children: [
         Card(
@@ -677,7 +588,7 @@ Future<void> _fetchCommentCount() async {
                             radius: 20.0,
                             backgroundColor: Colors.grey[300],
                             child: profileImageUrl == null
-                                ? const CircularProgressIndicator()
+                                ? const Icon(Icons.person, size: 20.0)
                                 : ClipOval(
                                     child: Image.network(
                                       profileImageUrl!,
@@ -713,7 +624,7 @@ Future<void> _fetchCommentCount() async {
                       ),
                     ),
 
-                    // ✅ Options menu (only visible to post owner)
+                    // Options menu (only visible to post owner)
                     if (isOwner)
                       IconButton(
                         icon: const Icon(Icons.more_vert),
@@ -728,14 +639,14 @@ Future<void> _fetchCommentCount() async {
                 Text(widget.content, style: const TextStyle(fontSize: 16.0)),
 
                 // Image (if available)
-                if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty)
+                if (imageUrl != null && imageUrl!.isNotEmpty)
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => ImageViewerScreen(
-                            imageUrl: widget.imageUrl!,
+                            imageUrl: imageUrl!,
                             heroTag: "post_image_${widget.postId}",
                           ),
                         ),
@@ -752,7 +663,7 @@ Future<void> _fetchCommentCount() async {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8.0),
                           child: Image.network(
-                            widget.imageUrl!,
+                            imageUrl!,
                             fit: BoxFit.contain,
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
@@ -831,7 +742,6 @@ Future<void> _fetchCommentCount() async {
     );
   }
 }
-
 class CommentSection extends StatefulWidget {
   final String postId;
   final String collectionName; // Generalized collection name
