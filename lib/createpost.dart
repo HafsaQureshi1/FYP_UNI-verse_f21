@@ -10,8 +10,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
-import 'profileimage.dart';
-import 'categorize.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
+import 'package:latlong2/latlong.dart' as latlong;
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'LocationPicker.dart'; // Make sure this import is correct
 
 class CreateNewPostScreen extends StatefulWidget {
   final String collectionName;
@@ -42,6 +45,25 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
     _fetchUserInfo();
   }
 
+  // Updated location picker function
+  Future<void> _pickLocation() async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(builder: (context) => LocationPickerWithSearch()),
+  );
+
+  if (result != null && mounted) {
+    setState(() {
+      _selectedLocation = LatLng(
+        result['latitude'] as double,
+        result['longitude'] as double,
+      );
+      _selectedAddress = result['address'] as String;
+    });
+  }
+}
+
+  // Rest of your existing methods remain the same...
   String _ruleBasedClassification(String postText) {
     Map<String, List<String>> categoryKeywords = {
       "Stationery & Supplies": [
@@ -57,31 +79,17 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
       "Books": ["book", "textbook", "novel", "magazine"],
     };
 
-    postText = postText.toLowerCase(); // Convert to lowercase
+    postText = postText.toLowerCase();
 
     for (var entry in categoryKeywords.entries) {
       for (var keyword in entry.value) {
         if (postText.contains(keyword)) {
-          return entry.key; // Assign category if a keyword is found
+          return entry.key;
         }
       }
     }
 
-    return "Miscellaneous"; // If no match is found
-  }
-
-  Future<void> _pickLocation() async {
-    final LatLng? location = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => LocationPicker()),
-    );
-
-    if (location != null) {
-      setState(() {
-        _selectedLocation = location;
-        _updateAddress(location);
-      });
-    }
+    return "Miscellaneous";
   }
 
   Map<String, String> categoryMapping = {
@@ -98,8 +106,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
   };
 
   Future<String> _classifyPostWithHuggingFace(String postText) async {
-    print("🔹 Sending request to Hugging Face...");
-
     final url = Uri.parse(
         "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
 
@@ -115,8 +121,8 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
           "Electronics",
           "Clothes & Bags",
           "Official Documents",
-          "Wallets & Keys ",
-          "Books ",
+          "Wallets & Keys",
+          "Books",
           "Stationery & Supplies",
           "Miscellaneous"
         ],
@@ -126,20 +132,12 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
 
     try {
       final response = await http.post(url, headers: headers, body: body);
-      print("🔹 API Response Status Code: ${response.statusCode}");
-
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         List<dynamic> labels = responseData["labels"];
         List<dynamic> scores = responseData["scores"];
 
         if (labels.isNotEmpty && scores.isNotEmpty) {
-          // Print labels and scores
-          for (int i = 0; i < labels.length; i++) {
-            print("🔹 ${labels[i]}: ${scores[i].toStringAsFixed(4)}");
-          }
-
-          // Find the best category excluding "Miscellaneous"
           String bestCategory = "Miscellaneous";
           double bestConfidence = 0.0;
 
@@ -152,27 +150,18 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
           if (bestConfidence < 0.2) {
             bestCategory = "Miscellaneous";
           }
-
-          print(
-              "✅ Selected Category: $bestCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
-
           return bestCategory;
         }
-      } else {
-        print("❌ AI Classification Failed. Response: ${response.body}");
       }
     } catch (e) {
-      print("❌ Hugging Face API Exception: $e");
+      print("Hugging Face API Exception: $e");
     }
-
-    return "Miscellaneous"; // Default if API fails
+    return "Miscellaneous";
   }
 
   Future<String> _classifyPeerAssistancePost(String postText) async {
-    print("🔹 Sending request to Hugging Face for Peer Assistance...");
-
     final url = Uri.parse(
-        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+        "https://api-inference.huggingface.co/models/MoritzLaurer/deberta-v3-large-zeroshot-v1");
     final headers = {
       "Authorization": "Bearer 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",
       "Content-Type": "application/json"
@@ -182,12 +171,12 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
       "inputs": postText,
       "parameters": {
         "candidate_labels": [
-          "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)",
-          "Electronics & Circuits (Electrical Engineering)",
-          "Teaching Methods (Education & Physical Education)",
-          "Business Strategy (Business Department)",
-          "Statistics & Calculus (Mathematics)",
-          "Journalism & Broadcasting (Media & Communication)",
+          "Computer Science",
+          "Electrical Engineering",
+          "Education & Physical Education",
+          "Business",
+          "Mathematics",
+          "Media",
           "Miscellaneous"
         ],
         "hypothesis_template": "This post is related to {}."
@@ -196,25 +185,16 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
 
     try {
       final response = await http.post(url, headers: headers, body: body);
-      print("🔹 API Response Status Code: ${response.statusCode}");
-
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         List<dynamic> labels = responseData["labels"];
         List<dynamic> scores = responseData["scores"];
 
-        print("🔹 AI Response Labels: $labels");
-        print("🔹 AI Response Scores: $scores");
-
         if (labels.isNotEmpty && scores.isNotEmpty) {
-          // Find the best category excluding "Miscellaneous"
           String bestCategory = "Miscellaneous";
           double bestConfidence = 0.0;
 
           for (int i = 0; i < labels.length; i++) {
-            print(
-                "🔹 Checking: ${labels[i]} (Score: ${scores[i].toStringAsFixed(4)})");
-
             if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
               bestCategory = labels[i];
               bestConfidence = scores[i];
@@ -225,27 +205,16 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
             bestCategory = "Miscellaneous";
           }
 
-          // 🔹 **Map AI Label to Original Chip Name**
-          String mappedCategory =
-              categoryMapping[bestCategory] ?? "Miscellaneous";
-
-          print(
-              "✅ Selected Category: $mappedCategory (Confidence: ${bestConfidence.toStringAsFixed(4)})");
-          return mappedCategory;
+          return categoryMapping[bestCategory] ?? "Miscellaneous";
         }
-      } else {
-        print("❌ AI Classification Failed. Response: ${response.body}");
       }
     } catch (e) {
-      print("❌ Hugging Face API Exception: $e");
+      print("Hugging Face API Exception: $e");
     }
-
-    return "Miscellaneous"; // Default if API fails
+    return "Miscellaneous";
   }
 
   Future<void> _createPost() async {
-    print("Original widget.collectionName: ${widget.collectionName}");
-
     String postContent = _postController.text.trim();
     if (postContent.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -267,43 +236,32 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
 
         String? uploadedImageUrl;
 
-        // Upload image if selected
         if (_imageFile != null || _webImage != null) {
           Uint8List imageBytes =
               kIsWeb ? _webImage! : await _imageFile!.readAsBytes();
           uploadedImageUrl = await _uploadImageToCloudinary(imageBytes);
         }
 
-        // 🔹 **Determine Collection Path**
         String collectionPath;
-        String category =
-            "Uncategorized"; // Default category (for AI-categorized posts)
+        String category = "Uncategorized";
 
         if (widget.collectionName.startsWith("lostfoundposts")) {
-          // 🔹 **AI Categorization for Lost & Found**
-          print("🔹 Classifying post with AI...");
           category = await _classifyPostWithHuggingFace(postContent);
-          print("✅ AI Categorized as: $category");
           collectionPath = "lostfoundposts/All/posts";
         } else if (widget.collectionName.startsWith("Peerposts")) {
-          // 🔹 **AI Categorization for Peer Assistance**
-          print("🔹 Classifying peer assistance post with AI...");
           category = await _classifyPeerAssistancePost(postContent);
-          print("✅ AI Categorized as: $category");
           collectionPath = "Peerposts/All/posts";
         } else if (widget.collectionName.startsWith("Eventposts")) {
           collectionPath = "Eventposts/All/posts";
         } else if (widget.collectionName.startsWith("Surveyposts")) {
           collectionPath = "Surveyposts/All/posts";
         } else {
-          print("❌ Invalid collection name: ${widget.collectionName}");
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid collection name!')),
           );
           return;
         }
 
-        // ✅ Firestore Reference
         final generalRef = _firestore.collection(collectionPath).doc();
         final postData = {
           'userId': user.uid,
@@ -315,7 +273,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
           'timestamp': FieldValue.serverTimestamp(),
           if (widget.collectionName.startsWith("lostfoundposts") ||
               widget.collectionName.startsWith("Peerposts"))
-            "category": category, // ✅ Store category for AI-categorized posts
+            "category": category,
           "location": _selectedLocation != null
               ? {
                   "latitude": _selectedLocation!.latitude,
@@ -324,9 +282,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                 }
               : null,
         };
-
-        print("🚀 Posting to: $collectionPath"); // Debugging path
-        print("📝 Document ID: ${generalRef.id}"); // Debugging ID
 
         await generalRef.set(postData);
 
@@ -341,32 +296,18 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
         );
       }
     } catch (e) {
-      print("❌ Firestore Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
     } finally {
-      setState(() {
-        _isPosting = false;
-      });
-    }
-  }
-
-  Future<void> _updateAddress(LatLng position) async {
-    try {
-      List<Placemark> placemarks =
-          await placemarkFromCoordinates(position.latitude, position.longitude);
-      if (placemarks.isNotEmpty) {
+      if (mounted) {
         setState(() {
-          _selectedAddress = placemarks.first.street ?? "Unknown Address";
+          _isPosting = false;
         });
       }
-    } catch (e) {
-      print("Error fetching address: $e");
     }
   }
 
-  // Fetch current user information
   Future<void> _fetchUserInfo() async {
     final User? currentUser = _auth.currentUser;
     if (currentUser != null) {
@@ -388,7 +329,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
     }
   }
 
-  // Select image from gallery
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
@@ -410,7 +350,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
     }
   }
 
-  // Upload image to Cloudinary
   Future<String?> _uploadImageToCloudinary(Uint8List imageBytes) async {
     const cloudinaryUrl =
         "https://api.cloudinary.com/v1_1/dgyktklti/image/upload";
@@ -426,28 +365,21 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
       final responseData = await response.stream.bytesToString();
       final decodedData = jsonDecode(responseData);
       return decodedData['secure_url'];
-    } else {
-      return null;
     }
+    return null;
   }
 
-  // Create and save post to Firestore
-  // Get user-friendly post type label
   String _getPostTypeLabel(String collectionName) {
-    // Extract the base collection name without the path components
-    String baseCollection = collectionName.split('/').first;
-
-    switch (baseCollection) {
-      case 'lostfoundposts':
-        return 'Lost & Found';
-      case 'Eventposts':
-        return 'Events & Jobs';
-      case 'Peerposts':
-        return 'Peer Assistance';
-      case 'Surveyposts':
-        return 'Survey';
-      default:
-        return 'Post';
+    if (collectionName.startsWith('lostfoundposts')) {
+      return 'Lost & Found';
+    } else if (collectionName.startsWith('Eventposts')) {
+      return 'Events & Jobs';
+    } else if (collectionName.startsWith('Peerposts')) {
+      return 'Peer Assistance';
+    } else if (collectionName.startsWith('Surveyposts')) {
+      return 'Survey';
+    } else {
+      return 'Post';
     }
   }
 
@@ -535,14 +467,20 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                     child: Row(
                       children: [
                         // User avatar
-                        _userId != null
-                            ? ProfileAvatar(userId: _userId!, radius: 20)
-                            : CircleAvatar(
-                                radius: 20,
-                                backgroundColor: Colors.grey[200],
-                                child: const Icon(Icons.person,
-                                    color: Colors.grey),
-                              ),
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: Colors.grey[200],
+                          child: _userId != null
+                              ? ClipOval(
+                                  child: Image.network(
+                                    'https://example.com/profile.jpg', // Replace with actual profile image URL
+                                    fit: BoxFit.cover,
+                                    width: 40,
+                                    height: 40,
+                                  ),
+                                )
+                              : const Icon(Icons.person, color: Colors.grey),
+                        ),
                         const SizedBox(width: 12),
 
                         // Username and posting info
@@ -627,7 +565,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                                     ),
                             ),
                           ),
-                          // Remove image button
                           Positioned(
                             top: 8,
                             right: 8,
@@ -686,7 +623,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                     ],
                   ),
 
-                  // Add spacing between buttons
                   const SizedBox(height: 16),
 
                   // Add location button
@@ -706,7 +642,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                             children: [
                               const Icon(Icons.location_on, color: Colors.blue),
                               const SizedBox(width: 8),
-                              Text("Add Location",
+                              const Text("Add Location",
                                   style: TextStyle(
                                     color: Colors.black87,
                                     fontWeight: FontWeight.w500,
@@ -720,10 +656,10 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
 
                   const SizedBox(height: 12),
 
-// Display selected location
+                  // Display selected location
                   if (_selectedLocation != null)
                     Container(
-                      padding: EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         border: Border.all(color: Colors.grey.shade300),
@@ -731,7 +667,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.location_on, color: Colors.redAccent),
+                          const Icon(Icons.location_on, color: Colors.redAccent),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -778,7 +714,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                     ),
                   ),
 
-                  // Account for keyboard padding
                   SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
                 ],
               ),

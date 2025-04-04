@@ -7,7 +7,7 @@ class SurveysScreen extends StatelessWidget {
   // ✅ Update this to the correct Firestore collection path
   final String collectionName = "Surveyposts/All/posts";
 
-  SurveysScreen({super.key});
+  const SurveysScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

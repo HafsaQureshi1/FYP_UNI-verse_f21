@@ -39,6 +39,9 @@ class PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<PostCard> {
+  Map<String, dynamic>? _postLocation;
+  String _locationAddress = '';
+  bool _isFetchingLocation = false;
   String postTime = "";
   int likeCount = 0;
   bool isLiked = false;
@@ -70,6 +73,7 @@ class _PostCardState extends State<PostCard> {
         _checkIfUserLiked(),
         _fetchImageUrl(),
         _fetchCommentCount(),
+         _fetchLocation(),
       ] as Iterable<Future>);
     } catch (e) {
       print("Error initializing post data: $e");
@@ -81,6 +85,34 @@ class _PostCardState extends State<PostCard> {
       }
     }
   }
+  Future<void> _fetchLocation() async {
+  if (_isFetchingLocation) return;
+  
+  setState(() => _isFetchingLocation = true);
+  
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection(_getCollectionPath())
+        .doc(widget.postId)
+        .get();
+
+    if (doc.exists) {
+      final locationData = doc.data()?['location'];
+      if (locationData != null) {
+        setState(() {
+          _postLocation = Map<String, dynamic>.from(locationData);
+          _locationAddress = locationData['address'] ?? 'Location available';
+        });
+      }
+    }
+  } catch (e) {
+    print('Error fetching location: $e');
+  } finally {
+    if (mounted) {
+      setState(() => _isFetchingLocation = false);
+    }
+  }
+}
 
   @override
   void didUpdateWidget(PostCard oldWidget) {
@@ -695,7 +727,43 @@ class _PostCardState extends State<PostCard> {
                       ),
                     ),
                   ),
-
+// Add this widget after your image display and before the like/comment buttons
+if (_postLocation != null && _locationAddress.isNotEmpty)
+  GestureDetector(
+    onTap: () {
+      // You could open a map view here if desired
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Location: $_locationAddress'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    },
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.location_on, size: 20, color: Colors.blue),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _locationAddress,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.blue[800],
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
                 // Like and Comment Buttons
                 Padding(
                   padding: const EdgeInsets.only(top: 12.0),
@@ -881,6 +949,7 @@ class _CommentSectionState extends State<CommentSection> {
                             return const SizedBox();
                           }
                           String username = usernameSnapshot.data!.get('username') ?? 'Unknown User';
+                          
                           return ListTile(
                             leading: ProfileAvatar(userId: commenterId, radius: 18),
                             title: Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
