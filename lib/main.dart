@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/fcm-service.dart';
 import 'package:flutter_application_1/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -13,27 +14,34 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'Home.dart';
 
 
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print("🔵 Background Notification Received: ${message.notification?.title}");
-}
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-    
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // Setup background message handling
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
+  // Initialize FCM for all users
+  await FCMService().initializeFCM();
+
+  // Listen for authentication changes and re-register FCM token
   FirebaseAuth.instance.authStateChanges().listen((User? user) {
     if (user != null) {
-      setupFirebaseNotifications();
+      FCMService().initializeFCM();
     }
   });
 
   runApp(const MyApp());
 }
+
+// ✅ Ensure this function is outside of any class (top-level function)
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("🔵 Background Message Received: ${message.notification?.title}");
+}
+
 
 void setupFirebaseNotifications() async {
   FirebaseMessaging messaging = FirebaseMessaging.instance;

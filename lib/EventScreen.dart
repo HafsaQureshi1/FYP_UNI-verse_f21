@@ -7,7 +7,7 @@ class EventsJobsScreen extends StatelessWidget {
   // Update this to your new Firestore collection path
   final String collectionName = "Eventposts/All/posts";
 
-  EventsJobsScreen({super.key});
+  const EventsJobsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

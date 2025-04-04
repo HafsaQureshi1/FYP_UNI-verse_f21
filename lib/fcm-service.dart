@@ -122,71 +122,94 @@ class FCMService {
   }
 }
 
+Future<void> sendNotificationOnComment(
+    String postId, String commenterName, String commentId, String collectionName) async {
+  try {
+    // Fetch the post document dynamically based on collectionName
+    final postDoc = await FirebaseFirestore.instance
+        .collection(collectionName)
+        .doc(postId)
+        .get();
 
-Future<void> sendNotificationOnComment(String postId, String commenterName, String commentId) async {
-  final postDoc =
-      await FirebaseFirestore.instance.collection('lostfoundposts').doc(postId).get(); // ✅ FIXED: Correct collection
-
-  if (!postDoc.exists) {
-    print("❌ No post found with ID: $postId");
-    return;
-  }
-
-  final String postOwnerId = postDoc.data()?['userId'] ?? '';
-  if (postOwnerId.isEmpty) {
-    print("❌ No user found for the post.");
-    return;
-  }
-
-  final userDoc =
-      await FirebaseFirestore.instance.collection('users').doc(postOwnerId).get();
-
-  if (!userDoc.exists) {
-    print("❌ No user found with ID: $postOwnerId");
-    return;
-  }
-
-  final String? fcmToken = userDoc.data()?['fcmToken'];
-  if (fcmToken == null || fcmToken.isEmpty) {
-    print("❌ No FCM token found for user.");
-    return;
-  }
-
-  final String? accessToken = await getAccessToken();
-  if (accessToken == null) {
-    print("❌ Failed to get OAuth token.");
-    return;
-  }
-
-  final Map<String, dynamic> notificationPayload = {
-    "message": {
-      "token": fcmToken,
-      "notification": {
-        "title": "New Comment on Your Post! 💬",
-        "body": "$commenterName commented on your post.",
-      },
-      "data": {
-        "type": "comment",
-        "postId": postId,
-        "commentId": commentId,
-      }
+    if (!postDoc.exists) {
+      print("❌ No post found in $collectionName with ID: $postId");
+      return;
     }
-  };
 
-  final response = await http.post(
-    Uri.parse("https://fcm.googleapis.com/v1/projects/universe-123/messages:send"),
-    headers: <String, String>{
-      "Content-Type": "application/json",
-      "Authorization": "Bearer $accessToken",
-    },
-    body: jsonEncode(notificationPayload),
-  );
+    // Get the post owner's userId
+    final String postOwnerId = postDoc.data()?['userId'] ?? '';
+    if (postOwnerId.isEmpty) {
+      print("❌ No userId found for the post.");
+      return;
+    }
 
-  if (response.statusCode == 200) {
-    print("✅ Comment notification sent successfully!");
-  } else {
-    print("❌ Failed to send comment notification: ${response.body}");
+    // Prevent self-comment from triggering a notification
+    if (FirebaseAuth.instance.currentUser?.uid == postOwnerId) {
+      print("🔹 Post owner commented. No notification sent.");
+      return;
+    }
+
+    // Fetch the post owner's user document to get their FCM token
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(postOwnerId)
+        .get();
+
+    if (!userDoc.exists) {
+      print("❌ No user found with ID: $postOwnerId");
+      return;
+    }
+
+    final String? fcmToken = userDoc.data()?['fcmToken'];
+    if (fcmToken == null || fcmToken.isEmpty) {
+      print("❌ No FCM token found for user.");
+      return;
+    }
+
+    // Fetch OAuth token for Firebase Cloud Messaging
+    final String? accessToken = await getAccessToken();
+    if (accessToken == null) {
+      print("❌ Failed to get OAuth token.");
+      return;
+    }
+
+    // Prepare the notification payload
+    final Map<String, dynamic> notificationPayload = {
+      "message": {
+        "token": fcmToken,
+        "notification": {
+          "title": "New Comment on Your Post! 💬",
+          "body": "$commenterName commented on your post.",
+        },
+        "data": {
+          "type": "comment",
+          "postId": postId,
+          "commentId": commentId,
+          "collection": collectionName,  // Include the collection name
+        }
+      }
+    };
+
+    // Send the notification request
+    final response = await http.post(
+      Uri.parse("https://fcm.googleapis.com/v1/projects/universe-123/messages:send"),
+      headers: <String, String>{
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $accessToken",
+      },
+      body: jsonEncode(notificationPayload),
+    );
+
+    if (response.statusCode == 200) {
+      print("✅ Comment notification sent successfully!");
+    } else {
+      print("❌ Failed to send comment notification: ${response.body}");
+    }
+
+  } catch (e) {
+    print("❌ Error sending comment notification: $e");
   }
 }
+
 
 }

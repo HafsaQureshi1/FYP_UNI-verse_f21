@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 Future<String> _classifyPostWithDeepSeek(String postText) async {
-  final url = Uri.parse("https://api.deepseek.com/v1/classify"); // Replace with actual API endpoint
+  final url = Uri.parse("https://api.deepseek.com/v1/chat/completions"); // Replace with actual API endpoint
   final headers = {
-    "Authorization": "Bearer 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",  // Replace with actual API key
+    "Authorization": "Bearer sk-874cd61b34ba477ab266c3132a3da13c",  // Replace with actual API key
     "Content-Type": "application/json"
   };
 

@@ -19,7 +19,7 @@ class PostCard extends StatefulWidget {
   final String collectionName;
   final String? imageUrl;
 
-  const PostCard({
+  const PostCard({ 
     Key? key, // Add this
     required this.postId,
     required this.userId,
@@ -306,7 +306,7 @@ void _toggleLike() async {
 
   final postDoc = await postRef.get();
   List<dynamic> likedBy = List.from(postDoc.data()?['likedBy'] ?? []);
-  
+
   bool currentlyLiked = likedBy.contains(currentUserId);
 
   setState(() {
@@ -328,8 +328,9 @@ void _toggleLike() async {
       final String likerName = userDoc.data()?['username'] ?? 'Someone';
 
       final postAuthorId = postDoc.data()?['userId'] ?? '';
-      if (postAuthorId == currentUserId) return;
+      if (postAuthorId == currentUserId) return; // Prevent self-notification
 
+      // Save notification to Firestore
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
         'senderId': currentUserId,
@@ -341,9 +342,17 @@ void _toggleLike() async {
         'type': 'like',
         'isRead': false,
       });
+
+      // Send push notification via FCM
+      await FCMService().sendNotificationToUser(
+        postAuthorId,
+        likerName,
+        "liked your post!"
+      );
     });
   }
 }
+
 
 
 // 🔹 **Helper Function to Get Correct Collection Path**
@@ -353,34 +362,156 @@ void _toggleLike() async {
     } else if (widget.collectionName.startsWith("Peerposts")) {
       return "Peerposts/All/posts";
     } else if (widget.collectionName.startsWith("Eventposts")) {
-      return "Eventposts/All/posts";
+      return "Eventposts";
     } else if (widget.collectionName.startsWith("Surveyposts")) {
-      return "Surveyposts/All/posts";
+      return "Surveyposts";
     } else {
       print("❌ Invalid collection name: ${widget.collectionName}");
       throw Exception("Invalid collection name: ${widget.collectionName}");
     }
   }
+void _deletePost() async {
+  if (!isOwner) return;
 
+  try {
+    String category = "All";
+    DocumentSnapshot? postDoc;
+
+    // **Handle surveys and events separately since they don't have subcategories**
+    if (widget.collectionName == "Surveyposts/All/posts" || widget.collectionName == "Eventposts/All/posts") {
+      print("collection name: ${widget.collectionName}");
+      // Log the full path to verify correctness
+      print("Looking for post at path: ${widget.collectionName}/All/posts/${widget.postId}");
+      
+      // Check directly in the collection under All/posts
+      postDoc = await FirebaseFirestore.instance
+          .collection(widget.collectionName.split('/')[0])  // Get the main collection, e.g. "Surveyposts"
+          .doc("All")  // "All" document
+          .collection("posts")  // Subcollection "posts"
+          .doc(widget.postId)  // Document ID of the post
+          .get();
+    } else {
+      // Handle Lost & Found and Peer Assistance which have subcategories
+      bool hasSubcategories = widget.collectionName == "lostfoundposts" || widget.collectionName == "Peerposts";
+      print("collection name: ${widget.collectionName}");
+
+      // Check in "All/posts"
+      postDoc = await FirebaseFirestore.instance
+          .collection(widget.collectionName)
+          .doc("All")
+          .collection("posts")
+          .doc(widget.postId)
+          .get();
+
+      // Check in subcategories if applicable
+      if (!postDoc.exists && hasSubcategories) {
+        QuerySnapshot categories = await FirebaseFirestore.instance
+            .collection(widget.collectionName)
+            .get();
+
+        for (var doc in categories.docs) {
+          if (doc.id == "All") continue;
+
+          DocumentSnapshot subPost = await FirebaseFirestore.instance
+              .collection(widget.collectionName)
+              .doc(doc.id)
+              .collection("posts")
+              .doc(widget.postId)
+              .get();
+
+          if (subPost.exists) {
+            category = doc.id;
+            postDoc = subPost;
+            break;
+          }
+        }
+      }
+    }
+
+    if (postDoc == null || !postDoc.exists) {
+      print("❌ Post not found in any collection!");
+      print("Checking post at path: ${widget.collectionName} .${widget.postId}");
+      return;
+    }
+
+    // Show delete confirmation dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Post'),
+          content: const Text('Are you sure you want to delete this post? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              onPressed: () async {
+                // **Delete from main collection for surveys and events**
+                await FirebaseFirestore.instance
+                    .collection(widget.collectionName.split('/')[0])  // Get the main collection, e.g. "Surveyposts"
+                    .doc("All")
+                    .collection("posts")
+                    .doc(widget.postId)
+                    .delete();
+
+                // **Delete from AI-categorized subcollection (only for lost n found & peer posts)**
+                if (widget.collectionName == "lostfoundposts" || widget.collectionName == "Peerposts") {
+                  if (category != "All") {
+                    await FirebaseFirestore.instance
+                        .collection(widget.collectionName)
+                        .doc(category)
+                        .collection("posts")
+                        .doc(widget.postId)
+                        .delete();
+                  }
+                }
+
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Post deleted successfully')),
+                  );
+                }
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  } catch (e) {
+    print("❌ Error deleting post: $e");
+  }
+}
 void _editPost() async {
   if (!isOwner) return;
 
   try {
-    final postRef = FirebaseFirestore.instance
-        .collection(widget.collectionName)
-        .doc("All")
-        .collection("posts")
-        .doc(widget.postId);
+    // Check if the collection has subcollections like "All/posts" (lostfound, peer)
+    String collectionPath = widget.collectionName;
+    bool isSubcollectionRequired = widget.collectionName == 'lostfoundposts' || widget.collectionName == 'Peerposts';
+
+    final postRef = isSubcollectionRequired
+        ? FirebaseFirestore.instance
+            .collection(widget.collectionName) // Main collection (e.g., 'lostfoundposts')
+            .doc("All")  // 'All' document
+            .collection("posts")  // 'posts' subcollection
+            .doc(widget.postId) // The post ID
+        : FirebaseFirestore.instance
+            .collection(widget.collectionName) // Direct collection (e.g., 'surveys', 'events')
+            .doc(widget.postId);  // The post ID
 
     final postDoc = await postRef.get();
 
     if (!postDoc.exists) {
-      print("❌ Post not found!");
+      print("❌ Post not found at path: $collectionPath/${widget.postId}");
       return;
     }
 
-    final Map<String, dynamic>? postData =
-        postDoc.data() as Map<String, dynamic>?;
+    final Map<String, dynamic>? postData = postDoc.data();
 
     if (postData == null) return;
 
@@ -412,15 +543,14 @@ void _editPost() async {
               onPressed: () async {
                 final updatedContent = contentController.text.trim();
                 if (updatedContent.isNotEmpty) {
-                  
                   // 🔥 AI Re-Categorization Based on Collection Name
                   String newCategory = currentCategory;
 
-                  if (widget.collectionName.startsWith("lostfoundposts")) {
+                  if (widget.collectionName == "lostfoundposts") {
                     print("🔹 Reclassifying Lost & Found Post...");
                     newCategory = await _classifyPostWithHuggingFace(updatedContent);
                     print("✅ AI Categorized as: $newCategory");
-                  } else if (widget.collectionName.startsWith("Peerposts")) {
+                  } else if (widget.collectionName == "Peerposts") {
                     print("🔹 Reclassifying Peer Assistance Post...");
                     newCategory = await _classifyPeerAssistancePost(updatedContent);
                     print("✅ AI Categorized as: $newCategory");
@@ -452,101 +582,6 @@ void _editPost() async {
   }
 }
 
-
-void _deletePost() async {
-  if (!isOwner) return;
-
-  try {
-    String category = "All";
-    DocumentSnapshot? postDoc;
-
-    // 🔍 Step 1: Check in "All/posts"
-    postDoc = await FirebaseFirestore.instance
-        .collection(widget.collectionName)
-        .doc("All")
-        .collection("posts")
-        .doc(widget.postId)
-        .get();
-
-    // 🔍 Step 2: If not found, search other subcollections
-    if (!postDoc.exists) {
-      QuerySnapshot categories = await FirebaseFirestore.instance
-          .collection(widget.collectionName)
-          .get();
-
-      for (var doc in categories.docs) {
-        if (doc.id == "All") continue; // Skip "All", already checked
-
-        DocumentSnapshot subPost = await FirebaseFirestore.instance
-            .collection(widget.collectionName)
-            .doc(doc.id)
-            .collection("posts")
-            .doc(widget.postId)
-            .get();
-
-        if (subPost.exists) {
-          category = doc.id;
-          postDoc = subPost;
-          break;
-        }
-      }
-    }
-
-    if (postDoc == null || !postDoc.exists) {
-      print("❌ Post not found in any subcollection!");
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Post'),
-          content: const Text(
-              'Are you sure you want to delete this post? This action cannot be undone.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              onPressed: () async {
-                // ✅ **Delete from "All/posts"**
-                await FirebaseFirestore.instance
-                    .collection(widget.collectionName)
-                    .doc("All")
-                    .collection("posts")
-                    .doc(widget.postId)
-                    .delete();
-
-                // ✅ **Delete from AI-categorized subcollection**
-                if (category != "All") {
-                  await FirebaseFirestore.instance
-                      .collection(widget.collectionName)
-                      .doc(category)
-                      .collection("posts")
-                      .doc(widget.postId)
-                      .delete();
-                }
-
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Post deleted successfully')),
-                  );
-                }
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-  } catch (e) {
-    print("❌ Error deleting post: $e");
-  }
-}
 
 
   // ✅ Show Options Menu
@@ -828,51 +863,67 @@ class _CommentSectionState extends State<CommentSection> {
   }
 
   void _addComment(String commentText) async {
-    if (commentText.trim().isEmpty || _userId == null) return;
+  if (commentText.trim().isEmpty || _userId == null) return;
 
-    String collectionPath = _getCollectionPath();
-    
-    final postRef = FirebaseFirestore.instance
-        .collection(collectionPath)
-        .doc(widget.postId);
+  // Get the collection path dynamically based on the current post's collection
+  String collectionPath = _getCollectionPath();
 
+  // Reference to the specific post document
+  final postRef = FirebaseFirestore.instance
+      .collection(collectionPath)
+      .doc(widget.postId); // Ensure widget.postId is the correct identifier
+
+  try {
     final postDoc = await postRef.get();
-    if (!postDoc.exists) return;
+    if (!postDoc.exists) return; // If the post doesn't exist, exit
 
-    final String postAuthorId = postDoc.data()?['userId'] ?? '';
+    final String postAuthorId = postDoc.data()?['userId'] ?? ''; // Get the post author's ID
 
+    // Add the comment to the post's 'comments' subcollection
     final commentRef = await postRef.collection('comments').add({
-      'userId': _userId,
-      'comment': commentText,
-      'timestamp': FieldValue.serverTimestamp(),
+      'userId': _userId, // Current user's ID who is commenting
+      'comment': commentText, // The text of the comment
+      'timestamp': FieldValue.serverTimestamp(), // Automatically get the timestamp
     });
 
+    // Clear the comment input controller
     _commentController.clear();
 
+    // If the post author is not the current user, notify them
     if (postAuthorId.isNotEmpty && postAuthorId != _userId) {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(_userId)
           .get();
-      final String currentUsername =
-          userDoc.data()?['username'] ?? 'Unknown User';
+      final String currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
 
-      _fcmService.sendNotificationOnComment(widget.postId, currentUsername, commentRef.id);
+      // Call the function to send notification to the post author
+      _fcmService.sendNotificationOnComment(
+        widget.postId, 
+        currentUsername, 
+        commentRef.id, 
+        widget.collectionName, // Dynamically pass the collection name
+      );
 
+      // Add a notification document in Firestore for the comment
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
         'senderId': _userId,
         'senderName': currentUsername,
-        'postId': widget.postId,
-        'commentId': commentRef.id,
-        'collection': widget.collectionName, // Store the dynamic collection
-        'message': "$currentUsername commented on your post",
-        'timestamp': FieldValue.serverTimestamp(),
-        'type': 'comment',
-        'isRead': false,
+        'postId': widget.postId, // Store the post ID
+        'commentId': commentRef.id, // Store the comment ID
+        'collection': widget.collectionName, // Store the dynamic collection name
+        'message': "$currentUsername commented on your post", // The message
+        'timestamp': FieldValue.serverTimestamp(), // Timestamp for the notification
+        'type': 'comment', // Type of notification
+        'isRead': false, // Initially, the notification is unread
       });
     }
+  } catch (e) {
+    print("Error adding comment: $e");
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

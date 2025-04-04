@@ -313,15 +313,18 @@ Future<void> _toggleLike() async {
     print("Error toggling like: $e");
   }
 }
-
 Future<void> _addComment(String commentText) async {
   if (commentText.trim().isEmpty || currentUserId == null) return;
 
+  // Ensure that widget.post contains correct structure (use widget.post['collection'] and widget.post['id'])
+  final collectionName = widget.post['collection'];
+  final postId = widget.post['id'];
+
   final postRef = FirebaseFirestore.instance
-      .collection(widget.post['collection'])
+      .collection(collectionName) // Use the collection name dynamically
       .doc('All')
       .collection('posts')
-      .doc(widget.post['id']);
+      .doc(postId);
 
   try {
     final postDoc = await postRef.get();
@@ -329,6 +332,7 @@ Future<void> _addComment(String commentText) async {
 
     final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
+    // Add the comment
     final commentRef = await postRef.collection('comments').add({
       'userId': currentUserId,
       'comment': commentText,
@@ -347,16 +351,22 @@ Future<void> _addComment(String commentText) async {
       final String currentUsername =
           userDoc.data()?['username'] ?? 'Unknown User';
 
+      // Send notification about the comment
       _fcmService.sendNotificationOnComment(
-          widget.post['id'], currentUsername, commentRef.id);
+        postId, 
+        currentUsername, 
+        commentRef.id, 
+        collectionName, // Pass the correct collection name
+      );
 
+      // Add a notification record to Firestore
       await FirebaseFirestore.instance.collection('notifications').add({
         'receiverId': postAuthorId,
         'senderId': currentUserId,
         'senderName': currentUsername,
-        'postId': widget.post['id'],
+        'postId': postId,
         'commentId': commentRef.id,
-        'collection': widget.post['collection'],
+        'collection': collectionName,  // Store the dynamic collection
         'message': "$currentUsername commented on your post",
         'timestamp': FieldValue.serverTimestamp(),
         'type': 'comment',
@@ -367,8 +377,6 @@ Future<void> _addComment(String commentText) async {
     print("Error adding comment: $e");
   }
 }
-
-
   @override
   Widget build(BuildContext context) {
     final timestamp = widget.post['timestamp'] as Timestamp;
