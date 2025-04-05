@@ -46,23 +46,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
   }
 
   // Updated location picker function
-  Future<void> _pickLocation() async {
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(builder: (context) => LocationPickerWithSearch()),
-  );
-
-  if (result != null && mounted) {
-    setState(() {
-      _selectedLocation = LatLng(
-        result['latitude'] as double,
-        result['longitude'] as double,
-      );
-      _selectedAddress = result['address'] as String;
-    });
-  }
-}
-
+  
   // Rest of your existing methods remain the same...
   String _ruleBasedClassification(String postText) {
     Map<String, List<String>> categoryKeywords = {
@@ -628,29 +612,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                   // Add location button
                   Row(
                     children: [
-                      GestureDetector(
-                        onTap: _pickLocation,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.location_on, color: Colors.blue),
-                              const SizedBox(width: 8),
-                              const Text("Add Location",
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.w500,
-                                  )),
-                            ],
-                          ),
-                        ),
-                      ),
+                     
                     ],
                   ),
 
