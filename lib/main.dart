@@ -9,12 +9,10 @@ import 'package:flutter_application_1/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'admin.dart';
 // Import this for kIsWeb
 
 import 'Home.dart';
-
-
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -343,6 +341,13 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
+  // Add this at the top of your _SignUpPageState class
+final List<String> _adminEmails = [
+  'waseemhasnain373@gmail.com',
+  'maazbin.bscsf21@iba-suk.edu.pk'
+  'admin2@university.edu',
+  'dean@university.edu'
+];
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -364,13 +369,16 @@ final TextEditingController _usernameController = TextEditingController();
     if (user != null) {
       await user.sendEmailVerification();
 
-      // Save username to Firestore with default role and profile picture
+      // Check if the email is an admin email
+      bool isAdmin = _adminEmails.contains(user.email?.toLowerCase().trim());
+
+      // Save user data with role
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'uid': user.uid,
         'username': _usernameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'role': 'student', // Default role
-        'profilePicture': 'https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/default_profile.png?alt=media', // Default profile picture URL
+        'email': user.email,
+        'role': isAdmin ? 'admin' : 'student', // Set role based on email
+        'profilePicture': 'https://firebasestorage.googleapis.com/...', 
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -382,7 +390,7 @@ final TextEditingController _usernameController = TextEditingController();
         const SnackBar(content: Text('Verification email sent. Please verify your email.')),
       );
 
-      _startEmailVerificationCheck();
+      _startEmailVerificationCheck(isAdmin: isAdmin);
     }
   } catch (e) {
     setState(() {
@@ -394,53 +402,55 @@ final TextEditingController _usernameController = TextEditingController();
   }
 }
 
-
-  void _startEmailVerificationCheck() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Email Verification'),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Waiting for email verification...\nPlease check your email and verify your account.'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                await FirebaseAuth.instance.currentUser?.reload();
-                final user = FirebaseAuth.instance.currentUser;
-                if (user?.emailVerified ?? false) {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Email not verified yet. Please verify and try again.')),
-                  );
-                }
-              },
-              child: const Text('Check Verification'),
-            ),
+void _startEmailVerificationCheck({bool isAdmin = false}) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Email Verification'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Waiting for email verification...\nPlease check your email and verify your account.'),
           ],
-        );
-      },
-    );
-  }
-
-  @override
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await FirebaseAuth.instance.currentUser?.reload();
+              final user = FirebaseAuth.instance.currentUser;
+              if (user?.emailVerified ?? false) {
+                Navigator.of(context).pop();
+                // Redirect to appropriate screen based on role
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => isAdmin 
+                      ? const AdminDashboard() 
+                      : const HomeScreen(),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Email not verified yet. Please verify and try again.')),
+                );
+              }
+            },
+            child: const Text('Check Verification'),
+          ),
+        ],
+      );
+    },
+  );
+}  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -520,13 +530,28 @@ const SizedBox(height: 10),
                 ),
                 const SizedBox(height: 10),
 
-                GoogleSignUpButton(
-                  onSuccess: (UserCredential userCredential) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (context) => const HomeScreen()),
-                    );
-                  },
-                ),
+               GoogleSignUpButton(
+  onSuccess: (UserCredential userCredential) {
+    final List<String> adminEmails = [
+      'waseemhasnain373@gmail.com',
+      'Maazbin.bscsf21@iba-suk.edu.pk',
+      'dean@university.edu',
+    ];
+
+    final String? email = userCredential.user?.email?.toLowerCase().trim();
+
+    if (email != null && adminEmails.contains(email)) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const AdminDashboard()),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
+  },
+),
+
                 const SizedBox(height: 10),
 
                 Row(
@@ -552,7 +577,6 @@ const SizedBox(height: 10),
     );
   }
 }
-
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
 
@@ -566,6 +590,13 @@ class _SignInPageState extends State<SignInPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isLoading = false;
 
+  // Admin emails list (same as in SignUp)
+  final List<String> _adminEmails = [
+    'waseemhasnain373@gmail.com',
+    'Maazbin.bscsf21@iba-suk.edu.pk',
+    'dean@university.edu',
+  ];
+
   Future<void> _signIn() async {
     setState(() {
       _isLoading = true;
@@ -573,28 +604,35 @@ class _SignInPageState extends State<SignInPage> {
 
     try {
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
+
       User? user = userCredential.user;
 
       if (user != null) {
-        // Reload user to get latest verification status
         await user.reload();
         user = _auth.currentUser;
 
         if (user?.emailVerified ?? false) {
-          // If email is verified, navigate to HomeScreen
+          // Check if email is in admin list
+          bool isAdmin = _adminEmails.contains(user?.email?.toLowerCase().trim());
+
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            MaterialPageRoute(
+              builder: (context) =>
+                  isAdmin ? const AdminDashboard() : const HomeScreen(),
+            ),
           );
         } else {
           setState(() {
             _isLoading = false;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please verify your email before signing in.')),
+            const SnackBar(
+              content: Text('Please verify your email before signing in.'),
+            ),
           );
         }
       }
@@ -649,9 +687,6 @@ class _SignInPageState extends State<SignInPage> {
                   controller: _emailController,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    labelStyle: const TextStyle(
-                      color: Colors.grey,
-                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
@@ -668,9 +703,6 @@ class _SignInPageState extends State<SignInPage> {
                   controller: _passwordController,
                   decoration: InputDecoration(
                     labelText: 'Password',
-                    labelStyle: const TextStyle(
-                      color: Colors.grey,
-                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
@@ -689,7 +721,6 @@ class _SignInPageState extends State<SignInPage> {
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20.0),
-                      side: const BorderSide(color: Color.fromARGB(255, 1, 38, 100)),
                     ),
                     backgroundColor: const Color(0xFF01214E),
                   ),
@@ -705,12 +736,27 @@ class _SignInPageState extends State<SignInPage> {
 
                 // Google Sign-In Button
                 GoogleSignInButton(
-                  onSuccess: (UserCredential userCredential) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (context) => const HomeScreen()),
-                    );
-                  },
-                ),
+  onSuccess: (UserCredential userCredential) {
+    final List<String> adminEmails = [
+      'waseemhasnain373@gmail.com',
+      'Maazbin.bscsf21@iba-suk.edu.pk',
+      'dean@university.edu',
+    ];
+
+    final String? email = userCredential.user?.email?.toLowerCase().trim();
+
+    if (email != null && adminEmails.contains(email)) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const AdminDashboard()),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
+  },
+),
+
 
                 const SizedBox(height: 10),
 
