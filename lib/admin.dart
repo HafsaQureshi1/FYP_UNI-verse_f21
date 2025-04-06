@@ -20,11 +20,17 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
   final List<Widget> _adminScreens = [
-    const LostFoundAdmin(), // Existing admin approval screen
-    const PeerAdmin(), // New screen for user management
-    const EventsAdmin(), // New screen for content moderation
-    const SurveyAdmin(), // New screen for analytics
+    const LostFoundAdmin(),
+    const PeerAdmin(),
+    const EventsAdmin(),
+    const SurveyAdmin(),
   ];
+
+  // Theme colors - match with Home.dart
+  final Color _primaryColor =
+      const Color.fromARGB(255, 0, 58, 92); // Match Home.dart
+  final Color _selectedColor = Colors.white;
+  final Color _unselectedColor = const Color.fromARGB(180, 255, 255, 255);
 
   void _onItemTapped(int index) {
     setState(() {
@@ -35,11 +41,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> _signOut() async {
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId: '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
+        clientId:
+            '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
       );
       await googleSignIn.signOut();
       await FirebaseAuth.instance.signOut();
-      
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const SignInPage()),
@@ -61,7 +68,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           color: Colors.white,
         ),
       ),
-      backgroundColor: const Color(0xFF01214E), // Dark blue color
+      backgroundColor: _primaryColor,
       elevation: 0,
       actions: [
         IconButton(
@@ -89,33 +96,59 @@ class _AdminDashboardState extends State<AdminDashboard> {
       body: _adminScreens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white.withOpacity(0.6),
-        backgroundColor: const Color(0xFF01214E), // Matching app bar color
+        selectedItemColor: _selectedColor,
+        unselectedItemColor: _unselectedColor,
+        backgroundColor: _primaryColor,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        items: const [
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 11,
+        ),
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.approval),
-            label: "Lost found Post ",
+            icon: Icon(_selectedIndex == 0 ? Icons.home : Icons.home_outlined),
+            label: "Lost & Found",
+            backgroundColor: _selectedIndex == 0
+                ? const Color.fromARGB(255, 0, 77, 122)
+                : null,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: "Peer Post",
+            icon: Icon(_selectedIndex == 1
+                ? Icons.dashboard
+                : Icons.dashboard_outlined),
+            label: "Peer Posts",
+            backgroundColor: _selectedIndex == 1
+                ? const Color.fromARGB(255, 0, 77, 122)
+                : null,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.flag),
-            label: "Events jobs",
+            icon: Icon(_selectedIndex == 2
+                ? Icons.document_scanner
+                : Icons.document_scanner_outlined),
+            label: "Events/Jobs",
+            backgroundColor: _selectedIndex == 2
+                ? const Color.fromARGB(255, 0, 77, 122)
+                : null,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: "surveys",
+            icon:
+                Icon(_selectedIndex == 3 ? Icons.person : Icons.person_outline),
+            label: "Surveys",
+            backgroundColor: _selectedIndex == 3
+                ? const Color.fromARGB(255, 0, 77, 122)
+                : null,
           ),
         ],
       ),
     );
   }
-}class LostFoundAdmin extends StatefulWidget {
+}
+
+class LostFoundAdmin extends StatefulWidget {
   const LostFoundAdmin({super.key});
 
   @override
@@ -123,6 +156,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
 }
 
 class _LostFoundAdminState extends State<LostFoundAdmin> {
+  // Theme color to match with other admin screens
+  final Color _primaryColor = const Color.fromARGB(255, 0, 58, 92);
+
   Stream<QuerySnapshot> _getPostsStream() {
     return FirebaseFirestore.instance
         .collection('lostfoundadmin')
@@ -249,7 +285,14 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
   String _formatTimestamp(Timestamp? timestamp) {
     if (timestamp == null) return '';
     final date = timestamp.toDate();
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute}';
+
+    // Convert to 12-hour format with AM/PM
+    final hour =
+        date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    final minute = date.minute.toString().padLeft(2, '0');
+
+    return '${date.day}/${date.month}/${date.year} $hour:$minute $period';
   }
 
   @override
@@ -260,13 +303,32 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
         stream: _getPostsStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+              ),
+            );
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text(
-                'No lost posts to approve',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.search_off_outlined,
+                    size: 70,
+                    color: _primaryColor.withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No lost posts to approve',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: _primaryColor,
+                    ),
+                  ),
+                ],
               ),
             );
           }
@@ -309,7 +371,9 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
                                 radius: 20,
                                 backgroundImage: profileImageUrl.isNotEmpty
                                     ? NetworkImage(profileImageUrl)
-                                    : const AssetImage('assets/default_profile.png') as ImageProvider,
+                                    : const AssetImage(
+                                            'assets/default_profile.png')
+                                        as ImageProvider,
                                 backgroundColor: Colors.grey[200],
                               ),
                               const SizedBox(width: 12),
@@ -338,7 +402,7 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          
+
                           // Post Image
                           if (imageUrl.isNotEmpty)
                             ClipRRect(
@@ -348,7 +412,8 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
                                 fit: BoxFit.cover,
                                 width: double.infinity,
                                 height: 200,
-                                loadingBuilder: (context, child, loadingProgress) {
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
                                   if (loadingProgress == null) return child;
                                   return const Center(
                                       child: CircularProgressIndicator());
@@ -373,19 +438,53 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
                             children: [
                               ElevatedButton.icon(
                                 onPressed: () => _approvePost(posts[index]),
-                                icon: const Icon(Icons.check),
-                                label: const Text("Approve"),
+                                icon: const Icon(
+                                  Icons.check_circle_outline,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  "Approve",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
+                                  backgroundColor: const Color(0xFF28A745),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               ElevatedButton.icon(
                                 onPressed: () => _rejectPost(posts[index]),
-                                icon: const Icon(Icons.close),
-                                label: const Text("Reject"),
+                                icon: const Icon(
+                                  Icons.cancel_outlined,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  "Reject",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
+                                  backgroundColor: const Color(0xFFDC3545),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
                               ),
                             ],

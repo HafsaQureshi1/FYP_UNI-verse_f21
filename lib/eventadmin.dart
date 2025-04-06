@@ -9,6 +9,10 @@ class EventsAdmin extends StatefulWidget {
 }
 
 class _EventsAdminState extends State<EventsAdmin> {
+  // Theme colors - match with Home.dart
+  final Color _primaryColor = const Color.fromARGB(255, 0, 58, 92);
+  final Color _backgroundColor = const Color.fromARGB(64, 236, 236, 236);
+
   Stream<QuerySnapshot> _getEventsStream() {
     return FirebaseFirestore.instance
         .collection('eventsadmin')
@@ -69,7 +73,14 @@ class _EventsAdminState extends State<EventsAdmin> {
   String _formatTimestamp(Timestamp? timestamp) {
     if (timestamp == null) return '';
     final date = timestamp.toDate();
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute}';
+
+    // Convert to 12-hour format with AM/PM
+    final hour =
+        date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    final minute = date.minute.toString().padLeft(2, '0');
+
+    return '${date.day}/${date.month}/${date.year} $hour:$minute $period';
   }
 
   String _formatEventDate(Timestamp? timestamp) {
@@ -81,18 +92,34 @@ class _EventsAdminState extends State<EventsAdmin> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(64, 236, 236, 236),
+      backgroundColor: _backgroundColor,
       body: StreamBuilder<QuerySnapshot>(
         stream: _getEventsStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+              ),
+            );
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text(
-                'No events to approve',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.event_note_outlined,
+                      size: 70, color: _primaryColor.withOpacity(0.5)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No events to approve',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: _primaryColor,
+                    ),
+                  ),
+                ],
               ),
             );
           }
@@ -115,13 +142,13 @@ class _EventsAdminState extends State<EventsAdmin> {
                 future: _getUserProfilePicture(userId),
                 builder: (context, profileSnapshot) {
                   String profileImageUrl = profileSnapshot.data ?? '';
-                  
+
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 4,
+                    elevation: 2,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -132,12 +159,16 @@ class _EventsAdminState extends State<EventsAdmin> {
                               if (profileImageUrl.isNotEmpty)
                                 CircleAvatar(
                                   radius: 20,
-                                  backgroundImage: NetworkImage(profileImageUrl),
+                                  backgroundImage:
+                                      NetworkImage(profileImageUrl),
                                 )
                               else
-                                const CircleAvatar(
+                                CircleAvatar(
                                   radius: 20,
-                                  child: Icon(Icons.person),
+                                  backgroundColor:
+                                      _primaryColor.withOpacity(0.2),
+                                  child:
+                                      Icon(Icons.person, color: _primaryColor),
                                 ),
                               const SizedBox(width: 10),
                               Expanded(
@@ -165,11 +196,27 @@ class _EventsAdminState extends State<EventsAdmin> {
                           ),
                           const SizedBox(height: 12),
                           if (eventDate != null)
-                            Text(
-                              "Event Date: ${_formatEventDate(eventDate)}",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: Colors.blue,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.event,
+                                      size: 16, color: _primaryColor),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _formatEventDate(eventDate),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      color: _primaryColor,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           const SizedBox(height: 8),
@@ -181,36 +228,89 @@ class _EventsAdminState extends State<EventsAdmin> {
                                 fit: BoxFit.cover,
                                 width: double.infinity,
                                 height: 200,
-                                loadingBuilder: (context, child, loadingProgress) {
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
                                   if (loadingProgress == null) return child;
-                                  return const Center(
-                                      child: CircularProgressIndicator());
+                                  return Center(
+                                      child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        _primaryColor),
+                                  ));
                                 },
                                 errorBuilder: (context, error, stackTrace) =>
-                                    const Text("Image load failed"),
+                                    Container(
+                                  height: 100,
+                                  color: Colors.grey.shade200,
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.broken_image,
+                                      color: _primaryColor,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           const SizedBox(height: 12),
-                          Text(description),
+                          Text(
+                            description,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               ElevatedButton.icon(
                                 onPressed: () => _approveEvent(events[index]),
-                                icon: const Icon(Icons.check),
-                                label: const Text("Approve"),
+                                icon: const Icon(
+                                  Icons.check_circle_outline,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  "Approve",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
+                                  backgroundColor: const Color(0xFF28A745),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 12),
                               ElevatedButton.icon(
                                 onPressed: () => _rejectEvent(events[index]),
-                                icon: const Icon(Icons.close),
-                                label: const Text("Reject"),
+                                icon: const Icon(
+                                  Icons.cancel_outlined,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  "Reject",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
+                                  backgroundColor: const Color(0xFFDC3545),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
                               ),
                             ],
