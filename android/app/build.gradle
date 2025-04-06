@@ -8,7 +8,7 @@ plugins {
 
 android {
 namespace 'com.example.flutter_application_1' // Namespace specified
-    compileSdk = 35
+    compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
