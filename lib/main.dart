@@ -377,7 +377,7 @@ final TextEditingController _usernameController = TextEditingController();
         'uid': user.uid,
         'username': _usernameController.text.trim(),
         'email': user.email,
-        'role': isAdmin ? 'admin' : 'student', // Set role based on email
+        'role':   'student', // Set role based on email
         'profilePicture': 'https://firebasestorage.googleapis.com/...', 
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -593,7 +593,7 @@ class _SignInPageState extends State<SignInPage> {
   // Admin emails list (same as in SignUp)
   final List<String> _adminEmails = [
     'waseemhasnain373@gmail.com',
-    'Maazbin.bscsf21@iba-suk.edu.pk',
+    'maazbin.bscsf21@iba-suk.edu.pk',
     'dean@university.edu',
   ];
 
@@ -739,7 +739,7 @@ class _SignInPageState extends State<SignInPage> {
   onSuccess: (UserCredential userCredential) {
     final List<String> adminEmails = [
       'waseemhasnain373@gmail.com',
-      'Maazbin.bscsf21@iba-suk.edu.pk',
+      'maazbin.bscsf21@iba-suk.edu.pk',
       'dean@university.edu',
     ];
 
