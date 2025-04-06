@@ -478,7 +478,7 @@ class _CategoryChipsState extends State<CategoryChips> {
         "Official Documents",
         "Books",
         "Stationery & Supplies",
-        "Wallets & Keys ",
+        "Wallets & Keys",
         "Miscellaneous"
       ];
     } else if (widget.collectionName == "Peerposts") {

@@ -44,6 +44,21 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
     super.initState();
     _fetchUserInfo();
   }
+Future<void> _pickLocation() async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const LocationPickerWithSearch(),
+    ),
+  );
+
+  if (result != null && result is Map<String, dynamic>) {
+    setState(() {
+      _selectedLocation = LatLng(result['latitude'], result['longitude']);
+      _selectedAddress = result['address'] ?? "No address found";
+    });
+  }
+}
 
   // Updated location picker function
   
@@ -227,53 +242,138 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
         }
 
         String collectionPath;
-        String category = "Uncategorized";
 
         if (widget.collectionName.startsWith("lostfoundposts")) {
-          category = await _classifyPostWithHuggingFace(postContent);
-          collectionPath = "lostfoundposts/All/posts";
-        } else if (widget.collectionName.startsWith("Peerposts")) {
-          category = await _classifyPeerAssistancePost(postContent);
-          collectionPath = "Peerposts/All/posts";
-        } else if (widget.collectionName.startsWith("Eventposts")) {
-          collectionPath = "Eventposts/All/posts";
-        } else if (widget.collectionName.startsWith("Surveyposts")) {
-          collectionPath = "Surveyposts/All/posts";
-        } else {
+          // For Lost & Found posts, first send to admin approval
+          collectionPath = "lostfoundadmin/All/posts";
+          
+          final adminRef = _firestore.collection(collectionPath).doc();
+          final postData = {
+            'userId': user.uid,
+            'userName': username,
+            'userEmail': user.email,
+            'likes': 0,
+            'postContent': postContent,
+            'imageUrl': uploadedImageUrl ?? '',
+            'timestamp': FieldValue.serverTimestamp(),
+            'approval': null, // Initial state - pending approval
+            "location": _selectedLocation != null
+                ? {
+                    "latitude": _selectedLocation!.latitude,
+                    "longitude": _selectedLocation!.longitude,
+                    "address": _selectedAddress,
+                  }
+                : null,
+          };
+
+          await adminRef.set(postData);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post submitted for admin approval!')),
+          );
+
+          Navigator.of(context).pop();
+          return; // Exit here since we don't proceed with AI classification yet
+        } 
+        else if (widget.collectionName.startsWith("Peerposts")) {
+          collectionPath = "peeradmin/All/posts";
+          
+          final adminRef = _firestore.collection(collectionPath).doc();
+          final postData = {
+            'userId': user.uid,
+            'userName': username,
+            'userEmail': user.email,
+            'likes': 0,
+            'postContent': postContent,
+            'imageUrl': uploadedImageUrl ?? '',
+            'timestamp': FieldValue.serverTimestamp(),
+            'approval': null, // Initial state - pending approval
+            "location": _selectedLocation != null
+                ? {
+                    "latitude": _selectedLocation!.latitude,
+                    "longitude": _selectedLocation!.longitude,
+                    "address": _selectedAddress,
+                  }
+                : null,
+          };
+
+          await adminRef.set(postData);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post submitted for admin approval!')),
+          );
+
+          Navigator.of(context).pop();
+          return;
+        } 
+        else if (widget.collectionName.startsWith("Eventposts")) {
+        collectionPath = "eventsadmin/All/posts";
+          
+          final adminRef = _firestore.collection(collectionPath).doc();
+          final postData = {
+            'userId': user.uid,
+            'userName': username,
+            'userEmail': user.email,
+            'likes': 0,
+            'postContent': postContent,
+            'imageUrl': uploadedImageUrl ?? '',
+            'timestamp': FieldValue.serverTimestamp(),
+            'approval': null, // Initial state - pending approval
+            "location": _selectedLocation != null
+                ? {
+                    "latitude": _selectedLocation!.latitude,
+                    "longitude": _selectedLocation!.longitude,
+                    "address": _selectedAddress,
+                  }
+                : null,
+          };
+
+          await adminRef.set(postData);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post submitted for admin approval!')),
+          );
+
+          Navigator.of(context).pop();
+          return;
+        } 
+        else if (widget.collectionName.startsWith("Surveyposts")) {
+        collectionPath = "surveyadmin/All/posts";
+          
+          final adminRef = _firestore.collection(collectionPath).doc();
+          final postData = {
+            'userId': user.uid,
+            'userName': username,
+            'userEmail': user.email,
+            'likes': 0,
+            'postContent': postContent,
+            'imageUrl': uploadedImageUrl ?? '',
+            'timestamp': FieldValue.serverTimestamp(),
+            'approval': null, // Initial state - pending approval
+            "location": _selectedLocation != null
+                ? {
+                    "latitude": _selectedLocation!.latitude,
+                    "longitude": _selectedLocation!.longitude,
+                    "address": _selectedAddress,
+                  }
+                : null,
+          };
+
+          await adminRef.set(postData);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post submitted for admin approval!')),
+          );
+
+          Navigator.of(context).pop();
+          return;
+        } 
+        else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid collection name!')),
           );
           return;
         }
-
-        final generalRef = _firestore.collection(collectionPath).doc();
-        final postData = {
-          'userId': user.uid,
-          'userName': username,
-          'userEmail': user.email,
-          'likes': 0,
-          'postContent': postContent,
-          'imageUrl': uploadedImageUrl ?? '',
-          'timestamp': FieldValue.serverTimestamp(),
-          if (widget.collectionName.startsWith("lostfoundposts") ||
-              widget.collectionName.startsWith("Peerposts"))
-            "category": category,
-          "location": _selectedLocation != null
-              ? {
-                  "latitude": _selectedLocation!.latitude,
-                  "longitude": _selectedLocation!.longitude,
-                  "address": _selectedAddress,
-                }
-              : null,
-        };
-
-        await generalRef.set(postData);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Posted!')),
-        );
-
-        Navigator.of(context).pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('User not logged in!')),
@@ -291,7 +391,6 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
       }
     }
   }
-
   Future<void> _fetchUserInfo() async {
     final User? currentUser = _auth.currentUser;
     if (currentUser != null) {
@@ -617,7 +716,13 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
                   ),
 
                   const SizedBox(height: 12),
-
+ListTile(
+  leading: const Icon(Icons.location_on),
+  title: Text(_selectedAddress),
+  trailing: const Icon(Icons.edit_location),
+  onTap: _pickLocation,
+)
+,
                   // Display selected location
                   if (_selectedLocation != null)
                     Container(
