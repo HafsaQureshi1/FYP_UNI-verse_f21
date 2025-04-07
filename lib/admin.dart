@@ -236,6 +236,21 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
     return "Miscellaneous";
   }
 
+  // Add toast notification method
+  void _showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: const EdgeInsets.all(10),
+      ),
+    );
+  }
+
   Future<void> _approvePost(DocumentSnapshot post) async {
     final postData = post.data() as Map<String, dynamic>;
     final postId = post.id;
@@ -268,6 +283,8 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
         .collection("posts")
         .doc(postId)
         .delete();
+
+    _showToast("Post approved");
   }
 
   Future<void> _rejectPost(DocumentSnapshot post) async {
@@ -278,6 +295,8 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
         .collection("posts")
         .doc(postId)
         .delete();
+
+    _showToast("Post rejected");
   }
 
   final ScrollController _scrollController = ScrollController();
@@ -357,6 +376,7 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    color: Colors.white, // Set card background color to white
                     elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -434,34 +454,9 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
 
                           // Approve / Reject Buttons
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+                            mainAxisAlignment:
+                                MainAxisAlignment.center, // Center the buttons
                             children: [
-                              ElevatedButton.icon(
-                                onPressed: () => _approvePost(posts[index]),
-                                icon: const Icon(
-                                  Icons.check_circle_outline,
-                                  color: Colors.white,
-                                ),
-                                label: const Text(
-                                  "Approve",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF28A745),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                  elevation: 2,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
                               ElevatedButton.icon(
                                 onPressed: () => _rejectPost(posts[index]),
                                 icon: const Icon(
@@ -477,6 +472,32 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFDC3545),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              ElevatedButton.icon(
+                                onPressed: () => _approvePost(posts[index]),
+                                icon: const Icon(
+                                  Icons.check_circle_outline,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  "Approve",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF28A745),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 10,

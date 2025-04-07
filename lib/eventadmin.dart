@@ -36,6 +36,21 @@ class _EventsAdminState extends State<EventsAdmin> {
     }
   }
 
+  // Add toast notification method
+  void _showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: const EdgeInsets.all(10),
+      ),
+    );
+  }
+
   Future<void> _approveEvent(DocumentSnapshot event) async {
     final eventData = event.data() as Map<String, dynamic>;
     final eventId = event.id;
@@ -58,6 +73,8 @@ class _EventsAdminState extends State<EventsAdmin> {
         .collection("posts")
         .doc(eventId)
         .delete();
+
+    _showToast("Event approved");
   }
 
   Future<void> _rejectEvent(DocumentSnapshot event) async {
@@ -68,6 +85,8 @@ class _EventsAdminState extends State<EventsAdmin> {
         .collection("posts")
         .doc(eventId)
         .delete();
+
+    _showToast("Event rejected");
   }
 
   String _formatTimestamp(Timestamp? timestamp) {
@@ -148,6 +167,7 @@ class _EventsAdminState extends State<EventsAdmin> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    color: Colors.white, // Set card background color to white
                     elevation: 2,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -260,34 +280,9 @@ class _EventsAdminState extends State<EventsAdmin> {
                           ),
                           const SizedBox(height: 16),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+                            mainAxisAlignment:
+                                MainAxisAlignment.center, // Center the buttons
                             children: [
-                              ElevatedButton.icon(
-                                onPressed: () => _approveEvent(events[index]),
-                                icon: const Icon(
-                                  Icons.check_circle_outline,
-                                  color: Colors.white,
-                                ),
-                                label: const Text(
-                                  "Approve",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF28A745),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                  elevation: 2,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
                               ElevatedButton.icon(
                                 onPressed: () => _rejectEvent(events[index]),
                                 icon: const Icon(
@@ -303,6 +298,32 @@ class _EventsAdminState extends State<EventsAdmin> {
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFDC3545),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              ElevatedButton.icon(
+                                onPressed: () => _approveEvent(events[index]),
+                                icon: const Icon(
+                                  Icons.check_circle_outline,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  "Approve",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF28A745),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 10,
