@@ -14,6 +14,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
 class PostCard extends StatefulWidget {
   final String postId;
   final String userId;
@@ -23,7 +24,7 @@ class PostCard extends StatefulWidget {
   final String collectionName;
   final String? imageUrl;
 
-  const PostCard({ 
+  const PostCard({
     Key? key,
     required this.postId,
     required this.userId,
@@ -73,7 +74,7 @@ class _PostCardState extends State<PostCard> {
         _checkIfUserLiked(),
         _fetchImageUrl(),
         _fetchCommentCount(),
-         _fetchLocation(),
+        _fetchLocation(),
       ] as Iterable<Future>);
     } catch (e) {
       print("Error initializing post data: $e");
@@ -85,34 +86,35 @@ class _PostCardState extends State<PostCard> {
       }
     }
   }
-  Future<void> _fetchLocation() async {
-  if (_isFetchingLocation) return;
-  
-  setState(() => _isFetchingLocation = true);
-  
-  try {
-    final doc = await FirebaseFirestore.instance
-        .collection(_getCollectionPath())
-        .doc(widget.postId)
-        .get();
 
-    if (doc.exists) {
-      final locationData = doc.data()?['location'];
-      if (locationData != null) {
-        setState(() {
-          _postLocation = Map<String, dynamic>.from(locationData);
-          _locationAddress = locationData['address'] ?? 'Location available';
-        });
+  Future<void> _fetchLocation() async {
+    if (_isFetchingLocation) return;
+
+    setState(() => _isFetchingLocation = true);
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection(_getCollectionPath())
+          .doc(widget.postId)
+          .get();
+
+      if (doc.exists) {
+        final locationData = doc.data()?['location'];
+        if (locationData != null) {
+          setState(() {
+            _postLocation = Map<String, dynamic>.from(locationData);
+            _locationAddress = locationData['address'] ?? 'Location available';
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching location: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isFetchingLocation = false);
       }
     }
-  } catch (e) {
-    print('Error fetching location: $e');
-  } finally {
-    if (mounted) {
-      setState(() => _isFetchingLocation = false);
-    }
   }
-}
 
   @override
   void didUpdateWidget(PostCard oldWidget) {
@@ -134,7 +136,7 @@ class _PostCardState extends State<PostCard> {
       postTime = "";
       imageUrl = null;
     });
-    
+
     // Cancel all previous subscriptions
     for (var sub in _subscriptions) {
       sub.cancel();
@@ -151,9 +153,10 @@ class _PostCardState extends State<PostCard> {
   }
 
   Future<String> _classifyPostWithHuggingFace(String postText) async {
-    final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+    final url = Uri.parse(
+        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
     final headers = {
-      "Authorization": "Bearer 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",  
+      "Authorization": "Bearer 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",
       "Content-Type": "application/json"
     };
 
@@ -192,7 +195,8 @@ class _PostCardState extends State<PostCard> {
   }
 
   Future<String> _classifyPeerAssistancePost(String postText) async {
-    final url = Uri.parse("https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+    final url = Uri.parse(
+        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
     final headers = {
       "Authorization": "Bearer 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",
       "Content-Type": "application/json"
@@ -311,8 +315,19 @@ class _PostCardState extends State<PostCard> {
 
   String _getMonthName(int month) {
     const monthNames = [
-      "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
     ];
     return monthNames[month];
   }
@@ -321,7 +336,11 @@ class _PostCardState extends State<PostCard> {
     int hour = date.hour;
     int minute = date.minute;
     String period = hour >= 12 ? "PM" : "AM";
-    hour = hour > 12 ? hour - 12 : hour == 0 ? 12 : hour;
+    hour = hour > 12
+        ? hour - 12
+        : hour == 0
+            ? 12
+            : hour;
     return "$hour:${minute.toString().padLeft(2, '0')} $period";
   }
 
@@ -363,8 +382,8 @@ class _PostCardState extends State<PostCard> {
 
     await postRef.update({
       'likes': FieldValue.increment(isLiked ? 1 : -1),
-      'likedBy': isLiked 
-          ? FieldValue.arrayUnion([currentUserId]) 
+      'likedBy': isLiked
+          ? FieldValue.arrayUnion([currentUserId])
           : FieldValue.arrayRemove([currentUserId])
     });
 
@@ -373,10 +392,10 @@ class _PostCardState extends State<PostCard> {
           .collection('users')
           .doc(currentUserId)
           .get();
-          
+
       final String likerName = userDoc.data()?['username'] ?? 'Someone';
       final postAuthorId = postDoc.data()?['userId'] ?? '';
-      
+
       if (postAuthorId != currentUserId) {
         await FirebaseFirestore.instance.collection('notifications').add({
           'receiverId': postAuthorId,
@@ -391,10 +410,7 @@ class _PostCardState extends State<PostCard> {
         });
 
         await FCMService().sendNotificationToUser(
-          postAuthorId,
-          likerName,
-          "liked your post!"
-        );
+            postAuthorId, likerName, "liked your post!");
       }
     }
   }
@@ -424,24 +440,46 @@ class _PostCardState extends State<PostCard> {
 
       showDialog(
         context: context,
-        builder: (BuildContext context) {
+        barrierDismissible: false, // Prevent dismissal by tapping outside
+        builder: (BuildContext dialogContext) {
+          // Use a separate dialogContext
           return AlertDialog(
             title: const Text('Delete Post'),
-            content: const Text('Are you sure you want to delete this post? This action cannot be undone.'),
+            content: const Text(
+                'Are you sure you want to delete this post? This action cannot be undone.'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('Cancel'),
               ),
               TextButton(
                 style: TextButton.styleFrom(foregroundColor: Colors.red),
                 onPressed: () async {
-                  await postRef.delete();
-                  if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Post deleted successfully')),
-                    );
+                  // Show progress indicator while deleting
+                  Navigator.pop(
+                      dialogContext); // First dismiss the confirmation dialog
+
+                  // Show loading indicator (optional)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Deleting post...')));
+
+                  try {
+                    await postRef.delete();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Post deleted successfully')),
+                      );
+                    }
+                  } catch (e) {
+                    print("Error deleting post: $e");
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content:
+                                Text('Failed to delete post: ${e.toString()}')),
+                      );
+                    }
                   }
                 },
                 child: const Text('Delete'),
@@ -451,10 +489,10 @@ class _PostCardState extends State<PostCard> {
         },
       );
     } catch (e) {
-      print("Error deleting post: $e");
+      print("Error showing delete dialog: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete post: ${e.toString()}')),
+          SnackBar(content: Text('Failed to process: ${e.toString()}')),
         );
       }
     }
@@ -503,9 +541,11 @@ class _PostCardState extends State<PostCard> {
                     String newCategory = currentCategory;
 
                     if (widget.collectionName.contains("lostfoundposts")) {
-                      newCategory = await _classifyPostWithHuggingFace(updatedContent);
+                      newCategory =
+                          await _classifyPostWithHuggingFace(updatedContent);
                     } else if (widget.collectionName.contains("Peerposts")) {
-                      newCategory = await _classifyPeerAssistancePost(updatedContent);
+                      newCategory =
+                          await _classifyPeerAssistancePost(updatedContent);
                     }
 
                     await postRef.update({
@@ -517,7 +557,8 @@ class _PostCardState extends State<PostCard> {
                     if (mounted) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Post updated successfully')),
+                        const SnackBar(
+                            content: Text('Post updated successfully')),
                       );
                     }
                   }
@@ -728,42 +769,43 @@ class _PostCardState extends State<PostCard> {
                     ),
                   ),
 // Add this widget after your image display and before the like/comment buttons
-if (_postLocation != null && _locationAddress.isNotEmpty)
-  GestureDetector(
-    onTap: () {
-      // You could open a map view here if desired
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Location: $_locationAddress'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    },
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.location_on, size: 20, color: Colors.blue),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _locationAddress,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.blue[800],
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    ),
-  ),
+                if (_postLocation != null && _locationAddress.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      // You could open a map view here if desired
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Location: $_locationAddress'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      margin: const EdgeInsets.only(top: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on, size: 20, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _locationAddress,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.blue[800],
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 // Like and Comment Buttons
                 Padding(
                   padding: const EdgeInsets.only(top: 12.0),
@@ -810,11 +852,13 @@ if (_postLocation != null && _locationAddress.isNotEmpty)
     );
   }
 }
+
 class CommentSection extends StatefulWidget {
   final String postId;
   final String collectionName; // Generalized collection name
 
-  const CommentSection({super.key, required this.postId, required this.collectionName});
+  const CommentSection(
+      {super.key, required this.postId, required this.collectionName});
 
   @override
   _CommentSectionState createState() => _CommentSectionState();
@@ -853,7 +897,8 @@ class _CommentSectionState extends State<CommentSection> {
 
     try {
       final postDoc = await postRef.get();
-      if (!postDoc.exists || postDoc.data() == null) return; // Check for non-existent or null data
+      if (!postDoc.exists || postDoc.data() == null)
+        return; // Check for non-existent or null data
 
       final String postAuthorId = postDoc.data()?['userId'] ?? '';
 
@@ -861,7 +906,8 @@ class _CommentSectionState extends State<CommentSection> {
       final commentRef = await postRef.collection('comments').add({
         'userId': _userId, // Current user's ID who is commenting
         'comment': commentText, // The text of the comment
-        'timestamp': FieldValue.serverTimestamp(), // Automatically get the timestamp
+        'timestamp':
+            FieldValue.serverTimestamp(), // Automatically get the timestamp
       });
 
       // Clear the comment input controller
@@ -873,13 +919,14 @@ class _CommentSectionState extends State<CommentSection> {
             .collection('users')
             .doc(_userId)
             .get();
-        final String currentUsername = userDoc.data()?['username'] ?? 'Unknown User';
+        final String currentUsername =
+            userDoc.data()?['username'] ?? 'Unknown User';
 
         // Send notification to the post author
         _fcmService.sendNotificationOnComment(
-          widget.postId, 
-          currentUsername, 
-          commentRef.id, 
+          widget.postId,
+          currentUsername,
+          commentRef.id,
           widget.collectionName,
         );
 
@@ -890,9 +937,11 @@ class _CommentSectionState extends State<CommentSection> {
           'senderName': currentUsername,
           'postId': widget.postId, // Store the post ID
           'commentId': commentRef.id, // Store the comment ID
-          'collection': widget.collectionName, // Store the dynamic collection name
+          'collection':
+              widget.collectionName, // Store the dynamic collection name
           'message': "$currentUsername commented on your post", // The message
-          'timestamp': FieldValue.serverTimestamp(), // Timestamp for the notification
+          'timestamp':
+              FieldValue.serverTimestamp(), // Timestamp for the notification
           'type': 'comment', // Type of notification
           'isRead': false, // Initially, the notification is unread
         });
@@ -905,13 +954,15 @@ class _CommentSectionState extends State<CommentSection> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: 400,
         padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
-            const Text("Comments", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text("Comments",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
@@ -939,24 +990,36 @@ class _CommentSectionState extends State<CommentSection> {
 
                       if (timestamp != null) {
                         DateTime date = timestamp.toDate();
-                        formattedTime = DateFormat('MMM d, yyyy • h:mm a').format(date);
+                        formattedTime =
+                            DateFormat('MMM d, yyyy • h:mm a').format(date);
                       }
 
                       return StreamBuilder<DocumentSnapshot>(
-                        stream: FirebaseFirestore.instance.collection('users').doc(commenterId).snapshots(),
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(commenterId)
+                            .snapshots(),
                         builder: (context, usernameSnapshot) {
-                          if (!usernameSnapshot.hasData || !usernameSnapshot.data!.exists) {
+                          if (!usernameSnapshot.hasData ||
+                              !usernameSnapshot.data!.exists) {
                             return const SizedBox();
                           }
-                          String username = usernameSnapshot.data!.get('username') ?? 'Unknown User';
-                          
+                          String username =
+                              usernameSnapshot.data!.get('username') ??
+                                  'Unknown User';
+
                           return ListTile(
-                            leading: ProfileAvatar(userId: commenterId, radius: 18),
-                            title: Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            leading:
+                                ProfileAvatar(userId: commenterId, radius: 18),
+                            title: Text(username,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(formattedTime, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text(formattedTime,
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.grey)),
                                 Text(comment['comment'] ?? ''),
                               ],
                             ),
