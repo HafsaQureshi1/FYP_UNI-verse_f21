@@ -117,10 +117,13 @@ class GoogleSignUpButton extends StatefulWidget {
 
 class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
   bool _isLoading = false;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
-    scopes: ['email', 'profile'],
-  );
+ final GoogleSignIn _googleSignIn = GoogleSignIn(
+  scopes: ['email', 'profile'],
+  clientId: kIsWeb
+      ? '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com'
+      : null,
+);
+
 
   Future<void> _handleGoogleSignUp() async {
     try {
@@ -183,12 +186,13 @@ class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
 
         widget.onSuccess(userCredential);
       }
-    } catch (e) {
-      debugPrint('Google Sign Up Error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    } finally {
+    } catch (e, stackTrace) {
+  debugPrint("Google Sign-up Error: $e");
+  debugPrint("StackTrace: $stackTrace");
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Error: ${e.toString()}')),
+  );
+} finally {
       setState(() => _isLoading = false);
     }
   }
@@ -233,14 +237,13 @@ class GoogleSignInButton extends StatefulWidget {
 
 class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   bool _isLoading = false;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-  clientId: kIsWeb
-      ? '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com' // ✅ Web Client ID
-      : (Platform.isAndroid
-          ? '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com' // ✅ Android Client ID
-          :null), // Other platforms (default null)
+ final GoogleSignIn _googleSignIn = GoogleSignIn(
   scopes: ['email', 'profile'],
+  clientId: kIsWeb
+      ? '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com'
+      : null,
 );
+
   
 
  Future<void> _handleGoogleSignIn() async {
@@ -299,12 +302,13 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
         );
       }
     }
-  } catch (e) {
-    debugPrint('Google Sign In Error: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: ${e.toString()}')),
-    );
-  } finally {
+  } catch (e, stackTrace) {
+  debugPrint("Google Sign-In Error: $e");
+  debugPrint("StackTrace: $stackTrace");
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Error: ${e.toString()}')),
+  );
+}finally {
     setState(() => _isLoading = false);
   }
 }
