@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'postcard.dart';
 import 'createpost.dart';
 import 'Home.dart';
+import 'screenui.dart'; // Import your chat screen widget
+
 class PeerAssistanceScreen extends StatefulWidget {
   const PeerAssistanceScreen({super.key});
 
@@ -97,6 +99,37 @@ class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
             ],
           ),
 
+          // ✅ Chatbot Floating Action Button (above the post creation FAB)
+          Positioned(
+            bottom: 80.0, // Positioned above the post creation button
+            right: 16.0,
+            child: FloatingActionButton(
+              backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  isDismissible: true,
+                  enableDrag: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) {
+                    return FractionallySizedBox(
+                      heightFactor: 0.95, // 95% of screen height
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                        ),
+                        child: ChatScreen(), // Your chatbot screen
+                      ),
+                    );
+                  },
+                );
+              },
+              child: const Icon(Icons.chat, color: Colors.white), // Chatbot icon
+            ),
+          ),
+
           // ✅ Floating Action Button for Creating New Post
           Positioned(
             bottom: 16.0,
@@ -126,7 +159,7 @@ class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
                   },
                 );
               },
-              child: const Icon(Icons.add, color: Colors.white),
+              child: const Icon(Icons.add, color: Colors.white), // Post creation icon
             ),
           ),
         ],

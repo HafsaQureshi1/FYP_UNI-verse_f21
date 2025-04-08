@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'postcard.dart';
 import 'createpost.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'screenui.dart'; // Import your chat screen widget
 
 class EventsJobsScreen extends StatelessWidget {
   // Update this to your new Firestore collection path
@@ -48,31 +49,63 @@ class EventsJobsScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            isDismissible: true,
-            enableDrag: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) {
-              return FractionallySizedBox(
-                heightFactor: 0.95, // 95% of screen height
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(25)),
-                  ),
-                  child: CreateNewPostScreen(collectionName: collectionName),
-                ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Chatbot FAB
+          FloatingActionButton(
+            backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                isDismissible: true,
+                enableDrag: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) {
+                  return FractionallySizedBox(
+                    heightFactor: 0.95, // 95% of screen height
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                      ),
+                      child: ChatScreen(), // Your chatbot screen
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
-        child: const Icon(Icons.add, color: Colors.white),
+            child: const Icon(Icons.chat, color: Colors.white), // Chatbot icon
+          ),
+          SizedBox(height: 16), // Space between the FABs
+          // Post creation FAB
+          FloatingActionButton(
+            backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                isDismissible: true,
+                enableDrag: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) {
+                  return FractionallySizedBox(
+                    heightFactor: 0.95, // 95% of screen height
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                      ),
+                      child: CreateNewPostScreen(collectionName: collectionName),
+                    ),
+                  );
+                },
+              );
+            },
+            child: const Icon(Icons.add, color: Colors.white), // Post creation icon
+          ),
+        ],
       ),
     );
   }

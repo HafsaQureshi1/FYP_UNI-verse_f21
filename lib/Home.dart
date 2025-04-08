@@ -1,3 +1,4 @@
+import 'package:flutter_application_1/screenui.dart';
 import 'package:flutter_application_1/search_results.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -412,39 +413,71 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
           ),
 
           // Floating Action Button for Creating New Post
-          Positioned(
-            bottom: 16.0,
-            right: 16.0,
-            child: FloatingActionButton(
-              backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  isDismissible: true,
-                  enableDrag: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) {
-                    return FractionallySizedBox(
-                      heightFactor: 0.95, // 95% of screen height
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius:
-                              BorderRadius.vertical(top: Radius.circular(25)),
-                        ),
-                        child: CreateNewPostScreen(
-                          collectionName:
-                              'lostfoundposts/$selectedCategory/posts',
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
-          ),
+         Positioned(
+  bottom: 16.0,
+  right: 16.0,
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      // Post creation FAB
+      FloatingActionButton(
+        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            isDismissible: true,
+            enableDrag: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) {
+              return FractionallySizedBox(
+                heightFactor: 0.95, // 95% of screen height
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                  ),
+                  child: CreateNewPostScreen(
+                    collectionName: 'lostfoundposts/$selectedCategory/posts',
+                  ),
+                ),
+              );
+            },
+          );
+        },
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      SizedBox(height: 16), // Space between the two FABs
+      // Chatbot FAB
+      FloatingActionButton(
+        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            isDismissible: true,
+            enableDrag: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) {
+              return FractionallySizedBox(
+                heightFactor: 0.95, // 95% of screen height
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                  ),
+                  child: ChatScreen(), // Replace with your chatbot screen
+                ),
+              );
+            },
+          );
+        },
+        child: const Icon(Icons.chat, color: Colors.white), // Chatbot icon
+      ),
+    ],
+  ),
+),
+
         ],
       ),
     );
