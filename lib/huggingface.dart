@@ -10,6 +10,7 @@ class DeepSeekChatScreen extends StatefulWidget {
 class _DeepSeekChatScreenState extends State<DeepSeekChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
+  bool _isLoading = false;  // Flag to track loading state
 
   // Your OpenRouter API key and endpoint
   final String apiUrl = "https://openrouter.ai/api/v1/chat/completions";
@@ -17,6 +18,10 @@ class _DeepSeekChatScreenState extends State<DeepSeekChatScreen> {
 
   // Function to send request to DeepSeek-R1 API and get the response
   Future<String> _getDeepSeekResponse(String query) async {
+    setState(() {
+      _isLoading = true;  // Set loading to true when the request starts
+    });
+
     final response = await http.post(
       Uri.parse(apiUrl),
       headers: {
@@ -31,9 +36,12 @@ class _DeepSeekChatScreenState extends State<DeepSeekChatScreen> {
           {"role": "system", "content": "You are a helpful assistant for university students."},
           {"role": "user", "content": query}
         ],
-      
       }),
     );
+
+    setState(() {
+      _isLoading = false;  // Set loading to false when the request is done
+    });
 
     // Handling the response
     if (response.statusCode == 200) {
@@ -97,6 +105,11 @@ class _DeepSeekChatScreenState extends State<DeepSeekChatScreen> {
             ),
           ),
           Divider(),
+          if (_isLoading)  // Show spinner when loading
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Center(child: CircularProgressIndicator()),
+            ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
@@ -113,7 +126,7 @@ class _DeepSeekChatScreenState extends State<DeepSeekChatScreen> {
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
