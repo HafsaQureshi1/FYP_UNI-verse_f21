@@ -71,15 +71,7 @@ class _ChatScreenState extends State<ChatScreen> {
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
   title: const Text('UNI-verse Assistant 💬'),
-  leading: IconButton(
-    icon: Icon(Icons.switch_left),
-    onPressed: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => DeepSeekChatScreen()),
-      );
-    },
-  ),
+
 ),
       
       body: Column(
