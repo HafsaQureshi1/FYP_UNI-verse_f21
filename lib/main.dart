@@ -1,5 +1,9 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -7,8 +11,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/fcm-service.dart';
 import 'package:flutter_application_1/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'admin.dart';
 // Import this for kIsWeb
 
@@ -581,6 +587,7 @@ const SizedBox(height: 10),
     );
   }
 }
+
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
 
@@ -592,14 +599,98 @@ class _SignInPageState extends State<SignInPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  late final SecureStorage _secureStorage;
   bool _isLoading = false;
+  bool _rememberMe = false;
+  List<Map<String, String>> _savedAccounts = [];
 
-  // Admin emails list (same as in SignUp)
   final List<String> _adminEmails = [
     'waseemhasnain373@gmail.com',
     'maazbin.bscsf21@iba-suk.edu.pk',
     'dean@university.edu',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _secureStorage = SecureStorage();
+    _initializeStorage();
+  }
+
+  Future<void> _initializeStorage() async {
+    try {
+      await _secureStorage.init();
+      await _loadSavedAccounts();
+      await _checkRememberedAccount();
+    } catch (e) {
+      debugPrint('Storage initialization error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to initialize storage'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadSavedAccounts() async {
+    try {
+      final accounts = await _secureStorage.getSavedAccounts();
+      if (accounts != null && accounts.isNotEmpty) {
+        setState(() {
+          _savedAccounts = accounts;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading accounts: $e');
+    }
+  }
+
+  Future<void> _checkRememberedAccount() async {
+    try {
+      final rememberedAccount = await _secureStorage.getRememberedAccount();
+      if (rememberedAccount != null) {
+        setState(() {
+          _emailController.text = rememberedAccount['email']!;
+          _passwordController.text = rememberedAccount['password']!;
+          _rememberMe = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking remembered account: $e');
+    }
+  }
+
+  Future<void> _saveAccount(String email, String password) async {
+    try {
+      await _secureStorage.saveAccount(
+        email: email,
+        password: password,
+        rememberMe: _rememberMe,
+      );
+      await _loadSavedAccounts();
+    } catch (e) {
+      debugPrint('Error saving account: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to save account credentials'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _removeAccount(String email, String password) async {
+    try {
+      await _secureStorage.removeAccount(email, password);
+      await _loadSavedAccounts();
+    } catch (e) {
+      debugPrint('Error removing account: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to remove account'),
+        ),
+      );
+    }
+  }
 
   Future<void> _signIn() async {
     setState(() {
@@ -607,9 +698,12 @@ class _SignInPageState extends State<SignInPage> {
     });
 
     try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        email: email,
+        password: password,
       );
 
       User? user = userCredential.user;
@@ -619,7 +713,8 @@ class _SignInPageState extends State<SignInPage> {
         user = _auth.currentUser;
 
         if (user?.emailVerified ?? false) {
-          // Check if email is in admin list
+          await _saveAccount(email, password);
+          
           bool isAdmin = _adminEmails.contains(user?.email?.toLowerCase().trim());
 
           Navigator.pushReplacement(
@@ -649,51 +744,100 @@ class _SignInPageState extends State<SignInPage> {
       );
     }
   }
+
+  void _showAccountSelection() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select an account',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              if (_savedAccounts.isEmpty)
+                const Text('No saved accounts found')
+              else
+                ..._savedAccounts.map((account) {
+                  return ListTile(
+                    leading: const Icon(Icons.account_circle),
+                    title: Text(account['email']!),
+                    onTap: () {
+                      setState(() {
+                        _emailController.text = account['email']!;
+                        _passwordController.text = account['password']!;
+                        _rememberMe = true;
+                      });
+                      Navigator.pop(context);
+                    },
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () async {
+                        await _removeAccount(account['email']!, account['password']!);
+                      },
+                    ),
+                  );
+                }).toList(),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _showForgotPasswordDialog() {
-  final TextEditingController _resetEmailController = TextEditingController();
+    final TextEditingController _resetEmailController = TextEditingController();
 
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Forgot Password'),
-        content: TextField(
-          controller: _resetEmailController,
-          decoration: const InputDecoration(
-            labelText: 'Enter your email',
-            prefixIcon: Icon(Icons.email),
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Forgot Password'),
+          content: TextField(
+            controller: _resetEmailController,
+            decoration: const InputDecoration(
+              labelText: 'Enter your email',
+              prefixIcon: Icon(Icons.email),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final email = _resetEmailController.text.trim();
-              if (email.isNotEmpty) {
-                try {
-                  await _auth.sendPasswordResetEmail(email: email);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Password reset email sent.')),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: ${e.toString()}')),
-                  );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final email = _resetEmailController.text.trim();
+                if (email.isNotEmpty) {
+                  try {
+                    await _auth.sendPasswordResetEmail(email: email);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Password reset email sent.')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: ${e.toString()}')),
+                    );
+                  }
                 }
-              }
-            },
-            child: const Text('Send'),
-          ),
-        ],
-      );
-    },
-  );
-}
-
+              },
+              child: const Text('Send'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -740,8 +884,14 @@ class _SignInPageState extends State<SignInPage> {
                       borderRadius: BorderRadius.circular(20.0),
                     ),
                     prefixIcon: const Icon(Icons.email, color: Colors.grey),
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+                    suffixIcon: _savedAccounts.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.arrow_drop_down),
+                            onPressed: _showAccountSelection,
+                          )
+                        : null,
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 16.0, horizontal: 20.0),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
@@ -756,22 +906,35 @@ class _SignInPageState extends State<SignInPage> {
                       borderRadius: BorderRadius.circular(20.0),
                     ),
                     prefixIcon: const Icon(Icons.lock, color: Colors.grey),
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 16.0, horizontal: 20.0),
                   ),
                   obscureText: true,
                 ),
                 const SizedBox(height: 5),
-Align(
-  alignment: Alignment.centerRight,
-  child: TextButton(
-    onPressed: _showForgotPasswordDialog,
-    child: const Text(
-      'Forgot Password?',
-      style: TextStyle(color: Colors.blueGrey),
-    ),
-  ),
-),
+
+                // Remember me checkbox
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _rememberMe,
+                      onChanged: (value) {
+                        setState(() {
+                          _rememberMe = value ?? false;
+                        });
+                      },
+                    ),
+                    const Text('Remember me'),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: _showForgotPasswordDialog,
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(color: Colors.blueGrey),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
 
                 // Sign In Button
@@ -796,27 +959,21 @@ Align(
 
                 // Google Sign-In Button
                 GoogleSignInButton(
-  onSuccess: (UserCredential userCredential) {
-    final List<String> adminEmails = [
-      'waseemhasnain373@gmail.com',
-      'maazbin.bscsf21@iba-suk.edu.pk',
-      'dean@university.edu',
-    ];
+                  onSuccess: (UserCredential userCredential) {
+                    final String? email = userCredential.user?.email?.toLowerCase().trim();
 
-    final String? email = userCredential.user?.email?.toLowerCase().trim();
-
-    if (email != null && adminEmails.contains(email)) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const AdminDashboard()),
-      );
-    } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    }
-  },
-),
-
+                    if (email != null && _adminEmails.contains(email)) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                            builder: (context) => const AdminDashboard()),
+                      );
+                    } else {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (context) => const HomeScreen()),
+                      );
+                    }
+                  },
+                ),
 
                 const SizedBox(height: 10),
 
@@ -841,5 +998,133 @@ Align(
         ),
       ),
     );
+  }
+}
+
+class SecureStorage {
+  static const _rememberedEmailKey = 'remembered_email';
+  static const _rememberedPasswordKey = 'remembered_password';
+  static const _savedAccountsKey = 'saved_accounts';
+
+  late final FlutterSecureStorage? _secureStorage;
+  late final SharedPreferences? _sharedPreferences;
+
+  Future<void> init() async {
+    try {
+      // For Android/iOS
+      _secureStorage = const FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+      );
+      
+      // For Web
+      _sharedPreferences = await SharedPreferences.getInstance();
+    } catch (e) {
+      debugPrint('SecureStorage init error: $e');
+    }
+  }
+
+  Future<void> saveAccount({
+    required String email,
+    required String password,
+    required bool rememberMe,
+  }) async {
+    try {
+      if (rememberMe) {
+        await _write(_rememberedEmailKey, email);
+        await _write(_rememberedPasswordKey, password);
+      } else {
+        await _delete(_rememberedEmailKey);
+        await _delete(_rememberedPasswordKey);
+      }
+
+      final accountKey = '$email,$password';
+      final existingAccounts = await _read(_savedAccountsKey) ?? '';
+      
+      if (!existingAccounts.contains(accountKey)) {
+        final newAccounts = existingAccounts.isEmpty 
+            ? accountKey 
+            : '$existingAccounts|$accountKey';
+        await _write(_savedAccountsKey, newAccounts);
+      }
+    } catch (e) {
+      debugPrint('Error saving account: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, String>?> getRememberedAccount() async {
+    try {
+      final email = await _read(_rememberedEmailKey);
+      final password = await _read(_rememberedPasswordKey);
+      
+      if (email != null && password != null) {
+        return {'email': email, 'password': password};
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting remembered account: $e');
+      return null;
+    }
+  }
+
+  Future<List<Map<String, String>>?> getSavedAccounts() async {
+    try {
+      final accounts = await _read(_savedAccountsKey);
+      if (accounts != null && accounts.isNotEmpty) {
+        return accounts.split('|').map((account) {
+          final parts = account.split(',');
+          return {'email': parts[0], 'password': parts[1]};
+        }).toList();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting saved accounts: $e');
+      return null;
+    }
+  }
+
+  Future<void> removeAccount(String email, String password) async {
+    try {
+      final accounts = await getSavedAccounts();
+      if (accounts != null) {
+        final updatedAccounts = accounts
+            .where((a) => a['email'] != email || a['password'] != password)
+            .map((a) => '${a['email']},${a['password']}')
+            .join('|');
+        
+        await _write(_savedAccountsKey, updatedAccounts);
+      }
+    } catch (e) {
+      debugPrint('Error removing account: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _write(String key, String value) async {
+    if (_secureStorage != null) {
+      await _secureStorage!.write(key: key, value: value);
+    }
+    if (_sharedPreferences != null) {
+      await _sharedPreferences!.setString(key, value);
+    }
+  }
+
+  Future<String?> _read(String key) async {
+    if (_secureStorage != null) {
+      return await _secureStorage!.read(key: key);
+    }
+    if (_sharedPreferences != null) {
+      return _sharedPreferences!.getString(key);
+    }
+    return null;
+  }
+
+  Future<void> _delete(String key) async {
+    if (_secureStorage != null) {
+      await _secureStorage!.delete(key: key);
+    }
+    if (_sharedPreferences != null) {
+      await _sharedPreferences!.remove(key);
+    }
   }
 }
