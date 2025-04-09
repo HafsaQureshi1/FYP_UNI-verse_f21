@@ -649,6 +649,51 @@ class _SignInPageState extends State<SignInPage> {
       );
     }
   }
+  void _showForgotPasswordDialog() {
+  final TextEditingController _resetEmailController = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Forgot Password'),
+        content: TextField(
+          controller: _resetEmailController,
+          decoration: const InputDecoration(
+            labelText: 'Enter your email',
+            prefixIcon: Icon(Icons.email),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final email = _resetEmailController.text.trim();
+              if (email.isNotEmpty) {
+                try {
+                  await _auth.sendPasswordResetEmail(email: email);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Password reset email sent.')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${e.toString()}')),
+                  );
+                }
+              }
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -716,6 +761,17 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   obscureText: true,
                 ),
+                const SizedBox(height: 5),
+Align(
+  alignment: Alignment.centerRight,
+  child: TextButton(
+    onPressed: _showForgotPasswordDialog,
+    child: const Text(
+      'Forgot Password?',
+      style: TextStyle(color: Colors.blueGrey),
+    ),
+  ),
+),
                 const SizedBox(height: 10),
 
                 // Sign In Button
