@@ -98,7 +98,37 @@ class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
               ),
             ],
           ),
-
+Positioned(
+            bottom: 16.0,
+            right: 16.0,
+            child: FloatingActionButton(
+              backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  isDismissible: true,
+                  enableDrag: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) {
+                    return FractionallySizedBox(
+                      heightFactor: 0.95, // 95% of screen height
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                        ),
+                        child: CreateNewPostScreen(
+                          collectionName: 'Peerposts/$selectedCategory/posts',
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+              child: const Icon(Icons.add, color: Colors.white), // Post creation icon
+            ),
+          ),
           // ✅ Chatbot Floating Action Button (above the post creation FAB)
           Positioned(
             bottom: 80.0, // Positioned above the post creation button
@@ -131,37 +161,7 @@ class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
           ),
 
           // ✅ Floating Action Button for Creating New Post
-          Positioned(
-            bottom: 16.0,
-            right: 16.0,
-            child: FloatingActionButton(
-              backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  isDismissible: true,
-                  enableDrag: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) {
-                    return FractionallySizedBox(
-                      heightFactor: 0.95, // 95% of screen height
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                        ),
-                        child: CreateNewPostScreen(
-                          collectionName: 'Peerposts/$selectedCategory/posts',
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-              child: const Icon(Icons.add, color: Colors.white), // Post creation icon
-            ),
-          ),
+          
         ],
       ),
     );

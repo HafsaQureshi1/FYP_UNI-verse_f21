@@ -53,32 +53,6 @@ class EventsJobsScreen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Chatbot FAB
-          FloatingActionButton(
-            backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                isDismissible: true,
-                enableDrag: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) {
-                  return FractionallySizedBox(
-                    heightFactor: 0.95, // 95% of screen height
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                      ),
-                      child: ChatScreen(), // Your chatbot screen
-                    ),
-                  );
-                },
-              );
-            },
-            child: const Icon(Icons.chat, color: Colors.white), // Chatbot icon
-          ),
-          SizedBox(height: 16), // Space between the FABs
           // Post creation FAB
           FloatingActionButton(
             backgroundColor: const Color.fromARGB(255, 0, 58, 92),
@@ -105,6 +79,34 @@ class EventsJobsScreen extends StatelessWidget {
             },
             child: const Icon(Icons.add, color: Colors.white), // Post creation icon
           ),
+          SizedBox(height: 16), // Space between the FABs
+          
+          FloatingActionButton(
+            backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                isDismissible: true,
+                enableDrag: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) {
+                  return FractionallySizedBox(
+                    heightFactor: 0.95, // 95% of screen height
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                      ),
+                      child: ChatScreen(), // Your chatbot screen
+                    ),
+                  );
+                },
+              );
+            },
+            child: const Icon(Icons.chat, color: Colors.white), // Chatbot icon
+          ),
+          
         ],
       ),
     );
