@@ -1,20 +1,15 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_application_1/fcm-service.dart';
 import 'package:flutter_application_1/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'admin.dart';
 // Import this for kIsWeb
 
@@ -774,13 +769,20 @@ class _SignInPageState extends State<SignInPage> {
                       });
                       Navigator.pop(context);
                     },
-                    trailing: IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () async {
-                        await _removeAccount(account['email']!, account['password']!);
-                      },
-                    ),
-                  );
+                   trailing: IconButton(
+  icon: const Icon(Icons.close),
+  onPressed: () async {
+    await _removeAccount(account['email']!, account['password']!);
+
+    // Refresh the list after removal
+    final updatedAccounts = await _secureStorage.getSavedAccounts();
+
+    setState(() {
+      _savedAccounts = updatedAccounts ?? [];
+    });
+  },
+));
+
                 }).toList(),
               const SizedBox(height: 16),
               TextButton(
@@ -1023,34 +1025,34 @@ class SecureStorage {
     }
   }
 
-  Future<void> saveAccount({
-    required String email,
-    required String password,
-    required bool rememberMe,
-  }) async {
-    try {
-      if (rememberMe) {
-        await _write(_rememberedEmailKey, email);
-        await _write(_rememberedPasswordKey, password);
-      } else {
-        await _delete(_rememberedEmailKey);
-        await _delete(_rememberedPasswordKey);
-      }
+ Future<void> saveAccount({
+  required String email,
+  required String password,
+  required bool rememberMe,
+}) async {
+  try {
+    if (rememberMe) {
+      await _write(_rememberedEmailKey, email);
+      await _write(_rememberedPasswordKey, password);
 
       final accountKey = '$email,$password';
       final existingAccounts = await _read(_savedAccountsKey) ?? '';
-      
+
       if (!existingAccounts.contains(accountKey)) {
         final newAccounts = existingAccounts.isEmpty 
             ? accountKey 
             : '$existingAccounts|$accountKey';
         await _write(_savedAccountsKey, newAccounts);
       }
-    } catch (e) {
-      debugPrint('Error saving account: $e');
-      rethrow;
+    } else {
+      await _delete(_rememberedEmailKey);
+      await _delete(_rememberedPasswordKey);
     }
+  } catch (e) {
+    debugPrint('Error saving account: $e');
+    rethrow;
   }
+}
 
   Future<Map<String, String>?> getRememberedAccount() async {
     try {

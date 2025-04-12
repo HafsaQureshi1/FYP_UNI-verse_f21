@@ -156,6 +156,8 @@ class _EventsAdminState extends State<EventsAdmin> {
               String imageUrl = eventData['imageUrl'] ?? '';
               Timestamp? eventDate = eventData['eventDate'];
               Timestamp? timestamp = eventData['timestamp'];
+String location = eventData['location'] ?? '';
+String url = eventData['url'] ?? '';
 
               return FutureBuilder<String>(
                 future: _getUserProfilePicture(userId),
@@ -279,6 +281,50 @@ class _EventsAdminState extends State<EventsAdmin> {
                             ),
                           ),
                           const SizedBox(height: 16),
+                          if (location.isNotEmpty) ...[
+  const SizedBox(height: 8),
+  Row(
+    children: [
+      Icon(Icons.location_on, size: 18, color: _primaryColor),
+      const SizedBox(width: 6),
+      Expanded(
+        child: Text(
+          location,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.black87,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    ],
+  ),
+],
+if (url.isNotEmpty) ...[
+  const SizedBox(height: 8),
+  Row(
+    children: [
+      Icon(Icons.link, size: 18, color: _primaryColor),
+      const SizedBox(width: 6),
+      Expanded(
+        child: InkWell(
+          onTap: () {
+            // Optional: You can open this URL using url_launcher if you want
+          },
+          child: Text(
+            url,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.blue,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+      ),
+    ],
+  ),
+],
+
                           Row(
                             mainAxisAlignment:
                                 MainAxisAlignment.center, // Center the buttons

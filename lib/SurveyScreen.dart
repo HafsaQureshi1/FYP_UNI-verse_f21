@@ -51,6 +51,7 @@ class SurveysScreen extends StatelessWidget {
                           likes: postData['likes'] ?? 0,
                           userId: postData['userId'],
                           imageUrl: postData['imageUrl'] ?? '',
+                           url: postData['url'] ?? '',
                           collectionName: collectionName, // ✅ Pass new collection name
                         );
                       },

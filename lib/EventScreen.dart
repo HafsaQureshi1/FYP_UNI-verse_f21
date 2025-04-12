@@ -34,7 +34,12 @@ class EventsJobsScreen extends StatelessWidget {
             itemCount: posts.length,
             itemBuilder: (context, index) {
               var postData = posts[index].data() as Map<String, dynamic>;
+print('Post Data: ${posts[index].data()}');
 
+              // Extract URL from post data (assuming it's stored in the 'url' field)
+               String? url = postData['url']; // Fetch the URL for events
+              // If URL is null, you can provide a default value, or you could handle it differently
+              url = url ?? ''; // Use an empty string if URL is null
               return PostCard(
                 key: ValueKey(posts[index].id),
                 username: postData['userName'] ?? 'Anonymous',
@@ -44,7 +49,9 @@ class EventsJobsScreen extends StatelessWidget {
                 userId: postData['userId'],
                 collectionName: collectionName, // ✅ Pass new collection name
                 imageUrl: postData['imageUrl'] ?? '',
+                url: postData['url'], // Pass the event URL if available
               );
+              
             },
           );
         },
@@ -52,7 +59,6 @@ class EventsJobsScreen extends StatelessWidget {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Chatbot FAB
           // Post creation FAB
           FloatingActionButton(
             backgroundColor: const Color.fromARGB(255, 0, 58, 92),
@@ -81,6 +87,7 @@ class EventsJobsScreen extends StatelessWidget {
           ),
           SizedBox(height: 16), // Space between the FABs
           
+          // Chatbot FAB
           FloatingActionButton(
             backgroundColor: const Color.fromARGB(255, 0, 58, 92),
             onPressed: () {

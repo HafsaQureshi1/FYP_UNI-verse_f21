@@ -394,6 +394,9 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
                       itemBuilder: (context, index) {
                         var postData =
                             posts[index].data() as Map<String, dynamic>;
+                             String? url = postData['url']; // Fetch the URL for events
+              // If URL is null, you can provide a default value, or you could handle it differently
+              url = url ?? ''; // Use an empty string if URL is null
                         return PostCard(
                           key: ValueKey(posts[index].id),
                           username: postData['userName'] ?? 'Anonymous',
@@ -403,6 +406,7 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
                           userId: postData['userId'],
                           collectionName: 'lostfoundposts',
                           imageUrl: postData['imageUrl'] ?? '',
+                          url: url,
                         );
                       },
                     );

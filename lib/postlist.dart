@@ -58,6 +58,7 @@ class _PostListState extends State<PostList> {
                     likes: post['likes'] ?? 0,
                     collectionName: widget.collectionName,
                     imageUrl: post['imageUrl'],
+                     url: post['url'],
                   );
                 },
               );

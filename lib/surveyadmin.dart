@@ -154,6 +154,8 @@ class _SurveyAdminState extends State<SurveyAdmin> {
               List<dynamic> options = surveyData['options'] ?? [];
               String imageUrl = surveyData['imageUrl'] ?? '';
               Timestamp? timestamp = surveyData['timestamp'];
+String location = surveyData['location'] ?? '';
+String url = surveyData['url'] ?? '';
 
               return FutureBuilder<String>(
                 future: _getUserProfilePicture(userId),
@@ -216,8 +218,8 @@ class _SurveyAdminState extends State<SurveyAdmin> {
                           Text(
                             title,
                             style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            
                               color: _primaryColor,
                             ),
                           ),
@@ -252,19 +254,54 @@ class _SurveyAdminState extends State<SurveyAdmin> {
                                 ),
                               ),
                             ),
-                          const SizedBox(height: 12),
-                          Text(
-                            description,
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Options:",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: _primaryColor,
-                            ),
-                          ),
+                        
+                         
+                         
+                          
+                                                    if (location.isNotEmpty) ...[
+  const SizedBox(height: 8),
+  Row(
+    children: [
+      Icon(Icons.location_on, size: 18, color: _primaryColor),
+      const SizedBox(width: 6),
+      Expanded(
+        child: Text(
+          location,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.black87,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    ],
+  ),
+],
+if (url.isNotEmpty) ...[
+  const SizedBox(height: 8),
+  Row(
+    children: [
+      Icon(Icons.link, size: 18, color: _primaryColor),
+      const SizedBox(width: 6),
+      Expanded(
+        child: InkWell(
+          onTap: () {
+            // Optional: You can open this URL using url_launcher if you want
+          },
+          child: Text(
+            url,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.blue,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+      ),
+    ],
+  ),
+],
+
                           ...options.map((option) => Padding(
                                 padding:
                                     const EdgeInsets.only(left: 8.0, top: 4.0),

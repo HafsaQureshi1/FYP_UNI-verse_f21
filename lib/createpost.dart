@@ -32,6 +32,8 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
   bool _isPosting = false;
   LatLng? _selectedLocation;
   String _selectedAddress = "No location selected";
+  final TextEditingController _urlController = TextEditingController();
+
 
   String _username = '';
   String? _userId;
@@ -103,116 +105,6 @@ Future<void> _pickLocation() async {
         "Media & Communication",
     "Miscellaneous": "Miscellaneous"
   };
-
-  Future<String> _classifyPostWithHuggingFace(String postText) async {
-    final url = Uri.parse(
-        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
-
-    final headers = {
-      "Authorization": "Bearer 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",
-      "Content-Type": "application/json"
-    };
-
-    final body = jsonEncode({
-      "inputs": postText,
-      "parameters": {
-        "candidate_labels": [
-          "Electronics",
-          "Clothes & Bags",
-          "Official Documents",
-          "Wallets & Keys",
-          "Books",
-          "Stationery & Supplies",
-          "Miscellaneous"
-        ],
-        "hypothesis_template": "This item is related to {}."
-      }
-    });
-
-    try {
-      final response = await http.post(url, headers: headers, body: body);
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        List<dynamic> labels = responseData["labels"];
-        List<dynamic> scores = responseData["scores"];
-
-        if (labels.isNotEmpty && scores.isNotEmpty) {
-          String bestCategory = "Miscellaneous";
-          double bestConfidence = 0.0;
-
-          for (int i = 0; i < labels.length; i++) {
-            if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
-              bestCategory = labels[i];
-              bestConfidence = scores[i];
-            }
-          }
-          if (bestConfidence < 0.2) {
-            bestCategory = "Miscellaneous";
-          }
-          return bestCategory;
-        }
-      }
-    } catch (e) {
-      print("Hugging Face API Exception: $e");
-    }
-    return "Miscellaneous";
-  }
-
-  Future<String> _classifyPeerAssistancePost(String postText) async {
-    final url = Uri.parse(
-        "https://api-inference.huggingface.co/models/MoritzLaurer/deberta-v3-large-zeroshot-v1");
-    final headers = {
-      "Authorization": "Bearer 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",
-      "Content-Type": "application/json"
-    };
-
-    final body = jsonEncode({
-      "inputs": postText,
-      "parameters": {
-        "candidate_labels": [
-          "Computer Science",
-          "Electrical Engineering",
-          "Education & Physical Education",
-          "Business",
-          "Mathematics",
-          "Media",
-          "Miscellaneous"
-        ],
-        "hypothesis_template": "This post is related to {}."
-      }
-    });
-
-    try {
-      final response = await http.post(url, headers: headers, body: body);
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        List<dynamic> labels = responseData["labels"];
-        List<dynamic> scores = responseData["scores"];
-
-        if (labels.isNotEmpty && scores.isNotEmpty) {
-          String bestCategory = "Miscellaneous";
-          double bestConfidence = 0.0;
-
-          for (int i = 0; i < labels.length; i++) {
-            if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
-              bestCategory = labels[i];
-              bestConfidence = scores[i];
-            }
-          }
-
-          if (bestConfidence < 0.2) {
-            bestCategory = "Miscellaneous";
-          }
-
-          return categoryMapping[bestCategory] ?? "Miscellaneous";
-        }
-      }
-    } catch (e) {
-      print("Hugging Face API Exception: $e");
-    }
-    return "Miscellaneous";
-  }
-
   Future<void> _createPost() async {
     String postContent = _postController.text.trim();
     if (postContent.isEmpty) {
@@ -311,22 +203,24 @@ Future<void> _pickLocation() async {
           
           final adminRef = _firestore.collection(collectionPath).doc();
           final postData = {
-            'userId': user.uid,
-            'userName': username,
-            'userEmail': user.email,
-            'likes': 0,
-            'postContent': postContent,
-            'imageUrl': uploadedImageUrl ?? '',
-            'timestamp': FieldValue.serverTimestamp(),
-            'approval': null, // Initial state - pending approval
-            "location": _selectedLocation != null
-                ? {
-                    "latitude": _selectedLocation!.latitude,
-                    "longitude": _selectedLocation!.longitude,
-                    "address": _selectedAddress,
-                  }
-                : null,
-          };
+  'userId': user.uid,
+  'userName': username,
+  'userEmail': user.email,
+  'likes': 0,
+  'postContent': postContent,
+  'imageUrl': uploadedImageUrl ?? '',
+  'timestamp': FieldValue.serverTimestamp(),
+  'approval': null,
+  "url": _urlController.text.trim(), // ✅ New field
+  "location": _selectedLocation != null
+      ? {
+          "latitude": _selectedLocation!.latitude,
+          "longitude": _selectedLocation!.longitude,
+          "address": _selectedAddress,
+        }
+      : null,
+};
+
 
           await adminRef.set(postData);
 
@@ -342,22 +236,24 @@ Future<void> _pickLocation() async {
           
           final adminRef = _firestore.collection(collectionPath).doc();
           final postData = {
-            'userId': user.uid,
-            'userName': username,
-            'userEmail': user.email,
-            'likes': 0,
-            'postContent': postContent,
-            'imageUrl': uploadedImageUrl ?? '',
-            'timestamp': FieldValue.serverTimestamp(),
-            'approval': null, // Initial state - pending approval
-            "location": _selectedLocation != null
-                ? {
-                    "latitude": _selectedLocation!.latitude,
-                    "longitude": _selectedLocation!.longitude,
-                    "address": _selectedAddress,
-                  }
-                : null,
-          };
+  'userId': user.uid,
+  'userName': username,
+  'userEmail': user.email,
+  'likes': 0,
+  'postContent': postContent,
+  'imageUrl': uploadedImageUrl ?? '',
+  'timestamp': FieldValue.serverTimestamp(),
+  'approval': null,
+  "url": _urlController.text.trim(), // ✅ New field
+  "location": _selectedLocation != null
+      ? {
+          "latitude": _selectedLocation!.latitude,
+          "longitude": _selectedLocation!.longitude,
+          "address": _selectedAddress,
+        }
+      : null,
+};
+
 
           await adminRef.set(postData);
 
@@ -617,6 +513,32 @@ Future<void> _pickLocation() async {
                       style: const TextStyle(fontSize: 16),
                     ),
                   ),
+                  // URL input field for Surveys or Events
+if (widget.collectionName.startsWith('Surveyposts')|| widget.collectionName.startsWith('Eventposts')) ...[
+  const SizedBox(height: 16),
+  const Text(
+    "Enter URL (optional)",
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+  ),
+  const SizedBox(height: 8),
+  TextField(
+    controller: _urlController,
+    keyboardType: TextInputType.url,
+    decoration: InputDecoration(
+      hintText: "https://example.com",
+      prefixIcon: const Icon(Icons.link),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.grey),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.blue),
+      ),
+    ),
+  ),
+]
+,
 
                   const SizedBox(height: 16),
 

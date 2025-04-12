@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -23,6 +24,7 @@ class PostCard extends StatefulWidget {
   final int likes;
   final String collectionName;
   final String? imageUrl;
+   final String? url;
 
   const PostCard({
     Key? key,
@@ -32,7 +34,8 @@ class PostCard extends StatefulWidget {
     required this.content,
     required this.likes,
     required this.collectionName,
-    this.imageUrl,
+    this.imageUrl, 
+     this.url,
   }) : super(key: key);
 
   @override
@@ -50,6 +53,8 @@ class _PostCardState extends State<PostCard> {
   String? profileImageUrl;
   String currentUsername = '';
   String? imageUrl;
+  
+  
   bool isOwner = false;
   int commentCount = 0;
   bool _isLoading = true;
@@ -64,7 +69,30 @@ class _PostCardState extends State<PostCard> {
 
     _initializeData();
   }
+Future<void> _launchURL(String url, BuildContext context) async {
+  try {
+    Uri uri;
+    
+    // Ensure the URL has a scheme
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      uri = Uri.parse('https://$url');
+    } else {
+      uri = Uri.parse(url);
+    }
 
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      throw 'Could not launch $url';
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
+}
   Future<void> _initializeData() async {
     try {
       await Future.wait([
@@ -628,229 +656,229 @@ class _PostCardState extends State<PostCard> {
     });
     _subscriptions.add(sub);
   }
+@override
+Widget build(BuildContext context) {
+  if (_isLoading) {
+    return const Center(child: CircularProgressIndicator());
+  }
+   print('Building PostCard with URL: ${widget.url}'); // Add this
+  return Column(
+    children: [
+      Card(
+        margin: const EdgeInsets.only(bottom: 15.0),
+        elevation: 1.0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(5.0),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // User details with options menu for owner
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // User info
+                  Expanded(
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20.0,
+                          backgroundColor: Colors.grey[300],
+                          child: profileImageUrl == null
+                              ? const Icon(Icons.person, size: 20.0)
+                              : ClipOval(
+                                  child: Image.network(
+                                    profileImageUrl!,
+                                    fit: BoxFit.cover,
+                                    width: 40.0,
+                                    height: 40.0,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        Icon(Icons.person, size: 20.0, color: Colors.grey[600]),
+                                ),
+                                ),
+                        ),
+                        const SizedBox(width: 15.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                currentUsername,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(postTime,
+                                  style: const TextStyle(fontSize: 12.0, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+                  // Options menu (only visible to post owner)
+                  if (isOwner)
+                    IconButton(
+                      icon: const Icon(Icons.more_vert),
+                      onPressed: _showOptionsMenu,
+                    ),
+                ],
+              ),
 
-    return Column(
-      children: [
-        Card(
-          margin: const EdgeInsets.only(bottom: 15.0),
-          elevation: 1.0,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // User details with options menu for owner
-                Row(
+              const SizedBox(height: 10.0),
+
+              // Post Content
+              Text(widget.content, style: const TextStyle(fontSize: 16.0)),
+              
+              // Check for URL and display it if it's valid
+            if (widget.url != null && widget.url!.trim().isNotEmpty) ...[
+  Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8.0),
+    child: InkWell(
+      onTap: () => _launchURL(widget.url!.trim(), context),
+      child: Text(
+        widget.url!.trim(),
+        style: const TextStyle(
+          color: Colors.blue,
+          decoration: TextDecoration.underline,
+        ),
+      ),
+    ),
+  ),
+],
+              
+              // Image (if available)
+              if (imageUrl != null && imageUrl!.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ImageViewerScreen(
+                          imageUrl: imageUrl!,
+                          heroTag: "post_image_${widget.postId}",
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 8.0),
+                    width: double.infinity,
+                    constraints: const BoxConstraints(
+                      maxHeight: 250,
+                    ),
+                    child: Hero(
+                      tag: "post_image_${widget.postId}",
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: Image.network(
+                          imageUrl!,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 150,
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: Icon(
+                                  Icons.error_outline,
+                                  color: Colors.grey,
+                                  size: 40,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              
+              // Add this widget after your image display and before the like/comment buttons
+              if (_postLocation != null && _locationAddress.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    // You could open a map view here if desired
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Location: $_locationAddress'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    margin: const EdgeInsets.only(top: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.location_on, size: 20, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _locationAddress,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.blue[800],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              // Like and Comment Buttons
+              Padding(
+                padding: const EdgeInsets.only(top: 12.0),
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // User info
-                    Expanded(
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 20.0,
-                            backgroundColor: Colors.grey[300],
-                            child: profileImageUrl == null
-                                ? const Icon(Icons.person, size: 20.0)
-                                : ClipOval(
-                                    child: Image.network(
-                                      profileImageUrl!,
-                                      fit: BoxFit.cover,
-                                      width: 40.0,
-                                      height: 40.0,
-                                      errorBuilder:
-                                          (context, error, stackTrace) => Icon(
-                                              Icons.person,
-                                              size: 20.0,
-                                              color: Colors.grey[600]),
-                                    ),
-                                  ),
-                          ),
-                          const SizedBox(width: 15.0),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  currentUsername,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(postTime,
-                                    style: const TextStyle(
-                                        fontSize: 12.0, color: Colors.grey)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    TextButton.icon(
+                      onPressed: _toggleLike,
+                      icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+                      label: Text(likeCount == 0 ? 'Like' : likeCount == 1 ? '1 Like' : '$likeCount Likes'),
                     ),
-
-                    // Options menu (only visible to post owner)
-                    if (isOwner)
-                      IconButton(
-                        icon: const Icon(Icons.more_vert),
-                        onPressed: _showOptionsMenu,
-                      ),
+                    TextButton.icon(
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (context) => CommentSection(
+                            postId: widget.postId,
+                            collectionName: widget.collectionName,
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.comment, color: Colors.blue),
+                      label: Text(commentCount == 0 ? 'Comment' : commentCount == 1 ? '1 Comment' : '$commentCount Comments'),
+                    ),
                   ],
                 ),
-
-                const SizedBox(height: 10.0),
-
-                // Post Content
-                Text(widget.content, style: const TextStyle(fontSize: 16.0)),
-
-                // Image (if available)
-                if (imageUrl != null && imageUrl!.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ImageViewerScreen(
-                            imageUrl: imageUrl!,
-                            heroTag: "post_image_${widget.postId}",
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 8.0),
-                      width: double.infinity,
-                      constraints: const BoxConstraints(
-                        maxHeight: 250,
-                      ),
-                      child: Hero(
-                        tag: "post_image_${widget.postId}",
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8.0),
-                          child: Image.network(
-                            imageUrl!,
-                            fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes !=
-                                          null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                      : null,
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 150,
-                                color: Colors.grey[200],
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.error_outline,
-                                    color: Colors.grey,
-                                    size: 40,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-// Add this widget after your image display and before the like/comment buttons
-                if (_postLocation != null && _locationAddress.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      // You could open a map view here if desired
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Location: $_locationAddress'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      margin: const EdgeInsets.only(top: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.location_on, size: 20, color: Colors.blue),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _locationAddress,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.blue[800],
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                // Like and Comment Buttons
-                Padding(
-                  padding: const EdgeInsets.only(top: 12.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton.icon(
-                        onPressed: _toggleLike,
-                        icon: Icon(
-                            isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: Colors.red),
-                        label: Text(likeCount == 0
-                            ? 'Like'
-                            : likeCount == 1
-                                ? '1 Like'
-                                : '$likeCount Likes'),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            builder: (context) => CommentSection(
-                              postId: widget.postId,
-                              collectionName: widget.collectionName,
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.comment, color: Colors.blue),
-                        label: Text(commentCount == 0
-                            ? 'Comment'
-                            : commentCount == 1
-                                ? '1 Comment'
-                                : '$commentCount Comments'),
-                      ),
-                    ],
-                  ),
-                )
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
 }
 
 class CommentSection extends StatefulWidget {
@@ -981,6 +1009,7 @@ class _CommentSectionState extends State<CommentSection> {
                   var comments = snapshot.data!.docs;
 
                   return ListView.builder(
+                    
                     itemCount: comments.length,
                     itemBuilder: (context, index) {
                       var comment = comments[index];
