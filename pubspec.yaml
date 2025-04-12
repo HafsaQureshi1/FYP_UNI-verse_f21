@@ -131,7 +131,7 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 flutter_native_splash:
-  color: "#32a852"  # background color
+  color: "#0528a6"  # background color
   image: assets/images/google_logo.png  # your splash image (can be your app logo)
   branding: assets/images/peer.png  # optional, if you have a branding image
   android: true
