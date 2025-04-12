@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -19,6 +20,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  
+  await GeolocatorPlatform.instance
+      .checkPermission(); 
   // Setup background message handling
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -35,6 +39,32 @@ void main() async {
   runApp(const MyApp());
 }
 
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'UNI-verse',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: StreamBuilder<User?>(
+  stream: FirebaseAuth.instance.authStateChanges(),
+  builder: (context, snapshot) {
+    if (snapshot.hasData) {
+      return const HomeScreen();
+    } else {
+      return const SignInPage();
+    }
+  },
+),
+
+    );
+  
+  }
+}
 // ✅ Ensure this function is outside of any class (top-level function)
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -92,21 +122,7 @@ void saveUserToken(String token) async {
   print("✅ FCM Token saved successfully!");
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'UNI-verse',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const SignUpPage(),
-    );
-  }
-}
 class GoogleSignUpButton extends StatefulWidget {
   final Function(UserCredential) onSuccess;
 

@@ -17,30 +17,8 @@ import 'profile_page.dart';
 
 import 'createpost.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await GeolocatorPlatform.instance
-      .checkPermission(); // Ensure Geolocator initializes properly
 
-  runApp(const MyApp());
-}
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primaryColor: Colors.white, // Use this instead of primarySwatch
-        useMaterial3: true,
-      ),
-      home: const HomeScreen(),
-    );
-  }
-}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -68,28 +46,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _signOut() async {
-    try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId:
-            '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
-      );
-      // Sign out from Google Sign-In
-      await googleSignIn.signOut();
+  try {
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      clientId: '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
+    );
+    await googleSignIn.signOut();
+    await FirebaseAuth.instance.signOut();
 
-      // Sign out from Firebase
-      await FirebaseAuth.instance.signOut();
-
-      // Navigate to Sign In Page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const SignInPage()),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    }
+    // 🔥 No manual navigation — let authStateChanges handle this
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: ${e.toString()}')),
+    );
   }
+}
+
 
   PreferredSizeWidget _buildAppBar() {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
