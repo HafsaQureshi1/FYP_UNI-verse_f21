@@ -41,7 +41,8 @@ class SurveysScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(16.0),
                       itemCount: posts.length,
                       itemBuilder: (context, index) {
-                        var postData = posts[index].data() as Map<String, dynamic>;
+                        var postData =
+                            posts[index].data() as Map<String, dynamic>;
 
                         return PostCard(
                           key: ValueKey(posts[index].id),
@@ -51,8 +52,9 @@ class SurveysScreen extends StatelessWidget {
                           likes: postData['likes'] ?? 0,
                           userId: postData['userId'],
                           imageUrl: postData['imageUrl'] ?? '',
-                           url: postData['url'] ?? '',
-                          collectionName: collectionName, // ✅ Pass new collection name
+                          url: postData['url'] ?? '',
+                          collectionName:
+                              collectionName, // ✅ Pass new collection name
                         );
                       },
                     );
@@ -61,69 +63,81 @@ class SurveysScreen extends StatelessWidget {
               ),
             ],
           ),
-// ✅ Floating Action Button for Creating New Post
+          // ✅ Combined Floating Action Buttons
           Positioned(
             bottom: 16.0,
             right: 16.0,
-            child: FloatingActionButton(
-              backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  isDismissible: true,
-                  enableDrag: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) {
-                    return FractionallySizedBox(
-                      heightFactor: 0.95, // 95% of screen height
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                        ),
-                        child: CreateNewPostScreen(collectionName: collectionName),
-                      ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Chatbot FAB
+                FloatingActionButton(
+                  heroTag: "chatbotFabSurvey",
+                  backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      isDismissible: true,
+                      enableDrag: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) {
+                        // Replace FractionallySizedBox with DraggableScrollableSheet
+                        return DraggableScrollableSheet(
+                          initialChildSize: 0.7, // 70% of screen height
+                          minChildSize: 0.5,
+                          maxChildSize: 0.95,
+                          builder: (_, controller) {
+                            return Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(25)),
+                              ),
+                              child: ChatScreen(),
+                            );
+                          },
+                        );
+                      },
                     );
                   },
-                );
-              },
-              child: const Icon(Icons.add, color: Colors.white), // Post creation icon
-            ),
-          ),
-          // ✅ Chatbot Floating Action Button (above the post creation FAB)
-          
-          Positioned(
-            bottom: 80.0, // Positioned above the post creation button
-            right: 16.0,
-            child: FloatingActionButton(
-              backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  isDismissible: true,
-                  enableDrag: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) {
-                    return FractionallySizedBox(
-                      heightFactor: 0.95, // 95% of screen height
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                        ),
-                        child: ChatScreen(), // Your chatbot screen
-                      ),
-                    );
-                  },
-                );
-              },
-              child: const Icon(Icons.chat, color: Colors.white), // Chatbot icon
-            ),
-          ),
+                  child: const Icon(Icons.smart_toy_rounded,
+                      color: Colors.white), // Better chatbot icon
+                ),
+                SizedBox(height: 16), // Space between the FABs
 
-          
+                // Post creation FAB
+                FloatingActionButton(
+                  heroTag: "postFabSurvey",
+                  backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      isDismissible: true,
+                      enableDrag: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) {
+                        return FractionallySizedBox(
+                          heightFactor: 0.95,
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(25)),
+                            ),
+                            child: CreateNewPostScreen(
+                                collectionName: collectionName),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  child: const Icon(Icons.add, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

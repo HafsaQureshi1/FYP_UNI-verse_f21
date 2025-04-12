@@ -32,7 +32,8 @@ class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
       return collectionRef
           .doc("All") // ✅ All posts are inside "All"
           .collection("posts")
-          .where("category", isEqualTo: selectedCategory) // ✅ Filter by category field
+          .where("category",
+              isEqualTo: selectedCategory) // ✅ Filter by category field
           .orderBy('timestamp', descending: true)
           .snapshots();
     }
@@ -68,7 +69,8 @@ class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
                       return const Center(
                         child: Text(
                           'No posts found',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w500),
                         ),
                       );
                     }
@@ -77,13 +79,16 @@ class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
 
                     return ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
                       itemCount: posts.length,
                       itemBuilder: (context, index) {
-                        var postData = posts[index].data() as Map<String, dynamic>;
-                         String? url = postData['url']; // Fetch the URL for events
-              // If URL is null, you can provide a default value, or you could handle it differently
-              url = url ?? ''; // Use an empty string if URL is null
+                        var postData =
+                            posts[index].data() as Map<String, dynamic>;
+                        String? url =
+                            postData['url']; // Fetch the URL for events
+                        // If URL is null, you can provide a default value, or you could handle it differently
+                        url = url ?? ''; // Use an empty string if URL is null
                         return PostCard(
                           key: ValueKey(posts[index].id),
                           username: postData['userName'] ?? 'Anonymous',
@@ -102,70 +107,81 @@ class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
               ),
             ],
           ),
-Positioned(
+          Positioned(
             bottom: 16.0,
             right: 16.0,
-            child: FloatingActionButton(
-              backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  isDismissible: true,
-                  enableDrag: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) {
-                    return FractionallySizedBox(
-                      heightFactor: 0.95, // 95% of screen height
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                        ),
-                        child: CreateNewPostScreen(
-                          collectionName: 'Peerposts/$selectedCategory/posts',
-                        ),
-                      ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Chatbot FAB
+                FloatingActionButton(
+                  heroTag: "chatbotFabPeer",
+                  backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      isDismissible: true,
+                      enableDrag: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) {
+                        return DraggableScrollableSheet(
+                          initialChildSize: 0.7, // 70% of screen height
+                          minChildSize: 0.5,
+                          maxChildSize: 0.95,
+                          builder: (_, controller) {
+                            return Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(25)),
+                              ),
+                              child: ChatScreen(),
+                            );
+                          },
+                        );
+                      },
                     );
                   },
-                );
-              },
-              child: const Icon(Icons.add, color: Colors.white), // Post creation icon
-            ),
-          ),
-          // ✅ Chatbot Floating Action Button (above the post creation FAB)
-          Positioned(
-            bottom: 80.0, // Positioned above the post creation button
-            right: 16.0,
-            child: FloatingActionButton(
-              backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  isDismissible: true,
-                  enableDrag: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) {
-                    return FractionallySizedBox(
-                      heightFactor: 0.95, // 95% of screen height
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                        ),
-                        child: ChatScreen(), // Your chatbot screen
-                      ),
-                    );
-                  },
-                );
-              },
-              child: const Icon(Icons.chat, color: Colors.white), // Chatbot icon
-            ),
-          ),
+                  child: const Icon(Icons.smart_toy_rounded,
+                      color: Colors.white), // Better chatbot icon
+                ),
+                SizedBox(height: 16), // Space between the FABs
 
-          // ✅ Floating Action Button for Creating New Post
-          
+                // Post creation FAB
+                FloatingActionButton(
+                  heroTag: "postFabPeer",
+                  backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      isDismissible: true,
+                      enableDrag: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) {
+                        return FractionallySizedBox(
+                          heightFactor: 0.95,
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(25)),
+                            ),
+                            child: CreateNewPostScreen(
+                              collectionName:
+                                  'Peerposts/$selectedCategory/posts',
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  child: const Icon(Icons.add, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
