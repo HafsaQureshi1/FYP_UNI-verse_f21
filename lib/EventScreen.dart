@@ -34,10 +34,10 @@ class EventsJobsScreen extends StatelessWidget {
             itemCount: posts.length,
             itemBuilder: (context, index) {
               var postData = posts[index].data() as Map<String, dynamic>;
-print('Post Data: ${posts[index].data()}');
+              print('Post Data: ${posts[index].data()}');
 
               // Extract URL from post data (assuming it's stored in the 'url' field)
-               String? url = postData['url']; // Fetch the URL for events
+              String? url = postData['url']; // Fetch the URL for events
               // If URL is null, you can provide a default value, or you could handle it differently
               url = url ?? ''; // Use an empty string if URL is null
               return PostCard(
@@ -51,7 +51,6 @@ print('Post Data: ${posts[index].data()}');
                 imageUrl: postData['imageUrl'] ?? '',
                 url: postData['url'], // Pass the event URL if available
               );
-              
             },
           );
         },
@@ -59,36 +58,45 @@ print('Post Data: ${posts[index].data()}');
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Post creation FAB
-          FloatingActionButton(
-            backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                isDismissible: true,
-                enableDrag: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) {
-                  return FractionallySizedBox(
-                    heightFactor: 0.95, // 95% of screen height
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                      ),
-                      child: CreateNewPostScreen(collectionName: collectionName),
-                    ),
-                  );
-                },
-              );
-            },
-            child: const Icon(Icons.add, color: Colors.white), // Post creation icon
-          ),
-          SizedBox(height: 16), // Space between the FABs
-          
           // Chatbot FAB
           FloatingActionButton(
+            heroTag: "chatbotFabEvent",
+            backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                isDismissible: true,
+                enableDrag: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) {
+                  // Replace FractionallySizedBox with DraggableScrollableSheet
+                  return DraggableScrollableSheet(
+                    initialChildSize: 0.7, // 70% of screen height
+                    minChildSize: 0.5,
+                    maxChildSize: 0.95,
+                    builder: (_, controller) {
+                      return Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(25)),
+                        ),
+                        child: ChatScreen(),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+            child: const Icon(Icons.smart_toy_rounded,
+                color: Colors.white), // Better chatbot icon
+          ),
+          SizedBox(height: 16), // Space between the FABs
+
+          // Post creation FAB
+          FloatingActionButton(
+            heroTag: "postFabEvent",
             backgroundColor: const Color.fromARGB(255, 0, 58, 92),
             onPressed: () {
               showModalBottomSheet(
@@ -99,21 +107,22 @@ print('Post Data: ${posts[index].data()}');
                 backgroundColor: Colors.transparent,
                 builder: (context) {
                   return FractionallySizedBox(
-                    heightFactor: 0.95, // 95% of screen height
+                    heightFactor: 0.95,
                     child: Container(
                       decoration: const BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(25)),
                       ),
-                      child: ChatScreen(), // Your chatbot screen
+                      child:
+                          CreateNewPostScreen(collectionName: collectionName),
                     ),
                   );
                 },
               );
             },
-            child: const Icon(Icons.chat, color: Colors.white), // Chatbot icon
+            child: const Icon(Icons.add, color: Colors.white),
           ),
-          
         ],
       ),
     );

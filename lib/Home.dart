@@ -17,9 +17,6 @@ import 'profile_page.dart';
 
 import 'createpost.dart';
 
-
-
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -46,21 +43,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _signOut() async {
-  try {
-    final GoogleSignIn googleSignIn = GoogleSignIn(
-      clientId: '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
-    );
-    await googleSignIn.signOut();
-    await FirebaseAuth.instance.signOut();
-
-    // 🔥 No manual navigation — let authStateChanges handle this
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: ${e.toString()}')),
-    );
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId:
+            '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
+      );
+      await googleSignIn.signOut();
+      await FirebaseAuth.instance.signOut();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
   }
-}
-
 
   PreferredSizeWidget _buildAppBar() {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -144,7 +139,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 constraints: const BoxConstraints(),
               ),
-              // Notification Badge Counter
               if (currentUserId != null)
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -158,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       count = snapshot.data!.docs.length;
                     }
                     if (count == 0) {
-                      return Container(); // No badge when no unread notifications
+                      return Container();
                     }
 
                     return Positioned(
@@ -202,9 +196,8 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             constraints: const BoxConstraints(),
           ),
-          // Logout Button
           IconButton(
-            onPressed: _signOut, // Call the sign-out function
+            onPressed: _signOut,
             icon: const Icon(Icons.exit_to_app, color: Colors.black),
             padding: const EdgeInsets.only(left: 8.0, right: 16.0),
             constraints: const BoxConstraints(),
@@ -222,9 +215,8 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.white, // Keep selected items white
-        unselectedItemColor: const Color.fromARGB(
-            180, 255, 255, 255), // Make unselected items slightly transparent
+        selectedItemColor: Colors.white,
+        unselectedItemColor: const Color.fromARGB(180, 255, 255, 255),
         backgroundColor: const Color.fromARGB(255, 0, 58, 92),
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -237,14 +229,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         items: [
           BottomNavigationBarItem(
-            icon: Icon(_selectedIndex == 0
-                ? Icons.home
-                : Icons
-                    .home_outlined), // Use filled icon for selected, outlined for unselected
+            icon: Icon(_selectedIndex == 0 ? Icons.home : Icons.home_outlined),
             label: "Lost/Found",
             backgroundColor: _selectedIndex == 0
-                ? const Color.fromARGB(
-                    255, 0, 77, 122) // Darker shade for selected tab
+                ? const Color.fromARGB(255, 0, 77, 122)
                 : null,
           ),
           BottomNavigationBarItem(
@@ -299,26 +287,23 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
         FirebaseFirestore.instance.collection('lostfoundposts');
 
     if (selectedCategory == "All") {
-      // If "All" is selected, fetch all posts from all categories
       return collectionRef
-          .doc("All") // ✅ Fetch from "All" category
+          .doc("All")
           .collection("posts")
           .orderBy('timestamp', descending: true)
           .snapshots();
     } else {
-      // Fetch posts only from the selected category
       return collectionRef
-          .doc("All") // ✅ All posts are inside "All"
+          .doc("All")
           .collection("posts")
-          .where("category",
-              isEqualTo: selectedCategory) // ✅ Filter by category field
+          .where("category", isEqualTo: selectedCategory)
           .orderBy('timestamp', descending: true)
           .snapshots();
     }
   }
 
   final ScrollController _scrollController = ScrollController();
-  String selectedCategory = "All"; // Default selection
+  String selectedCategory = "All";
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -327,7 +312,6 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
         children: [
           Column(
             children: [
-              // Category Chips for Filtering
               CategoryChips(
                 collectionName: 'lostfoundposts',
                 onCategorySelected: (category) {
@@ -336,8 +320,6 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
                   });
                 },
               ),
-
-              // Posts List
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: _getPostsStream(),
@@ -365,9 +347,8 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
                       itemBuilder: (context, index) {
                         var postData =
                             posts[index].data() as Map<String, dynamic>;
-                             String? url = postData['url']; // Fetch the URL for events
-              // If URL is null, you can provide a default value, or you could handle it differently
-              url = url ?? ''; // Use an empty string if URL is null
+                        String? url = postData['url'];
+                        url = url ?? '';
                         return PostCard(
                           key: ValueKey(posts[index].id),
                           username: postData['userName'] ?? 'Anonymous',
@@ -386,73 +367,79 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
               ),
             ],
           ),
-
-          // Floating Action Button for Creating New Post
-         Positioned(
-  bottom: 16.0,
-  right: 16.0,
-  child: Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      // Post creation FAB
-      FloatingActionButton(
-        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            isDismissible: true,
-            enableDrag: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) {
-              return FractionallySizedBox(
-                heightFactor: 0.95, // 95% of screen height
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                  ),
-                  child: CreateNewPostScreen(
-                    collectionName: 'lostfoundposts/$selectedCategory/posts',
-                  ),
+          Positioned(
+            bottom: 16.0,
+            right: 16.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: "chatbotFab",
+                  backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      isDismissible: true,
+                      enableDrag: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) {
+                        return DraggableScrollableSheet(
+                          initialChildSize:
+                              0.7, // Changed from 0.6 to 0.7 (70% of screen height)
+                          minChildSize: 0.5,
+                          maxChildSize: 0.95,
+                          builder: (_, controller) {
+                            return Container(
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(25)),
+                              ),
+                              child: ChatScreen(),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  child:
+                      const Icon(Icons.smart_toy_rounded, color: Colors.white),
                 ),
-              );
-            },
-          );
-        },
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-      SizedBox(height: 16), // Space between the two FABs
-      // Chatbot FAB
-      FloatingActionButton(
-        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            isDismissible: true,
-            enableDrag: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) {
-              return FractionallySizedBox(
-                heightFactor: 0.95, // 95% of screen height
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-                  ),
-                  child: ChatScreen(), // Replace with your chatbot screen
+                SizedBox(height: 16),
+                FloatingActionButton(
+                  heroTag: "postFab",
+                  backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      isDismissible: true,
+                      enableDrag: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) {
+                        return FractionallySizedBox(
+                          heightFactor: 0.95,
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(25)),
+                            ),
+                            child: CreateNewPostScreen(
+                              collectionName:
+                                  'lostfoundposts/$selectedCategory/posts',
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  child: const Icon(Icons.add, color: Colors.white),
                 ),
-              );
-            },
-          );
-        },
-        child: const Icon(Icons.chat, color: Colors.white), // Chatbot icon
-      ),
-    ],
-  ),
-),
-
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -474,13 +461,12 @@ class CategoryChips extends StatefulWidget {
 }
 
 class _CategoryChipsState extends State<CategoryChips> {
-  String selectedCategory = "All"; // Default selection
+  String selectedCategory = "All";
 
-  // Define categories based on the selected collection
   List<String> getCategories() {
     if (widget.collectionName == "lostfoundposts") {
       return [
-        "All", // ✅ Moved inside "parameters"
+        "All",
         "Electronics",
         "Clothes & Bags",
         "Official Documents",
