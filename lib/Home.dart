@@ -1,3 +1,4 @@
+import 'package:flutter_application_1/fcm-service.dart';
 import 'package:flutter_application_1/screenui.dart';
 import 'package:flutter_application_1/search_results.dart';
 import 'package:geolocator/geolocator.dart';
@@ -16,7 +17,31 @@ import 'EventScreen.dart';
 import 'profile_page.dart';
 
 import 'createpost.dart';
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+await FCMService().initializeFCM();
 
+  await GeolocatorPlatform.instance
+      .checkPermission(); // Ensure Geolocator initializes properly
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primaryColor: Colors.white, // Use this instead of primarySwatch
+        useMaterial3: true,
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
