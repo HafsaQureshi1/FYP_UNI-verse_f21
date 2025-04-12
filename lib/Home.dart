@@ -20,7 +20,7 @@ import 'createpost.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-await FCMService().initializeFCM();
+
 
   await GeolocatorPlatform.instance
       .checkPermission(); // Ensure Geolocator initializes properly

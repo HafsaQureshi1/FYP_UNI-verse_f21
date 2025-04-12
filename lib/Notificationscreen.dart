@@ -319,10 +319,10 @@ Future<void> _handleNotificationTap(BuildContext context, String notificationId,
 
     String postId = data['postId'];
     String? collectionName = data['collection'];
-
+print("collection name : $collectionName");
     // If collection name is not provided, determine it
     if (collectionName == null) {
-      List<String> collections = ['lost n found', 'peer posts', 'events', 'survey posts', 'jobs'];
+      List<String> collections = ['lostfoundposts', 'Peerposts', 'Eventpostss', 'Surveyposts'];
 
       for (String collection in collections) {
         DocumentSnapshot postDoc = await FirebaseFirestore.instance
@@ -346,8 +346,7 @@ Future<void> _handleNotificationTap(BuildContext context, String notificationId,
     if (collectionName != null) {
       DocumentSnapshot postDoc = await FirebaseFirestore.instance
           .collection(collectionName)
-          .doc("All")
-          .collection("posts")
+          
           .doc(postId)
           .get();
 
