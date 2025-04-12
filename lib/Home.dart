@@ -21,11 +21,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 await FCMService().initializeFCM();
-FirebaseAuth.instance.authStateChanges().listen((User? user) {
-    if (user != null) {
-      FCMService().initializeFCM();
-    }
-  });
+
   await GeolocatorPlatform.instance
       .checkPermission(); // Ensure Geolocator initializes properly
   runApp(const MyApp());
