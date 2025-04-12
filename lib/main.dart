@@ -20,7 +20,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-
   // Listen for authentication changes and re-register FCM token
   FirebaseAuth.instance.authStateChanges().listen((User? user) {
     if (user != null) {
