@@ -15,28 +15,32 @@ import 'admin.dart';
 // Import this for kIsWeb
 
 import 'Home.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  
-  await GeolocatorPlatform.instance
-      .checkPermission(); 
-  // Setup background message handling
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Initialize FCM for all users
+  runApp(const MyApp()); // 🚀 Launch the app immediately
+
+  // Run other heavy stuff after UI builds
+  _initializeStuffAfterLaunch();
+}
+
+void _initializeStuffAfterLaunch() async {
+  // 🔹 Request location permissions later
+  await GeolocatorPlatform.instance.checkPermission();
+
+  // 🔹 Init FCM service
   await FCMService().initializeFCM();
 
-  // Listen for authentication changes and re-register FCM token
+  // 🔹 Listen for auth changes and update FCM token if needed
   FirebaseAuth.instance.authStateChanges().listen((User? user) {
     if (user != null) {
       FCMService().initializeFCM();
     }
   });
-
-  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
