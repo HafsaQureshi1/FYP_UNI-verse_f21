@@ -30,9 +30,15 @@ void main() async {
 
   runApp(const MyApp());
 }
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
+  // Add your list of admin emails
+  static const List<String> _adminEmails = [
+    'waseemhasnain373@gmail.com',
+    'maazbin.bscsf21@iba-suk.edu.pk'
+    // Add more if needed
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -43,18 +49,25 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: StreamBuilder<User?>(
-  stream: FirebaseAuth.instance.authStateChanges(),
-  builder: (context, snapshot) {
-    if (snapshot.hasData) {
-      return const HomeScreen();
-    } else {
-      return const SignInPage();
-    }
-  },
-),
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
 
+          if (snapshot.hasData) {
+            final userEmail = snapshot.data?.email?.toLowerCase().trim();
+            final isAdmin = _adminEmails.contains(userEmail);
+
+            return isAdmin ? const AdminDashboard() : const HomeScreen();
+          } else {
+            return const SignInPage();
+          }
+        },
+      ),
     );
-  
   }
 }
 // ✅ Ensure this function is outside of any class (top-level function)
@@ -447,7 +460,7 @@ void _startEmailVerificationCheck({bool isAdmin = false}) {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
                     builder: (context) => isAdmin 
-                      ? const AdminDashboard() 
+                      ?  AdminDashboard() 
                       : const HomeScreen(),
                   ),
                 );
@@ -555,7 +568,7 @@ const SizedBox(height: 10),
 
     if (email != null && adminEmails.contains(email)) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const AdminDashboard()),
+        MaterialPageRoute(builder: (context) =>  AdminDashboard()),
       );
     } else {
       Navigator.of(context).pushReplacement(
@@ -719,12 +732,16 @@ class _SignInPageState extends State<SignInPage> {
           await _saveAccount(email, password);
           
           bool isAdmin = _adminEmails.contains(user?.email?.toLowerCase().trim());
+print('Email: ${user?.email}, isAdmin: $isAdmin');
+setState(() {
+  _isLoading = false;
+});
 
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) =>
-                  isAdmin ? const AdminDashboard() : const HomeScreen(),
+                  isAdmin ?  AdminDashboard() : const HomeScreen(),
             ),
           );
         } else {
@@ -975,7 +992,7 @@ class _SignInPageState extends State<SignInPage> {
                     if (email != null && _adminEmails.contains(email)) {
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
-                            builder: (context) => const AdminDashboard()),
+                            builder: (context) =>  AdminDashboard()),
                       );
                     } else {
                       Navigator.of(context).pushReplacement(
