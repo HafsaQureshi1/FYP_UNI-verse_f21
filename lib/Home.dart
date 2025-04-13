@@ -2,7 +2,6 @@ import 'package:flutter_application_1/fcm-service.dart';
 import 'package:flutter_application_1/screenui.dart';
 import 'package:flutter_application_1/search_results.dart';
 import 'package:geolocator/geolocator.dart';
-
 import 'postcard.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +14,6 @@ import 'PeerScreen.dart';
 import 'SurveyScreen.dart';
 import 'EventScreen.dart';
 import 'profile_page.dart';
-
 import 'createpost.dart';
 
 void main() async {
@@ -132,7 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: Color.fromARGB(255, 0, 58,
+                        92), // Changed title color to match bottom nav bar blue
                   ),
                 ),
               ),
@@ -350,8 +349,8 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
     }
   }
 
-  final ScrollController _scrollController = ScrollController();
   String selectedCategory = "All";
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -360,6 +359,7 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
         children: [
           Column(
             children: [
+              // Simple CategoryChips without animation
               CategoryChips(
                 collectionName: 'lostfoundposts',
                 onCategorySelected: (category) {
@@ -388,7 +388,6 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
                     var posts = snapshot.data!.docs;
 
                     return ListView.builder(
-                      controller: _scrollController,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16.0, vertical: 8.0),
                       itemCount: posts.length,
@@ -544,40 +543,60 @@ class _CategoryChipsState extends State<CategoryChips> {
 
     return categories.isEmpty
         ? const SizedBox.shrink()
-        : Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+        : Container(
+            margin: const EdgeInsets.symmetric(vertical: 4.0),
+            padding: EdgeInsets.zero,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(5, 0, 0, 0), // Very subtle background
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.black.withOpacity(0.05),
+                  width: 0.5,
+                ),
+              ),
+            ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: categories.map((category) {
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedCategory = category;
-                      });
-                      widget.onCategorySelected(category);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Chip(
-                        label: Text(category),
-                        backgroundColor: selectedCategory == category
-                            ? Colors.blue
-                            : Colors.white,
-                        labelStyle: TextStyle(
-                            color: selectedCategory == category
-                                ? Colors.white
-                                : Colors.black),
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(
-                              color: selectedCategory == category
-                                  ? Colors.blue
-                                  : Colors.grey,
-                              width: 1.2),
-                          borderRadius: BorderRadius.circular(20),
+                  final isSelected = selectedCategory == category;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                    child: FilterChip(
+                      label: Text(
+                        category,
+                        style: TextStyle(
+                          fontSize: 13.0,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? Colors.white : Colors.black87,
                         ),
                       ),
+                      selected: isSelected,
+                      showCheckmark: false,
+                      selectedColor: const Color.fromARGB(255, 0, 58, 92),
+                      backgroundColor: Colors.white,
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      padding: EdgeInsets.zero,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(
+                          color: isSelected
+                              ? Colors.transparent
+                              : Colors.grey.withOpacity(0.3),
+                          width: 1.0,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      onSelected: (selected) {
+                        setState(() {
+                          selectedCategory = category;
+                        });
+                        widget.onCategorySelected(category);
+                      },
                     ),
                   );
                 }).toList(),

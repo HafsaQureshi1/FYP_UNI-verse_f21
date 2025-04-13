@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'postcard.dart';
 import 'createpost.dart';
@@ -47,7 +48,7 @@ class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
         children: [
           Column(
             children: [
-              // ✅ Category Chips for Filtering
+              // Simple CategoryChips without animation
               CategoryChips(
                 collectionName: 'Peerposts',
                 onCategorySelected: (category) {

@@ -97,6 +97,10 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white, // Ensure modal has white background
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
+      ),
       builder: (context) => PostDetailView(post: post),
     );
   }
@@ -206,177 +210,179 @@ class _PostDetailViewState extends State<PostDetailView> {
   }
 
   Future<void> _fetchCommentCount() async {
-  try {
-    final commentSnapshot = await FirebaseFirestore.instance
-        .collection(widget.post['collection'])
-        .doc('All')
-        .collection('posts')
-        .doc(widget.post['id'])
-        .collection('comments')
-        .get();
+    try {
+      final commentSnapshot = await FirebaseFirestore.instance
+          .collection(widget.post['collection'])
+          .doc('All')
+          .collection('posts')
+          .doc(widget.post['id'])
+          .collection('comments')
+          .get();
 
-    if (mounted) {
-      setState(() {
-        commentCount = commentSnapshot.docs.length;
-      });
-    }
-  } catch (e) {
-    print("Error fetching comment count: $e");
-  }
-}
-
-Future<void> _checkIfUserLiked() async {
-  if (currentUserId == null) return;
-
-  try {
-    final likeDoc = await FirebaseFirestore.instance
-        .collection(widget.post['collection'])
-        .doc('All')
-        .collection('posts')
-        .doc(widget.post['id'])
-        .collection('likes')
-        .doc(currentUserId)
-        .get();
-
-    if (mounted) {
-      setState(() {
-        isLiked = likeDoc.exists;
-      });
-    }
-  } catch (e) {
-    print("Error checking like status: $e");
-  }
-}
-
-Future<void> _toggleLike() async {
-  if (currentUserId == null) return;
-
-  final postRef = FirebaseFirestore.instance
-      .collection(widget.post['collection'])
-      .doc('All')
-      .collection('posts')
-      .doc(widget.post['id']);
-  final postAuthorId = widget.post['userId'] ?? '';
-
-  try {
-    if (isLiked) {
-      // Unlike post
-      await postRef.collection('likes').doc(currentUserId).delete();
       if (mounted) {
         setState(() {
-          isLiked = false;
-          likeCount--;
+          commentCount = commentSnapshot.docs.length;
         });
       }
-    } else {
-      // Like post
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
+    } catch (e) {
+      print("Error fetching comment count: $e");
+    }
+  }
+
+  Future<void> _checkIfUserLiked() async {
+    if (currentUserId == null) return;
+
+    try {
+      final likeDoc = await FirebaseFirestore.instance
+          .collection(widget.post['collection'])
+          .doc('All')
+          .collection('posts')
+          .doc(widget.post['id'])
+          .collection('likes')
           .doc(currentUserId)
           .get();
-      final String likerName = userDoc.data()?['username'] ?? 'Someone';
 
-      await postRef.collection('likes').doc(currentUserId).set({
+      if (mounted) {
+        setState(() {
+          isLiked = likeDoc.exists;
+        });
+      }
+    } catch (e) {
+      print("Error checking like status: $e");
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    if (currentUserId == null) return;
+
+    final postRef = FirebaseFirestore.instance
+        .collection(widget.post['collection'])
+        .doc('All')
+        .collection('posts')
+        .doc(widget.post['id']);
+    final postAuthorId = widget.post['userId'] ?? '';
+
+    try {
+      if (isLiked) {
+        // Unlike post
+        await postRef.collection('likes').doc(currentUserId).delete();
+        if (mounted) {
+          setState(() {
+            isLiked = false;
+            likeCount--;
+          });
+        }
+      } else {
+        // Like post
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .get();
+        final String likerName = userDoc.data()?['username'] ?? 'Someone';
+
+        await postRef.collection('likes').doc(currentUserId).set({
+          'userId': currentUserId,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
+        if (mounted) {
+          setState(() {
+            isLiked = true;
+            likeCount++;
+          });
+        }
+
+        // Notify post author (if different)
+        if (postAuthorId.isNotEmpty && postAuthorId != currentUserId) {
+          _fcmService.sendNotificationToUser(
+              postAuthorId, likerName, "liked your post!");
+
+          await FirebaseFirestore.instance.collection('notifications').add({
+            'receiverId': postAuthorId,
+            'senderId': currentUserId,
+            'senderName': likerName,
+            'postId': widget.post['id'],
+            'collection': widget.post['collection'],
+            'message': "$likerName liked your post!",
+            'timestamp': FieldValue.serverTimestamp(),
+            'type': 'like',
+            'isRead': false,
+          });
+        }
+      }
+
+      // Update like count in the post document
+      await postRef.update({'likes': likeCount});
+    } catch (e) {
+      print("Error toggling like: $e");
+    }
+  }
+
+  Future<void> _addComment(String commentText) async {
+    if (commentText.trim().isEmpty || currentUserId == null) return;
+
+    // Ensure that widget.post contains correct structure (use widget.post['collection'] and widget.post['id'])
+    final collectionName = widget.post['collection'];
+    final postId = widget.post['id'];
+
+    final postRef = FirebaseFirestore.instance
+        .collection(collectionName) // Use the collection name dynamically
+        .doc('All')
+        .collection('posts')
+        .doc(postId);
+
+    try {
+      final postDoc = await postRef.get();
+      if (!postDoc.exists) return;
+
+      final String postAuthorId = postDoc.data()?['userId'] ?? '';
+
+      // Add the comment
+      final commentRef = await postRef.collection('comments').add({
         'userId': currentUserId,
+        'comment': commentText,
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      if (mounted) {
-        setState(() {
-          isLiked = true;
-          likeCount++;
-        });
-      }
+      _commentController.clear();
+      _fetchCommentCount(); // Refresh comment count
 
-      // Notify post author (if different)
+      // Notify post author if not commenting on their own post
       if (postAuthorId.isNotEmpty && postAuthorId != currentUserId) {
-        _fcmService.sendNotificationToUser(
-            postAuthorId, likerName, "liked your post!");
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .get();
+        final String currentUsername =
+            userDoc.data()?['username'] ?? 'Unknown User';
 
+        // Send notification about the comment
+        _fcmService.sendNotificationOnComment(
+          postId,
+          currentUsername,
+          commentRef.id,
+          collectionName, // Pass the correct collection name
+        );
+
+        // Add a notification record to Firestore
         await FirebaseFirestore.instance.collection('notifications').add({
           'receiverId': postAuthorId,
           'senderId': currentUserId,
-          'senderName': likerName,
-          'postId': widget.post['id'],
-          'collection': widget.post['collection'],
-          'message': "$likerName liked your post!",
+          'senderName': currentUsername,
+          'postId': postId,
+          'commentId': commentRef.id,
+          'collection': collectionName, // Store the dynamic collection
+          'message': "$currentUsername commented on your post",
           'timestamp': FieldValue.serverTimestamp(),
-          'type': 'like',
+          'type': 'comment',
           'isRead': false,
         });
       }
+    } catch (e) {
+      print("Error adding comment: $e");
     }
-
-    // Update like count in the post document
-    await postRef.update({'likes': likeCount});
-  } catch (e) {
-    print("Error toggling like: $e");
   }
-}
-Future<void> _addComment(String commentText) async {
-  if (commentText.trim().isEmpty || currentUserId == null) return;
 
-  // Ensure that widget.post contains correct structure (use widget.post['collection'] and widget.post['id'])
-  final collectionName = widget.post['collection'];
-  final postId = widget.post['id'];
-
-  final postRef = FirebaseFirestore.instance
-      .collection(collectionName) // Use the collection name dynamically
-      .doc('All')
-      .collection('posts')
-      .doc(postId);
-
-  try {
-    final postDoc = await postRef.get();
-    if (!postDoc.exists) return;
-
-    final String postAuthorId = postDoc.data()?['userId'] ?? '';
-
-    // Add the comment
-    final commentRef = await postRef.collection('comments').add({
-      'userId': currentUserId,
-      'comment': commentText,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    _commentController.clear();
-    _fetchCommentCount(); // Refresh comment count
-
-    // Notify post author if not commenting on their own post
-    if (postAuthorId.isNotEmpty && postAuthorId != currentUserId) {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUserId)
-          .get();
-      final String currentUsername =
-          userDoc.data()?['username'] ?? 'Unknown User';
-
-      // Send notification about the comment
-      _fcmService.sendNotificationOnComment(
-        postId, 
-        currentUsername, 
-        commentRef.id, 
-        collectionName, // Pass the correct collection name
-      );
-
-      // Add a notification record to Firestore
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'receiverId': postAuthorId,
-        'senderId': currentUserId,
-        'senderName': currentUsername,
-        'postId': postId,
-        'commentId': commentRef.id,
-        'collection': collectionName,  // Store the dynamic collection
-        'message': "$currentUsername commented on your post",
-        'timestamp': FieldValue.serverTimestamp(),
-        'type': 'comment',
-        'isRead': false,
-      });
-    }
-  } catch (e) {
-    print("Error adding comment: $e");
-  }
-}
   @override
   Widget build(BuildContext context) {
     final timestamp = widget.post['timestamp'] as Timestamp;
@@ -386,12 +392,12 @@ Future<void> _addComment(String commentText) async {
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.9,
       child: Scaffold(
+        backgroundColor: Colors.white, // Change background to white
         appBar: AppBar(
           backgroundColor: const Color.fromARGB(255, 0, 58, 92),
           title: Text(
             _getCollectionDisplayName(widget.post['collection']),
-            style: const TextStyle(
-                color: Colors.white), // Added white text style here
+            style: const TextStyle(color: Colors.white),
           ),
           leading: IconButton(
             icon: const Icon(Icons.close, color: Colors.white),
@@ -473,39 +479,91 @@ Future<void> _addComment(String commentText) async {
                               ),
                             ),
 
-                          // Remove like and comment count text display
+                          // Divider before buttons
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: Divider(color: Colors.grey[300], height: 1),
+                          ),
 
-                          const Divider(),
-                          // Like and Comment buttons
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              TextButton.icon(
-                                onPressed: _toggleLike,
-                                icon: Icon(
-                                  isLiked
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: Colors.red,
+                          // Like and Comment buttons - Facebook style
+                          Container(
+                            padding: const EdgeInsets.only(top: 2.0),
+                            margin: EdgeInsets.zero,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                // Like button with thumbs up icon
+                                Expanded(
+                                  child: TextButton.icon(
+                                    onPressed: _toggleLike,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: isLiked
+                                          ? Color(0xFF0561DD)
+                                          : Colors.grey[700],
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 5.0),
+                                      minimumSize: Size.zero,
+                                    ),
+                                    icon: Icon(
+                                      isLiked
+                                          ? Icons.thumb_up
+                                          : Icons.thumb_up_outlined,
+                                      size: 20,
+                                      color: isLiked
+                                          ? Color(0xFF0561DD)
+                                          : Colors.grey[700],
+                                    ),
+                                    label: Text(
+                                      likeCount == 0
+                                          ? 'Like'
+                                          : likeCount == 1
+                                              ? '1 Like'
+                                              : '$likeCount Likes',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: isLiked
+                                            ? Color(0xFF0561DD)
+                                            : Colors.grey[700],
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                label: Text(likeCount == 1
-                                    ? '1 Like'
-                                    : '$likeCount Likes'),
-                              ),
-                              TextButton.icon(
-                                onPressed: () {
-                                  // Focus on comment field
-                                  FocusScope.of(context)
-                                      .requestFocus(FocusNode());
-                                  _commentController.clear();
-                                },
-                                icon: const Icon(Icons.comment,
-                                    color: Colors.blue),
-                                label: Text(commentCount == 1
-                                    ? '1 Comment'
-                                    : '$commentCount Comments'),
-                              ),
-                            ],
+
+                                // Comment button
+                                Expanded(
+                                  child: TextButton.icon(
+                                    onPressed: () {
+                                      // Focus on comment field
+                                      FocusScope.of(context)
+                                          .requestFocus(FocusNode());
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.grey[700],
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 5.0),
+                                      minimumSize: Size.zero,
+                                    ),
+                                    icon: Icon(
+                                      Icons
+                                          .forum_outlined, // A more modern comment/discussion icon
+                                      size: 20,
+                                      color: Colors.grey[700],
+                                    ),
+                                    label: Text(
+                                      commentCount == 0
+                                          ? 'Comment'
+                                          : commentCount == 1
+                                              ? '1 Comment'
+                                              : '$commentCount Comments',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -531,7 +589,6 @@ Future<void> _addComment(String commentText) async {
                                 .doc("All")
                                 .collection("posts")
                                 .doc(widget.post['id'])
-                      
                                 .collection('comments')
                                 .orderBy('timestamp', descending: true)
                                 .snapshots(),
@@ -637,16 +694,22 @@ Future<void> _addComment(String commentText) async {
                   Expanded(
                     child: TextField(
                       controller: _commentController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: "Write a comment...",
-                        border: OutlineInputBorder(),
+                        hintStyle: TextStyle(color: Colors.grey[500]),
+                        fillColor: Colors.grey[100],
+                        filled: true,
                         contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.send, color: Colors.blue),
+                    icon: Icon(Icons.send_rounded, color: Color(0xFF0561DD)),
                     onPressed: () {
                       _addComment(_commentController.text);
                     },
