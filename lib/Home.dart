@@ -17,10 +17,10 @@ import 'EventScreen.dart';
 import 'profile_page.dart';
 
 import 'createpost.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-
 
   await GeolocatorPlatform.instance
       .checkPermission(); // Ensure Geolocator initializes properly
@@ -42,6 +42,7 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -60,8 +61,23 @@ class _HomeScreenState extends State<HomeScreen> {
     EventsJobsScreen(),
     SurveysScreen(),
   ];
+  // Add PageController to manage page swiping
+  final PageController _pageController = PageController();
 
   void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+      // Animate to the selected page when bottom nav item is tapped
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  // Handle page changes from swipe gestures
+  void _onPageChanged(int index) {
     setState(() {
       _selectedIndex = index;
     });
@@ -237,7 +253,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _buildAppBar(),
-      body: _screens[_selectedIndex],
+      // Replace the direct _screens[_selectedIndex] with PageView
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: _onPageChanged,
+        children: _screens,
+        physics: const ClampingScrollPhysics(), // Smooth scrolling physics
+      ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.white,
@@ -295,6 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _pageController.dispose(); // Dispose the page controller
     super.dispose();
   }
 }
