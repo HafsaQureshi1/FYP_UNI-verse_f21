@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/fcm-service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'profileimage.dart';
+
 
 class SearchResultsScreen extends StatefulWidget {
   final String query;
@@ -34,8 +36,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       ];
 
       List<Map<String, dynamic>> results = [];
-
-      // Convert query to lowercase for case-insensitive search
       String searchQuery = widget.query.toLowerCase();
 
       for (String collection in collections) {
@@ -43,15 +43,29 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             .collection(collection)
             .doc("All")
             .collection("posts")
-            .get(); // Get all documents first
+            .get();
 
-        // Filter documents locally
         for (var doc in querySnapshot.docs) {
           final data = doc.data();
-          String postContent = (data['postContent'] ?? '').toLowerCase();
 
-          // Check if post content contains the search query
-          if (postContent.contains(searchQuery)) {
+         String postContent = (data['postContent'] is String)
+    ? data['postContent'].toLowerCase()
+    : '';
+
+String location = (data['location'] is String)
+    ? data['location'].toLowerCase()
+    : '';
+
+String url = (data['url'] is String)
+    ? data['url'].toLowerCase()
+    : '';
+
+         bool match(String field) =>
+    field.contains(searchQuery) ||
+    field.split(RegExp(r'\W+')).any((word) => word == searchQuery);
+
+if (match(postContent) || match(location) || match(url)) {
+
             results.add({
               ...data,
               'id': doc.id,
@@ -62,7 +76,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         }
       }
 
-      // Sort results by timestamp
       results.sort((a, b) =>
           (b['timestamp'] as Timestamp).compareTo(a['timestamp'] as Timestamp));
 
@@ -97,8 +110,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white, // Ensure modal has white background
-      shape: RoundedRectangleBorder(
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
       ),
       builder: (context) => PostDetailView(post: post),
@@ -115,7 +128,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           style: const TextStyle(color: Colors.white),
         ),
         elevation: 0,
-        // Add this to make the back arrow white
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _isLoading
@@ -129,7 +141,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                     final timestamp = result['timestamp'] as Timestamp;
                     final formattedDate = DateFormat('MMM d, yyyy • h:mm a')
                         .format(timestamp.toDate());
-                    // Remove likeCount variable as we don't need it anymore
 
                     return Card(
                       margin: const EdgeInsets.symmetric(
@@ -169,7 +180,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                                   ),
                                 ],
                               ),
-                              // Remove the Row that displays like count
                             ],
                           ),
                         ),
@@ -180,6 +190,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     );
   }
 }
+
 
 // New Post Detail View for viewing full post
 class PostDetailView extends StatefulWidget {
@@ -450,6 +461,87 @@ final postRef = collectionName.contains('/')
                               style: const TextStyle(fontSize: 16),
                             ),
                           ),
+                          
+                          // Display location if available
+                          if (widget.post['location'] != null && 
+                              widget.post['location'].isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 4.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.location_on, 
+                                      size: 16, 
+                                      color: Colors.grey),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    widget.post['location'],
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          
+                          // Display post URL if available (not the image URL)
+                          if (widget.post['url'] != null && 
+                              widget.post['url'].isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 8.0,
+                              ),
+                              child: GestureDetector(
+                                onTap: () async {
+                                  String url = widget.post['url'];
+                                  if (!url.startsWith('http://') && 
+                                      !url.startsWith('https://')) {
+                                    url = 'https://$url';
+                                  }
+                                  if (await canLaunchUrl(Uri.parse(url))) {
+                                    await launchUrl(Uri.parse(url));
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Could not launch $url')),
+                                    );
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.link, color: Colors.blue),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            
+                                            Text(
+                                              widget.post['url'],
+                                              style: TextStyle(
+                                                color: Colors.blue,
+                                                fontSize: 14,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                           // Display image if available
                           if (widget.post['imageUrl'] != null &&
                               widget.post['imageUrl'].isNotEmpty)

@@ -23,7 +23,6 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // List of collections to search through
       final collections = [
         'lostfoundposts',
         'Peerposts',
@@ -33,27 +32,33 @@ class _SearchScreenState extends State<SearchScreen> {
 
       List<Map<String, dynamic>> results = [];
 
-      // Search in each collection
       for (String collection in collections) {
         final querySnapshot = await FirebaseFirestore.instance
             .collection(collection)
-            .where('postContent', isGreaterThanOrEqualTo: query)
-            .where('postContent', isLessThanOrEqualTo: '$query\uf8ff')
+            .doc('All')
+            .collection('posts')
             .get();
 
-        // Process results from this collection
         for (var doc in querySnapshot.docs) {
           final data = doc.data();
-          results.add({
-            ...data,
-            'id': doc.id,
-            'collection': collection,
-            'timestamp': data['timestamp'] ?? Timestamp.now(),
-          });
+          final content = (data['postContent'] ?? '').toString().toLowerCase();
+          final location = (data['location'] ?? '').toString().toLowerCase();
+          final url = (data['url'] ?? '').toString().toLowerCase();
+          final queryLower = query.toLowerCase();
+
+          if (content.contains(queryLower) ||
+              location.contains(queryLower) ||
+              url.contains(queryLower)) {
+            results.add({
+              ...data,
+              'id': doc.id,
+              'collection': collection,
+              'timestamp': data['timestamp'] ?? Timestamp.now(),
+            });
+          }
         }
       }
 
-      // Sort results by timestamp
       results.sort((a, b) =>
           (b['timestamp'] as Timestamp).compareTo(a['timestamp'] as Timestamp));
 
@@ -107,9 +112,7 @@ class _SearchScreenState extends State<SearchScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _searchResults.isEmpty
-              ? const Center(
-                  child: Text('No results found'),
-                )
+              ? const Center(child: Text('No results found'))
               : ListView.builder(
                   itemCount: _searchResults.length,
                   itemBuilder: (context, index) {
@@ -157,7 +160,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           ],
                         ),
                         onTap: () {
-                          // Navigate to the post detail if needed
+                          // Navigate to post details if needed
                         },
                       ),
                     );
