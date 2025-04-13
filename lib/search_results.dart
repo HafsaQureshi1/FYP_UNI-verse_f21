@@ -208,26 +208,34 @@ class _PostDetailViewState extends State<PostDetailView> {
     _checkIfUserLiked();
     _fetchCommentCount();
   }
+Future<void> _fetchCommentCount() async {
+  try {
+    final String collectionPath = widget.post['collection'];
+    final String postId = widget.post['id'];
 
-  Future<void> _fetchCommentCount() async {
-    try {
-      final commentSnapshot = await FirebaseFirestore.instance
-          .collection(widget.post['collection'])
-          .doc('All')
-          .collection('posts')
-          .doc(widget.post['id'])
-          .collection('comments')
-          .get();
+    // Determine if collection path already includes 'All/posts'
+    final bool isFullPath = collectionPath.contains('All/posts');
 
-      if (mounted) {
-        setState(() {
-          commentCount = commentSnapshot.docs.length;
-        });
-      }
-    } catch (e) {
-      print("Error fetching comment count: $e");
+    // Build the correct reference
+    final postRef = isFullPath
+        ? FirebaseFirestore.instance.collection(collectionPath).doc(postId)
+        : FirebaseFirestore.instance
+            .collection(collectionPath)
+            .doc('All')
+            .collection('posts')
+            .doc(postId);
+
+    final commentSnapshot = await postRef.collection('comments').get();
+
+    if (mounted) {
+      setState(() {
+        commentCount = commentSnapshot.docs.length;
+      });
     }
+  } catch (e) {
+    print("Error fetching comment count: $e");
   }
+}
 
   Future<void> _checkIfUserLiked() async {
     if (currentUserId == null) return;
@@ -320,16 +328,20 @@ class _PostDetailViewState extends State<PostDetailView> {
 
   Future<void> _addComment(String commentText) async {
     if (commentText.trim().isEmpty || currentUserId == null) return;
+print("👉 POST DATA: ${widget.post}");
 
     // Ensure that widget.post contains correct structure (use widget.post['collection'] and widget.post['id'])
-    final collectionName = widget.post['collection'];
-    final postId = widget.post['id'];
+   final collectionName = widget.post['collection'];
+final postId = widget.post['id'];
 
-    final postRef = FirebaseFirestore.instance
-        .collection(collectionName) // Use the collection name dynamically
+final postRef = collectionName.contains('/')
+    ? FirebaseFirestore.instance.collection(collectionName).doc(postId)
+    : FirebaseFirestore.instance
+        .collection(collectionName)
         .doc('All')
         .collection('posts')
         .doc(postId);
+
 
     try {
       final postDoc = await postRef.get();
@@ -583,28 +595,38 @@ class _PostDetailViewState extends State<PostDetailView> {
                                   fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                           ),
-                          StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection(widget.post['collection'])
-                                .doc("All")
-                                .collection("posts")
-                                .doc(widget.post['id'])
-                                .collection('comments')
-                                .orderBy('timestamp', descending: true)
-                                .snapshots(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const Center(
-                                    child: CircularProgressIndicator());
-                              }
-                              if (!snapshot.hasData ||
-                                  snapshot.data!.docs.isEmpty) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16.0),
-                                  child: Center(child: Text("No comments yet")),
-                                );
-                              }
+                         StreamBuilder<QuerySnapshot>(
+  stream: (() {
+    final String collectionPath = widget.post['collection'];
+    final String postId = widget.post['id'];
+    final bool isFullPath = collectionPath.contains('All/posts');
+
+    final postRef = isFullPath
+        ? FirebaseFirestore.instance.collection(collectionPath).doc(postId)
+        : FirebaseFirestore.instance
+            .collection(collectionPath)
+            .doc('All')
+            .collection('posts')
+            .doc(postId);
+
+    return postRef
+        .collection('comments')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  })(),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Center(child: Text("No comments yet")),
+      );
+    }
+
+    // your comment rendering logic here
+  
 
                               var comments = snapshot.data!.docs;
                               return ListView.builder(

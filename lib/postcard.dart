@@ -433,7 +433,7 @@ class _PostCardState extends State<PostCard> {
           'senderName': likerName,
           'postId': widget.postId,
           'collection': widget.collectionName,
-          'message': "$likerName liked your post",
+          'message': "$likerName ",
           'timestamp': FieldValue.serverTimestamp(),
           'type': 'like',
           'isRead': false,
@@ -1045,7 +1045,7 @@ class _CommentSectionState extends State<CommentSection> {
             .get();
         final String currentUsername =
             userDoc.data()?['username'] ?? 'Unknown User';
-
+print("collection name in add comment $widget.collectionName");
         // Send notification to the post author
         _fcmService.sendNotificationOnComment(
           widget.postId,

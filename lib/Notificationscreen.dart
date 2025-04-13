@@ -319,10 +319,16 @@ Future<void> _handleNotificationTap(BuildContext context, String notificationId,
 
     String postId = data['postId'];
     String? collectionName = data['collection'];
+    if(collectionName == "lostfoundposts"){
+      collectionName = "lostfoundposts/All/posts";
+    }
+    else if(collectionName == "Peerposts"){
+      collectionName = "Peerposts/All/posts";
+    }
 print("collection name : $collectionName");
     // If collection name is not provided, determine it
     if (collectionName == null) {
-      List<String> collections = ['lostfoundposts', 'Peerposts', 'Eventpostss', 'Surveyposts'];
+      List<String> collections = ['lostfoundposts/All/posts', 'Peerposts/All/posts', 'Eventposts', 'Surveyposts'];
 
       for (String collection in collections) {
         DocumentSnapshot postDoc = await FirebaseFirestore.instance
