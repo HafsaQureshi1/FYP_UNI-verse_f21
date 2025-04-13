@@ -22,47 +22,69 @@ class _ProfilePageState extends State<ProfilePage> {
 
   User? user;
   TextEditingController usernameController = TextEditingController();
+  TextEditingController bioController = TextEditingController();
+  TextEditingController workController = TextEditingController();
   String? profileImageUrl;
   bool isEditing = false;
   String? selectedRole;
- bool isImageLoading = false;
+  String? selectedDepartment;
+  bool isImageLoading = false;
+
+  final List<String> departments = [
+    'Computer Science',
+    'Software Engineering',
+    'Mathematics',
+    'BBA',
+    'Electrical Engineering',
+    'Media',
+    'Other',
+  ];
+
   @override
   void initState() {
     super.initState();
     _fetchUserData();
   }
 
- Future<void> _fetchUserData() async {
-  user = _auth.currentUser;
+  Future<void> _fetchUserData() async {
+    user = _auth.currentUser;
 
-  if (user != null) {
-    DocumentSnapshot userDoc =
-        await _firestore.collection('users').doc(user!.uid).get();
+    if (user != null) {
+      DocumentSnapshot userDoc =
+          await _firestore.collection('users').doc(user!.uid).get();
 
-    if (userDoc.exists) {
-      String? roleFromDB = userDoc['role'] ?? '';
+      if (userDoc.exists) {
+        String? roleFromDB = userDoc['role'] ?? '';
 
-      if (mounted) {  // Check if widget is still in the tree
-        setState(() {
-          usernameController.text = userDoc['username'] ?? '';
-          profileImageUrl = userDoc['profileImage'];
+        if (mounted) {
+          setState(() {
+            usernameController.text = userDoc['username'] ?? '';
+            bioController.text = userDoc['bio'] ?? '';
+            workController.text = userDoc['work'] ?? '';
+            profileImageUrl = userDoc['profileImage'];
 
-          // Ensure the fetched role exists in the dropdown items
-          List<String> validRoles = ['Student', 'Alumni'];
-          selectedRole = validRoles.contains(roleFromDB) ? roleFromDB : null;
-        });
+            // Set the department dropdown
+            String? deptFromDB = userDoc['department'];
+            selectedDepartment =
+                departments.contains(deptFromDB) ? deptFromDB : null;
+
+            List<String> validRoles = ['Student', 'Alumni'];
+            selectedRole = validRoles.contains(roleFromDB) ? roleFromDB : null;
+          });
+        }
       }
     }
   }
-}
-
 
   Future<void> _updateUsername() async {
     if (user != null) {
       await _firestore.collection('users').doc(user!.uid).update({
         'username': usernameController.text,
         'role': selectedRole,
-        'profilePicture': profileImageUrl, // Ensure this is not lost
+        'bio': bioController.text,
+        'work': workController.text,
+        'department': selectedDepartment,
+        'profilePicture': profileImageUrl,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -70,102 +92,101 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
       setState(() {
-        isEditing = false; // Reset editing mode after update
+        isEditing = false;
       });
     }
   }
 
- Future<void> _pickImage() async {
-  try {
-    setState(() {
-      isImageLoading = true; // Start spinner immediately
-      profileImageUrl = null; // Clear previous image to prevent flickering
-    });
+  Future<void> _pickImage() async {
+    try {
+      setState(() {
+        isImageLoading = true;
+        profileImageUrl = null;
+      });
 
-    if (kIsWeb) {
-      // Web Image Picker
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: false,
-      );
+      if (kIsWeb) {
+        FilePickerResult? result = await FilePicker.platform.pickFiles(
+          type: FileType.image,
+          allowMultiple: false,
+        );
 
-      if (result != null) {
-        Uint8List? fileBytes = result.files.first.bytes;
-        String fileName = result.files.first.name;
+        if (result != null) {
+          Uint8List? fileBytes = result.files.first.bytes;
+          String fileName = result.files.first.name;
 
-        if (fileBytes != null) {
-          String? imageUrl = await _uploadImageToCloudinaryWeb(fileBytes, fileName);
-          
+          if (fileBytes != null) {
+            String? imageUrl =
+                await _uploadImageToCloudinaryWeb(fileBytes, fileName);
+
+            if (imageUrl != null) {
+              await _updateFirestoreProfileImage(imageUrl);
+              setState(() {
+                profileImageUrl = imageUrl;
+              });
+            }
+          }
+        }
+      } else {
+        final ImagePicker picker = ImagePicker();
+        final XFile? pickedFile =
+            await picker.pickImage(source: ImageSource.gallery);
+
+        if (pickedFile != null) {
+          File imageFile = File(pickedFile.path);
+          String? imageUrl = await _uploadImageToCloudinaryMobile(imageFile);
+
           if (imageUrl != null) {
             await _updateFirestoreProfileImage(imageUrl);
             setState(() {
-              profileImageUrl = imageUrl; // Update with new image
+              profileImageUrl = imageUrl;
             });
           }
         }
       }
-    } else {
-      // Mobile Image Picker
-      final ImagePicker picker = ImagePicker();
-      final XFile? pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-      if (pickedFile != null) {
-        File imageFile = File(pickedFile.path);
-        String? imageUrl = await _uploadImageToCloudinaryMobile(imageFile);
-        
-        if (imageUrl != null) {
-          await _updateFirestoreProfileImage(imageUrl);
-          setState(() {
-            profileImageUrl = imageUrl; // Update with new image
-          });
-        }
-      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: ${e.toString()}")),
+      );
+    } finally {
+      setState(() {
+        isImageLoading = false;
+      });
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error: ${e.toString()}")),
-    );
-  } finally {
-    setState(() {
-      isImageLoading = false; // Stop spinner after process completes
-    });
   }
-}
-
 
   Future<void> _updateFirestoreProfileImage(String imageUrl) async {
     setState(() {
-      isImageLoading = true; // Start loading
+      isImageLoading = true;
     });
 
     await _firestore.collection('users').doc(user!.uid).update({
       'profileImage': imageUrl,
     });
 
-    _fetchUserData(); // Refresh data
+    _fetchUserData();
 
     setState(() {
       profileImageUrl = imageUrl;
-      isImageLoading = false; // Stop loading after update
+      isImageLoading = false;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Profile image updated!")),
     );
   }
-  // Fetch updated data to refresh the UI
- 
 
   Future<String?> _uploadImageToCloudinaryMobile(File imageFile) async {
     return _uploadImageToCloudinary(imageFile.readAsBytesSync());
   }
 
-  Future<String?> _uploadImageToCloudinaryWeb(Uint8List fileBytes, String fileName) async {
+  Future<String?> _uploadImageToCloudinaryWeb(
+      Uint8List fileBytes, String fileName) async {
     return _uploadImageToCloudinary(fileBytes);
   }
 
   Future<String?> _uploadImageToCloudinary(Uint8List fileBytes) async {
-    const String cloudinaryUrl = "https://api.cloudinary.com/v1_1/dgyktklti/image/upload";
+    const String cloudinaryUrl =
+        "https://api.cloudinary.com/v1_1/dgyktklti/image/upload";
     const String uploadPreset = "Universe_upload";
 
     try {
@@ -198,13 +219,17 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   @override
-    Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Edit Profile"),
+        backgroundColor: Colors.white, // Set app bar background to white
+        title: const Text("Edit Profile",
+            style:
+                TextStyle(color: Colors.black)), // Add text color for contrast
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back,
+              color: Colors.black), // Add icon color for contrast
           onPressed: () {
             Navigator.pop(context);
           },
@@ -219,24 +244,24 @@ class _ProfilePageState extends State<ProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 20),
-
-                // Profile Image with Upload Button and Loading Indicator
                 Stack(
                   alignment: Alignment.bottomRight,
                   children: [
                     CircleAvatar(
                       radius: 60,
                       backgroundColor: Colors.grey[300],
-                      backgroundImage: profileImageUrl != null && !isImageLoading
-                          ? NetworkImage(profileImageUrl!)
-                          : null,
+                      backgroundImage:
+                          profileImageUrl != null && !isImageLoading
+                              ? NetworkImage(profileImageUrl!)
+                              : null,
                       child: isImageLoading
                           ? const CircularProgressIndicator(
                               valueColor:
                                   AlwaysStoppedAnimation<Color>(Colors.blue),
                             )
                           : profileImageUrl == null
-                              ? const Icon(Icons.person, size: 60, color: Colors.white)
+                              ? const Icon(Icons.person,
+                                  size: 60, color: Colors.white)
                               : null,
                     ),
                     IconButton(
@@ -246,8 +271,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 20),
-
-                // Username Field with Edit Option
                 Row(
                   children: [
                     Expanded(
@@ -279,8 +302,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 20),
-
-                // Email Field (Read-Only)
                 TextField(
                   controller: TextEditingController(text: user?.email ?? ''),
                   readOnly: true,
@@ -295,30 +316,103 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 20),
 
-                // Role Dropdown (Editable)
-                DropdownButtonFormField<String>(
-                  value: selectedRole,
+                // Role Dropdown - Fixed to avoid pink screen
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    // This removes the pink overlay
+                    canvasColor: Colors.white,
+                  ),
+                  child: DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    decoration: InputDecoration(
+                      labelText: 'Select Your Role',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16.0, horizontal: 20.0),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'Student', child: Text('Student')),
+                      DropdownMenuItem(value: 'Alumni', child: Text('Alumni')),
+                    ],
+                    onChanged: isEditing
+                        ? (value) {
+                            setState(() {
+                              selectedRole = value;
+                            });
+                          }
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    canvasColor: Colors.white,
+                  ),
+                  child: DropdownButtonFormField<String>(
+                    value: selectedDepartment,
+                    decoration: InputDecoration(
+                      labelText: 'Select Your Department',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16.0, horizontal: 20.0),
+                    ),
+                    items: departments.map((String department) {
+                      return DropdownMenuItem<String>(
+                        value: department,
+                        child: Text(department),
+                      );
+                    }).toList(),
+                    onChanged: isEditing
+                        ? (value) {
+                            setState(() {
+                              selectedDepartment = value;
+                            });
+                          }
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Bio Field
+                TextField(
+                  controller: bioController,
+                  enabled: isEditing,
+                  maxLines: 3,
                   decoration: InputDecoration(
-                    labelText: 'Select Your Role',
+                    labelText: 'Bio',
+                    hintText: 'Tell us about yourself...',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10.0),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                         vertical: 16.0, horizontal: 20.0),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'Student', child: Text('Student')),
-                    DropdownMenuItem(value: 'Alumni', child: Text('Alumni')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      selectedRole = value;
-                    });
-                  },
                 ),
                 const SizedBox(height: 20),
 
-                // Update Profile Button
+                // Work/Experience Field
+                TextField(
+                  controller: workController,
+                  enabled: isEditing,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Work/Experience',
+                    hintText: 'Share your work experience...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 16.0, horizontal: 20.0),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
                 ElevatedButton(
                   onPressed: _updateUsername,
                   style: ElevatedButton.styleFrom(
@@ -333,6 +427,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: TextStyle(fontSize: 18, color: Colors.white),
                   ),
                 ),
+                const SizedBox(height: 20),
               ],
             ),
           ),
