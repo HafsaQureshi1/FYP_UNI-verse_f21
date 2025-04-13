@@ -52,9 +52,12 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     ? data['postContent'].toLowerCase()
     : '';
 
-String location = (data['location'] is String)
-    ? data['location'].toLowerCase()
-    : '';
+String location = '';
+if (data['location'] is String) {
+  location = data['location'].toLowerCase();
+} else if (data['location'] is Map) {
+  location = data['location'].toString().toLowerCase();
+}
 
 String url = (data['url'] is String)
     ? data['url'].toLowerCase()
@@ -408,6 +411,20 @@ final postRef = collectionName.contains('/')
 
   @override
   Widget build(BuildContext context) {
+    // This goes before your widget list (e.g., in build method)
+String? locationText;
+final location = widget.post['location'];
+
+if (location != null) {
+  if (location is String && location.isNotEmpty) {
+    locationText = location;
+  } else if (location is Map && location.isNotEmpty) {
+    locationText = location.entries
+        .map((e) => "${e.key}: ${e.value}")
+        .join(', ');
+  }
+}
+
     final timestamp = widget.post['timestamp'] as Timestamp;
     final formattedDate =
         DateFormat('MMM d, yyyy • h:mm a').format(timestamp.toDate());
@@ -463,31 +480,31 @@ final postRef = collectionName.contains('/')
                           ),
                           
                           // Display location if available
-                          if (widget.post['location'] != null && 
-                              widget.post['location'].isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                                vertical: 4.0,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.location_on, 
-                                      size: 16, 
-                                      color: Colors.grey),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    widget.post['location'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          
-                          // Display post URL if available (not the image URL)
+                         if (locationText != null && locationText.isNotEmpty)
+  Padding(
+    padding: const EdgeInsets.symmetric(
+      horizontal: 16.0,
+      vertical: 4.0,
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.location_on, size: 16, color: Colors.grey),
+        const SizedBox(width: 4),
+        Expanded( // 👈 Wrap your Text with Expanded
+          child: Text(
+            locationText,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+            overflow: TextOverflow.ellipsis, // Optional: ellipsis if too long
+            maxLines: 2, // Optional: limit to 2 lines
+          ),
+        ),
+      ],
+    ),
+  ),
+ // Display post URL if available (not the image URL)
                           if (widget.post['url'] != null && 
                               widget.post['url'].isNotEmpty)
                             Padding(

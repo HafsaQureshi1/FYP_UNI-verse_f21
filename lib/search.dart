@@ -42,7 +42,12 @@ class _SearchScreenState extends State<SearchScreen> {
         for (var doc in querySnapshot.docs) {
           final data = doc.data();
           final content = (data['postContent'] ?? '').toString().toLowerCase();
-          final location = (data['location'] ?? '').toString().toLowerCase();
+       String location = '';
+if (data['location'] is String) {
+  location = data['location'].toLowerCase();
+} else if (data['location'] is Map) {
+  location = data['location'].toString().toLowerCase();
+}
           final url = (data['url'] ?? '').toString().toLowerCase();
           final queryLower = query.toLowerCase();
 
