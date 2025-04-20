@@ -101,6 +101,7 @@ flutter:
 
   assets:
     - assets/images/logo.png
+    - assets/images/logosplash.png
     - assets/images/peer.png
     - assets/images/lost.png
     - assets/images/peer.png

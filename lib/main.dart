@@ -98,7 +98,7 @@ class _CustomSplashScreenState extends State<CustomSplashScreen> {
               children: [
                 // Logo
                 Image.asset(
-                  'assets/images/logo.png',
+                  'assets/images/logosplash.png',
                   height: 100,
                 ),
                 const SizedBox(height: 20),
