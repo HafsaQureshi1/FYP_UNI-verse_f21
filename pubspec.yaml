@@ -67,6 +67,7 @@ dependencies:
 dev_dependencies:
 
   flutter_native_splash: ^2.3.10
+  flutter_launcher_icons: ^0.13.1
 
   flutter_test:
     sdk: flutter
@@ -81,6 +82,15 @@ dev_dependencies:
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
+# Flutter Launcher Icons configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"
+  adaptive_icon_background: "#003A5C" # Dark blue background color
+  adaptive_icon_foreground: "assets/images/logo.png"
+  min_sdk_android: 21 # Android min sdk min:16, default 21
+
 # The following section is specific to Flutter packages.
 flutter:
 
@@ -90,7 +100,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/google_logo.png
+    - assets/images/logo.png
     - assets/images/peer.png
     - assets/images/lost.png
     - assets/images/peer.png

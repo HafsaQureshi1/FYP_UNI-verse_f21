@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -13,7 +12,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'admin/admin.dart';
 // Import this for kIsWeb
 import 'dart:async';
-import 'screens/Home.dart';   // Replace with your actual SignInPage
+import 'screens/Home.dart'; // Replace with your actual SignInPage
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -76,7 +75,8 @@ class _CustomSplashScreenState extends State<CustomSplashScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-            builder: (_) => isAdmin ? const AdminDashboard() : const HomeScreen()),
+            builder: (_) =>
+                isAdmin ? const AdminDashboard() : const HomeScreen()),
       );
     } else {
       Navigator.pushReplacement(
@@ -91,98 +91,106 @@ class _CustomSplashScreenState extends State<CustomSplashScreen> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 245, 247, 255),
       body: SafeArea(
-        child: SingleChildScrollView( // Make the entire content scrollable
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              // Logo
-              Image.asset(
-                'assets/images/google_logo.png', // Replace with your asset path
-                height: 100,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'UNI-verse',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E1E2F),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo
+                Image.asset(
+                  'assets/images/logo.png',
+                  height: 100,
                 ),
-              ),
-              const Text(
-                'Your Campus, Connected.',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontStyle: FontStyle.italic,
-                  color: Colors.grey,
+                const SizedBox(height: 20),
+                const Text(
+                  'UNI-verse',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 0, 58, 92),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 40),
+                const Text(
+                  'Your Campus, Connected.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 40),
 
-              // Features section with 2x2 grid (4 features)
-              SizedBox(
-                // Adjusted height to fit 2x2 grid
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Expanded(
-                          child: _FeatureCard(
-                            icon: Icons.push_pin,
-                            title: 'Bulletin Board',
-                            description: 'Stay updated with events, jobs, and surveys.',
+                // Features section with 2x2 grid (4 features)
+                SizedBox(
+                  // Adjusted height to fit 2x2 grid
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Expanded(
+                            child: _FeatureCard(
+                              icon: Icons.push_pin,
+                              title: 'Bulletin Board',
+                              description:
+                                  'Stay updated with events, jobs, and surveys.',
+                            ),
                           ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: _FeatureCard(
-                            icon: Icons.group,
-                            title: 'Peer Help',
-                            description: 'Get advice and support from fellow students.',
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: _FeatureCard(
+                              icon: Icons.group,
+                              title: 'Peer Help',
+                              description:
+                                  'Get advice and support from fellow students.',
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Expanded(
+                            child: _FeatureCard(
+                              icon: Icons.notifications,
+                              title: 'Notifications',
+                              description:
+                                  'Get real-time updates on events and posts.',
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: _FeatureCard(
+                              icon: Icons.search,
+                              title: 'Search',
+                              description:
+                                  'Find posts, events, and more easily.',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                Column(
+                  children: const [
+                    CircularProgressIndicator(
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Color(0xFF003A5C)),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Expanded(
-                          child: _FeatureCard(
-                            icon: Icons.notifications,
-                            title: 'Notifications',
-                            description: 'Get real-time updates on events and posts.',
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: _FeatureCard(
-                            icon: Icons.search,
-                            title: 'Search',
-                            description: 'Find posts, events, and more easily.',
-                          ),
-                        ),
-                      ],
-                    ),
+                    SizedBox(height: 10),
+                    Text('Loading your campus experience...',
+                        style: TextStyle(color: Colors.grey)),
+                    SizedBox(height: 4),
+                    Text('v1.0.0',
+                        style: TextStyle(fontSize: 10, color: Colors.grey)),
                   ],
                 ),
-              ),
-              const SizedBox(height: 20),
-
-              Column(
-                children: const [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 10),
-                  Text('Loading your campus experience...',
-                      style: TextStyle(color: Colors.grey)),
-                  SizedBox(height: 4),
-                  Text('v1.0.0',
-                      style: TextStyle(fontSize: 10, color: Colors.grey)),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -205,7 +213,7 @@ class _FeatureCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(right: 12,left:12),
+      margin: const EdgeInsets.only(right: 12, left: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -219,10 +227,9 @@ class _FeatureCard extends StatelessWidget {
         ],
       ),
       child: Column(
-
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 32, color: Colors.deepPurple),
+          Icon(icon, size: 32, color: Color.fromARGB(255, 0, 58, 92)),
           const SizedBox(height: 10),
           Text(
             title,
@@ -245,10 +252,9 @@ class _FeatureCard extends StatelessWidget {
 
 // ✅ Ensure this function is outside of any class (top-level function)
 //Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  //await Firebase.initializeApp();
+//await Firebase.initializeApp();
 //  print("🔵 Background Message Received: ${message.notification?.title}");
 //}
-
 
 void setupFirebaseNotifications() async {
   FirebaseMessaging messaging = FirebaseMessaging.instance;
@@ -300,7 +306,6 @@ void saveUserToken(String token) async {
   print("✅ FCM Token saved successfully!");
 }
 
-
 class GoogleSignUpButton extends StatefulWidget {
   final Function(UserCredential) onSuccess;
 
@@ -312,13 +317,12 @@ class GoogleSignUpButton extends StatefulWidget {
 
 class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
   bool _isLoading = false;
- final GoogleSignIn _googleSignIn = GoogleSignIn(
-  scopes: ['email', 'profile'],
-  clientId: kIsWeb
-      ? '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com'
-      : null,
-);
-
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    clientId: kIsWeb
+        ? '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com'
+        : null,
+  );
 
   Future<void> _handleGoogleSignUp() async {
     try {
@@ -330,7 +334,8 @@ class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
       final GoogleSignInAccount? newGoogleUser = await _googleSignIn.signIn();
       if (newGoogleUser == null) return;
 
-      final GoogleSignInAuthentication googleAuth = await newGoogleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await newGoogleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -346,17 +351,22 @@ class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
       if (userDoc.docs.isNotEmpty) {
         // User already exists
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account already exists with this email! Please sign in.')),
+          const SnackBar(
+              content: Text(
+                  'Account already exists with this email! Please sign in.')),
         );
         return;
       }
 
       // Check if email exists in Firebase Authentication
       try {
-        final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+        final methods =
+            await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
         if (methods.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('An account already exists with this email. Please sign in.')),
+            const SnackBar(
+                content: Text(
+                    'An account already exists with this email. Please sign in.')),
           );
           return;
         }
@@ -365,11 +375,15 @@ class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
       }
 
       // Create a new user with Google credentials
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
 
       if (userCredential.user != null) {
         // Save user details to Firestore
-        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
           'uid': userCredential.user!.uid,
           'username': userCredential.user!.displayName ?? 'User',
           'email': userCredential.user!.email ?? '',
@@ -382,12 +396,12 @@ class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
         widget.onSuccess(userCredential);
       }
     } catch (e, stackTrace) {
-  debugPrint("Google Sign-up Error: $e");
-  debugPrint("StackTrace: $stackTrace");
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('Error: ${e.toString()}')),
-  );
-} finally {
+      debugPrint("Google Sign-up Error: $e");
+      debugPrint("StackTrace: $stackTrace");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
       setState(() => _isLoading = false);
     }
   }
@@ -409,13 +423,13 @@ class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
       ),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
         side: const BorderSide(color: Colors.grey),
       ),
     );
   }
 }
-
 
 class GoogleSignInButton extends StatefulWidget {
   final Function(UserCredential) onSuccess;
@@ -429,84 +443,84 @@ class GoogleSignInButton extends StatefulWidget {
   State<GoogleSignInButton> createState() => _GoogleSignInButtonState();
 }
 
-
 class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   bool _isLoading = false;
- final GoogleSignIn _googleSignIn = GoogleSignIn(
-  scopes: ['email', 'profile'],
-  clientId: kIsWeb
-      ? '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com'
-      : null,
-);
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    clientId: kIsWeb
+        ? '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com'
+        : null,
+  );
 
-  
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      setState(() => _isLoading = true);
 
- Future<void> _handleGoogleSignIn() async {
-  try {
-    setState(() => _isLoading = true);
+      // Ensure sign out before signing in again
+      await _googleSignIn.signOut();
+      await FirebaseAuth.instance.signOut();
 
-    // Ensure sign out before signing in again
-    await _googleSignIn.signOut();
-    await FirebaseAuth.instance.signOut();
+      // Force Google to prompt for account selection
+      final GoogleSignInAccount? googleUser =
+          await _googleSignIn.signInSilently();
+      if (googleUser != null) {
+        await _googleSignIn.disconnect(); // Clear cached account
+      }
 
-    // Force Google to prompt for account selection
-    final GoogleSignInAccount? googleUser = await _googleSignIn.signInSilently();
-    if (googleUser != null) {
-      await _googleSignIn.disconnect();  // Clear cached account
-    }
+      final GoogleSignInAccount? newGoogleUser = await _googleSignIn.signIn();
+      if (newGoogleUser == null) return;
 
-    final GoogleSignInAccount? newGoogleUser = await _googleSignIn.signIn();
-    if (newGoogleUser == null) return;
+      final GoogleSignInAuthentication googleAuth =
+          await newGoogleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-    final GoogleSignInAuthentication googleAuth = await newGoogleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
 
-    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-    
-    if (userCredential.user != null) {
-      // Check if this is a new user and add default fields if needed
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .get();
-      
-      if (!userDoc.exists) {
-        // New user with Google Sign In - create profile with defaults
-        await FirebaseFirestore.instance
+      if (userCredential.user != null) {
+        // Check if this is a new user and add default fields if needed
+        final userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(userCredential.user!.uid)
-            .set({
-              'uid': userCredential.user!.uid,
-              'username': userCredential.user!.displayName ?? 'User',
-              'email': userCredential.user!.email ?? '',
-              'role': 'student', // Default role
-              'profilePicture': userCredential.user!.photoURL ?? 
+            .get();
+
+        if (!userDoc.exists) {
+          // New user with Google Sign In - create profile with defaults
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .set({
+            'uid': userCredential.user!.uid,
+            'username': userCredential.user!.displayName ?? 'User',
+            'email': userCredential.user!.email ?? '',
+            'role': 'student', // Default role
+            'profilePicture': userCredential.user!.photoURL ??
                 'https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/default_profile.png?alt=media', // Use Google profile pic or default
-              'createdAt': FieldValue.serverTimestamp(),
-            });
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        if (userCredential.user?.emailVerified ?? false) {
+          widget.onSuccess(userCredential);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please verify your email first.')),
+          );
+        }
       }
-      
-      if (userCredential.user?.emailVerified ?? false) {
-        widget.onSuccess(userCredential);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please verify your email first.')),
-        );
-      }
+    } catch (e, stackTrace) {
+      debugPrint("Google Sign-In Error: $e");
+      debugPrint("StackTrace: $stackTrace");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
-  } catch (e, stackTrace) {
-  debugPrint("Google Sign-In Error: $e");
-  debugPrint("StackTrace: $stackTrace");
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('Error: ${e.toString()}')),
-  );
-}finally {
-    setState(() => _isLoading = false);
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -525,7 +539,8 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
       ),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
         side: const BorderSide(color: Colors.grey),
       ),
     );
@@ -541,115 +556,122 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   // Add this at the top of your _SignUpPageState class
-final List<String> _adminEmails = [
-  'waseemhasnain373@gmail.com',
-  'maazbin.bscsf21@iba-suk.edu.pk'
-  'admin2@university.edu',
-  'dean@university.edu'
-];
+  final List<String> _adminEmails = [
+    'waseemhasnain373@gmail.com',
+    'maazbin.bscsf21@iba-suk.edu.pk'
+        'admin2@university.edu',
+    'dean@university.edu'
+  ];
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isLoading = false;
-final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
 
- Future<void> _signUp() async {
-  setState(() {
-    _isLoading = true;
-  });
+  Future<void> _signUp() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-  try {
-    UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-    );
-    User? user = userCredential.user;
+    try {
+      UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      User? user = userCredential.user;
 
-    if (user != null) {
-      await user.sendEmailVerification();
+      if (user != null) {
+        await user.sendEmailVerification();
 
-      // Check if the email is an admin email
-      bool isAdmin = _adminEmails.contains(user.email?.toLowerCase().trim());
+        // Check if the email is an admin email
+        bool isAdmin = _adminEmails.contains(user.email?.toLowerCase().trim());
 
-      // Save user data with role
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'uid': user.uid,
-        'username': _usernameController.text.trim(),
-        'email': user.email,
-        'role':   'student', // Set role based on email
-        'profilePicture': 'https://firebasestorage.googleapis.com/...', 
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        // Save user data with role
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'username': _usernameController.text.trim(),
+          'email': user.email,
+          'role': 'student', // Set role based on email
+          'profilePicture': 'https://firebasestorage.googleapis.com/...',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
 
+        setState(() {
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Verification email sent. Please verify your email.')),
+        );
+
+        _startEmailVerificationCheck(isAdmin: isAdmin);
+      }
+    } catch (e) {
       setState(() {
         _isLoading = false;
       });
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verification email sent. Please verify your email.')),
+        SnackBar(content: Text('Error: ${e.toString()}')),
       );
-
-      _startEmailVerificationCheck(isAdmin: isAdmin);
     }
-  } catch (e) {
-    setState(() {
-      _isLoading = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: ${e.toString()}')),
+  }
+
+  void _startEmailVerificationCheck({bool isAdmin = false}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Email Verification'),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                  'Waiting for email verification...\nPlease check your email and verify your account.'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await FirebaseAuth.instance.currentUser?.reload();
+                final user = FirebaseAuth.instance.currentUser;
+                if (user?.emailVerified ?? false) {
+                  Navigator.of(context).pop();
+                  // Redirect to appropriate screen based on role
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          isAdmin ? AdminDashboard() : const HomeScreen(),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text(
+                            'Email not verified yet. Please verify and try again.')),
+                  );
+                }
+              },
+              child: const Text('Check Verification'),
+            ),
+          ],
+        );
+      },
     );
   }
-}
 
-void _startEmailVerificationCheck({bool isAdmin = false}) {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('Email Verification'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Waiting for email verification...\nPlease check your email and verify your account.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await FirebaseAuth.instance.currentUser?.reload();
-              final user = FirebaseAuth.instance.currentUser;
-              if (user?.emailVerified ?? false) {
-                Navigator.of(context).pop();
-                // Redirect to appropriate screen based on role
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => isAdmin 
-                      ?  AdminDashboard() 
-                      : const HomeScreen(),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Email not verified yet. Please verify and try again.')),
-                );
-              }
-            },
-            child: const Text('Check Verification'),
-          ),
-        ],
-      );
-    },
-  );
-}  @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -684,75 +706,77 @@ void _startEmailVerificationCheck({bool isAdmin = false}) {
                   ),
                 ),
                 const SizedBox(height: 10),
-TextField(
-  controller: _usernameController,
-  decoration: InputDecoration(
-    labelText: 'Username',
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.0)),
-    prefixIcon: const Icon(Icons.person, color: Colors.grey),
-  ),
-),
-const SizedBox(height: 10),
-
+                TextField(
+                  controller: _usernameController,
+                  decoration: InputDecoration(
+                    labelText: 'Username',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20.0)),
+                    prefixIcon: const Icon(Icons.person, color: Colors.grey),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.0)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20.0)),
                     prefixIcon: const Icon(Icons.email, color: Colors.grey),
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 10),
-
                 TextField(
                   controller: _passwordController,
                   decoration: InputDecoration(
                     labelText: 'Password',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.0)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20.0)),
                     prefixIcon: const Icon(Icons.lock, color: Colors.grey),
                   ),
                   obscureText: true,
                 ),
                 const SizedBox(height: 10),
-
                 ElevatedButton(
                   onPressed: _isLoading ? null : _signUp,
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20.0)),
                     backgroundColor: const Color(0xFF01214E),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Sign Up', style: TextStyle(fontSize: 18, color: Colors.white)),
+                      : const Text('Sign Up',
+                          style: TextStyle(fontSize: 18, color: Colors.white)),
                 ),
                 const SizedBox(height: 10),
+                GoogleSignUpButton(
+                  onSuccess: (UserCredential userCredential) {
+                    final List<String> adminEmails = [
+                      'waseemhasnain373@gmail.com',
+                      'Maazbin.bscsf21@iba-suk.edu.pk',
+                      'dean@university.edu',
+                    ];
 
-               GoogleSignUpButton(
-  onSuccess: (UserCredential userCredential) {
-    final List<String> adminEmails = [
-      'waseemhasnain373@gmail.com',
-      'Maazbin.bscsf21@iba-suk.edu.pk',
-      'dean@university.edu',
-    ];
+                    final String? email =
+                        userCredential.user?.email?.toLowerCase().trim();
 
-    final String? email = userCredential.user?.email?.toLowerCase().trim();
-
-    if (email != null && adminEmails.contains(email)) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) =>  AdminDashboard()),
-      );
-    } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    }
-  },
-),
-
+                    if (email != null && adminEmails.contains(email)) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                            builder: (context) => AdminDashboard()),
+                      );
+                    } else {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                            builder: (context) => const HomeScreen()),
+                      );
+                    }
+                  },
+                ),
                 const SizedBox(height: 10),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -761,7 +785,8 @@ const SizedBox(height: 10),
                       onPressed: () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (context) => const SignInPage()),
+                          MaterialPageRoute(
+                              builder: (context) => const SignInPage()),
                         );
                       },
                       child: const Text('Sign In'),
@@ -903,18 +928,19 @@ class _SignInPageState extends State<SignInPage> {
 
         if (user?.emailVerified ?? false) {
           await _saveAccount(email, password);
-          
-          bool isAdmin = _adminEmails.contains(user?.email?.toLowerCase().trim());
-print('Email: ${user?.email}, isAdmin: $isAdmin');
-setState(() {
-  _isLoading = false;
-});
+
+          bool isAdmin =
+              _adminEmails.contains(user?.email?.toLowerCase().trim());
+          print('Email: ${user?.email}, isAdmin: $isAdmin');
+          setState(() {
+            _isLoading = false;
+          });
 
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) =>
-                  isAdmin ?  AdminDashboard() : const HomeScreen(),
+                  isAdmin ? AdminDashboard() : const HomeScreen(),
             ),
           );
         } else {
@@ -957,30 +983,31 @@ setState(() {
               else
                 ..._savedAccounts.map((account) {
                   return ListTile(
-                    leading: const Icon(Icons.account_circle),
-                    title: Text(account['email']!),
-                    onTap: () {
-                      setState(() {
-                        _emailController.text = account['email']!;
-                        _passwordController.text = account['password']!;
-                        _rememberMe = true;
-                      });
-                      Navigator.pop(context);
-                    },
-                   trailing: IconButton(
-  icon: const Icon(Icons.close),
-  onPressed: () async {
-    await _removeAccount(account['email']!, account['password']!);
+                      leading: const Icon(Icons.account_circle),
+                      title: Text(account['email']!),
+                      onTap: () {
+                        setState(() {
+                          _emailController.text = account['email']!;
+                          _passwordController.text = account['password']!;
+                          _rememberMe = true;
+                        });
+                        Navigator.pop(context);
+                      },
+                      trailing: IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () async {
+                          await _removeAccount(
+                              account['email']!, account['password']!);
 
-    // Refresh the list after removal
-    final updatedAccounts = await _secureStorage.getSavedAccounts();
+                          // Refresh the list after removal
+                          final updatedAccounts =
+                              await _secureStorage.getSavedAccounts();
 
-    setState(() {
-      _savedAccounts = updatedAccounts ?? [];
-    });
-  },
-));
-
+                          setState(() {
+                            _savedAccounts = updatedAccounts ?? [];
+                          });
+                        },
+                      ));
                 }).toList(),
               const SizedBox(height: 16),
               TextButton(
@@ -1022,7 +1049,8 @@ setState(() {
                     await _auth.sendPasswordResetEmail(email: email);
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Password reset email sent.')),
+                      const SnackBar(
+                          content: Text('Password reset email sent.')),
                     );
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1160,16 +1188,18 @@ setState(() {
                 // Google Sign-In Button
                 GoogleSignInButton(
                   onSuccess: (UserCredential userCredential) {
-                    final String? email = userCredential.user?.email?.toLowerCase().trim();
+                    final String? email =
+                        userCredential.user?.email?.toLowerCase().trim();
 
                     if (email != null && _adminEmails.contains(email)) {
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
-                            builder: (context) =>  AdminDashboard()),
+                            builder: (context) => AdminDashboard()),
                       );
                     } else {
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (context) => const HomeScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const HomeScreen()),
                       );
                     }
                   },
@@ -1185,7 +1215,8 @@ setState(() {
                       onPressed: () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (context) => const SignUpPage()),
+                          MaterialPageRoute(
+                              builder: (context) => const SignUpPage()),
                         );
                       },
                       child: const Text('Sign Up'),
@@ -1215,7 +1246,7 @@ class SecureStorage {
       _secureStorage = const FlutterSecureStorage(
         aOptions: AndroidOptions(encryptedSharedPreferences: true),
       );
-      
+
       // For Web
       _sharedPreferences = await SharedPreferences.getInstance();
     } catch (e) {
@@ -1223,40 +1254,40 @@ class SecureStorage {
     }
   }
 
- Future<void> saveAccount({
-  required String email,
-  required String password,
-  required bool rememberMe,
-}) async {
-  try {
-    if (rememberMe) {
-      await _write(_rememberedEmailKey, email);
-      await _write(_rememberedPasswordKey, password);
+  Future<void> saveAccount({
+    required String email,
+    required String password,
+    required bool rememberMe,
+  }) async {
+    try {
+      if (rememberMe) {
+        await _write(_rememberedEmailKey, email);
+        await _write(_rememberedPasswordKey, password);
 
-      final accountKey = '$email,$password';
-      final existingAccounts = await _read(_savedAccountsKey) ?? '';
+        final accountKey = '$email,$password';
+        final existingAccounts = await _read(_savedAccountsKey) ?? '';
 
-      if (!existingAccounts.contains(accountKey)) {
-        final newAccounts = existingAccounts.isEmpty 
-            ? accountKey 
-            : '$existingAccounts|$accountKey';
-        await _write(_savedAccountsKey, newAccounts);
+        if (!existingAccounts.contains(accountKey)) {
+          final newAccounts = existingAccounts.isEmpty
+              ? accountKey
+              : '$existingAccounts|$accountKey';
+          await _write(_savedAccountsKey, newAccounts);
+        }
+      } else {
+        await _delete(_rememberedEmailKey);
+        await _delete(_rememberedPasswordKey);
       }
-    } else {
-      await _delete(_rememberedEmailKey);
-      await _delete(_rememberedPasswordKey);
+    } catch (e) {
+      debugPrint('Error saving account: $e');
+      rethrow;
     }
-  } catch (e) {
-    debugPrint('Error saving account: $e');
-    rethrow;
   }
-}
 
   Future<Map<String, String>?> getRememberedAccount() async {
     try {
       final email = await _read(_rememberedEmailKey);
       final password = await _read(_rememberedPasswordKey);
-      
+
       if (email != null && password != null) {
         return {'email': email, 'password': password};
       }
@@ -1291,7 +1322,7 @@ class SecureStorage {
             .where((a) => a['email'] != email || a['password'] != password)
             .map((a) => '${a['email']},${a['password']}')
             .join('|');
-        
+
         await _write(_savedAccountsKey, updatedAccounts);
       }
     } catch (e) {
