@@ -71,10 +71,10 @@ class MyApp extends StatelessWidget {
   }
 }
 // ✅ Ensure this function is outside of any class (top-level function)
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  print("🔵 Background Message Received: ${message.notification?.title}");
-}
+//Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  //await Firebase.initializeApp();
+//  print("🔵 Background Message Received: ${message.notification?.title}");
+//}
 
 
 void setupFirebaseNotifications() async {
