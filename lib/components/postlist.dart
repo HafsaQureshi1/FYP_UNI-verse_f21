@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/Home.dart';
-import 'package:flutter_application_1/postcard.dart';
+import 'package:flutter_application_1/screens/Home.dart';
+import 'package:flutter_application_1/components/postcard.dart';
 class PostList extends StatefulWidget {
   final String collectionName; // Chooses which main collection to fetch from
 

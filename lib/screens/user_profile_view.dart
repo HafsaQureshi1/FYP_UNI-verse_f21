@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'profileimage.dart';
+import '../components/profileimage.dart';
 
 class UserProfileView extends StatefulWidget {
   final String userId;

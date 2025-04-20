@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'package:flutter_application_1/profile_page.dart';
+import 'package:flutter_application_1/screens/profile_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'main.dart';
+import '../main.dart';
 import 'peeradmin.dart';
 import 'eventadmin.dart';
 import 'surveyadmin.dart';

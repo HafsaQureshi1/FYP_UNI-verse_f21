@@ -1,15 +1,14 @@
-import 'package:flutter_application_1/fcm-service.dart';
-import 'package:flutter_application_1/screenui.dart';
-import 'package:flutter_application_1/search_results.dart';
+
+import 'package:flutter_application_1/screens/screenui.dart';
+import 'package:flutter_application_1/components/search_results.dart';
 import 'package:geolocator/geolocator.dart';
-import 'postcard.dart';
+import '../components/postcard.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_application_1/Notificationscreen.dart';
+import 'package:flutter_application_1/screens/Notificationscreen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'main.dart';
 import 'PeerScreen.dart';
 import 'SurveyScreen.dart';
 import 'EventScreen.dart';

@@ -5,12 +5,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_application_1/fcm-service.dart';
+import 'package:flutter_application_1/services/fcm-service.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'profileimage.dart';
 import 'image_viewer_screen.dart';
-import 'user_profile_view.dart'; // Make sure this import is correct
+import '../screens/user_profile_view.dart'; // Make sure this import is correct
 
 class PostCard extends StatefulWidget {
   final String postId;

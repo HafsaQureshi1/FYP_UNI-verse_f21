@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'chabot.dart';
+import '../services/chabot.dart';
 
 class ChatMessage {
   final String message;

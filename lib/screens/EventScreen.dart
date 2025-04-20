@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'postcard.dart';
+import '../components/postcard.dart';
 import 'createpost.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'screenui.dart'; // Import your chat screen widget

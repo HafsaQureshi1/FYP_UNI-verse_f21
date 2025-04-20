@@ -1,6 +1,4 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -150,7 +148,6 @@ class _SurveyAdminState extends State<SurveyAdmin> {
               String userId = surveyData['userId'] ?? '';
               String username = surveyData['userName'] ?? 'Anonymous';
               String title = surveyData['postContent'] ?? '';
-              String description = surveyData['description'] ?? '';
               List<dynamic> options = surveyData['options'] ?? [];
               String imageUrl = surveyData['imageUrl'] ?? '';
               Timestamp? timestamp = surveyData['timestamp'];

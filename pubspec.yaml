@@ -130,12 +130,3 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
-flutter_native_splash:
-  color: "#003a5c"  # background color
-  image: assets/images/hi.png  # your splash image (can be your app logo)
-  branding: assets/images/peer.png  # optional, if you have a branding image
-  android: true
-  ios: true
-  android_gravity: center
-  ios_content_mode: center
-  fullscreen: true

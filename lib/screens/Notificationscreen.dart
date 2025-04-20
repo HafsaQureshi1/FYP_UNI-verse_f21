@@ -2,9 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_application_1/search_results.dart';
+import 'package:flutter_application_1/components/search_results.dart';
 import 'package:intl/intl.dart';
-import 'profileimage.dart'; // Add this import for the ProfileAvatar component
+import '../components/profileimage.dart'; // Add this import for the ProfileAvatar component
 
 class NotificationScreen extends StatelessWidget {
   const NotificationScreen({super.key});

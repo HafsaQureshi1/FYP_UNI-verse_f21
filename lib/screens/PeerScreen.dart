@@ -1,49 +1,95 @@
 import 'package:flutter/material.dart';
-import 'postcard.dart';
+import 'package:flutter/widgets.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../components/postcard.dart';
 import 'createpost.dart';
-import 'screenui.dart'; // Import your chatbot screen widget
+import 'Home.dart';
+import 'screenui.dart'; // Import your chat screen widget
 
-class SurveysScreen extends StatelessWidget {
-  // ✅ Update this to the correct Firestore collection path
-  final String collectionName = "Surveyposts/All/posts";
+class PeerAssistanceScreen extends StatefulWidget {
+  const PeerAssistanceScreen({super.key});
 
-  const SurveysScreen({super.key});
+  @override
+  _PeerAssistanceScreenState createState() => _PeerAssistanceScreenState();
+}
+
+class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
+  String selectedCategory = "All"; // Default category selection
+  final ScrollController _scrollController = ScrollController();
+
+  // ✅ Fetch posts based on category selection
+  Stream<QuerySnapshot> _getPostsStream() {
+    final collectionRef = FirebaseFirestore.instance.collection('Peerposts');
+
+    if (selectedCategory == "All") {
+      // If "All" is selected, fetch all posts from all categories
+      return collectionRef
+          .doc("All") // ✅ Fetch from "All" category
+          .collection("posts")
+          .orderBy('timestamp', descending: true)
+          .snapshots();
+    } else {
+      // Fetch posts only from the selected category
+      return collectionRef
+          .doc("All") // ✅ All posts are inside "All"
+          .collection("posts")
+          .where("category",
+              isEqualTo: selectedCategory) // ✅ Filter by category field
+          .orderBy('timestamp', descending: true)
+          .snapshots();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    print("Fetching posts from collection: $collectionName"); // ✅ Debugging
-
     return Scaffold(
       backgroundColor: const Color.fromARGB(64, 236, 236, 236),
       body: Stack(
         children: [
           Column(
             children: [
+              // Simple CategoryChips without animation
+              CategoryChips(
+                collectionName: 'Peerposts',
+                onCategorySelected: (category) {
+                  setState(() {
+                    selectedCategory = category;
+                  });
+                },
+              ),
+
               // ✅ Posts List
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection(collectionName) // ✅ Updated collection path
-                      .orderBy('timestamp', descending: true)
-                      .snapshots(),
+                  stream: _getPostsStream(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Center(child: Text('No posts found'));
+                      return const Center(
+                        child: Text(
+                          'No posts found',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                      );
                     }
 
                     var posts = snapshot.data!.docs;
 
                     return ListView.builder(
-                      padding: const EdgeInsets.all(16.0),
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
                       itemCount: posts.length,
                       itemBuilder: (context, index) {
                         var postData =
                             posts[index].data() as Map<String, dynamic>;
-
+                        String? url =
+                            postData['url']; // Fetch the URL for events
+                        // If URL is null, you can provide a default value, or you could handle it differently
+                        url = url ?? ''; // Use an empty string if URL is null
                         return PostCard(
                           key: ValueKey(posts[index].id),
                           username: postData['userName'] ?? 'Anonymous',
@@ -51,10 +97,9 @@ class SurveysScreen extends StatelessWidget {
                           postId: posts[index].id,
                           likes: postData['likes'] ?? 0,
                           userId: postData['userId'],
+                          collectionName: 'Peerposts',
                           imageUrl: postData['imageUrl'] ?? '',
-                          url: postData['url'] ?? '',
-                          collectionName:
-                              collectionName, // ✅ Pass new collection name
+                          url: url,
                         );
                       },
                     );
@@ -63,7 +108,6 @@ class SurveysScreen extends StatelessWidget {
               ),
             ],
           ),
-          // ✅ Combined Floating Action Buttons
           Positioned(
             bottom: 16.0,
             right: 16.0,
@@ -72,7 +116,7 @@ class SurveysScreen extends StatelessWidget {
               children: [
                 // Chatbot FAB
                 FloatingActionButton(
-                  heroTag: "chatbotFabSurvey",
+                  heroTag: "chatbotFabPeer",
                   backgroundColor: const Color.fromARGB(255, 0, 58, 92),
                   onPressed: () {
                     showModalBottomSheet(
@@ -82,7 +126,6 @@ class SurveysScreen extends StatelessWidget {
                       enableDrag: true,
                       backgroundColor: Colors.transparent,
                       builder: (context) {
-                        // Replace FractionallySizedBox with DraggableScrollableSheet
                         return DraggableScrollableSheet(
                           initialChildSize: 0.7, // 70% of screen height
                           minChildSize: 0.5,
@@ -108,7 +151,7 @@ class SurveysScreen extends StatelessWidget {
 
                 // Post creation FAB
                 FloatingActionButton(
-                  heroTag: "postFabSurvey",
+                  heroTag: "postFabPeer",
                   backgroundColor: const Color.fromARGB(255, 0, 58, 92),
                   onPressed: () {
                     showModalBottomSheet(
@@ -127,7 +170,9 @@ class SurveysScreen extends StatelessWidget {
                                   top: Radius.circular(25)),
                             ),
                             child: CreateNewPostScreen(
-                                collectionName: collectionName),
+                              collectionName:
+                                  'Peerposts/$selectedCategory/posts',
+                            ),
                           ),
                         );
                       },
