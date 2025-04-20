@@ -2,26 +2,23 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_application_1/fcm-service.dart';
-import 'package:flutter_application_1/firebase_options.dart';
+import 'package:flutter_application_1/services/fcm-service.dart';
+import 'package:flutter_application_1/services/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'admin.dart';
+import 'admin/admin.dart';
 // Import this for kIsWeb
-
-import 'Home.dart';
+import 'dart:async';
+import 'screens/Home.dart';   // Replace with your actual SignInPage
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-
-  // Listen for authentication changes and re-register FCM token
   FirebaseAuth.instance.authStateChanges().listen((User? user) {
     if (user != null) {
       FCMService().initializeFCM();
@@ -30,14 +27,14 @@ void main() async {
 
   runApp(const MyApp());
 }
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // Add your list of admin emails
+  // Admin emails list (used by splash to check user role)
   static const List<String> _adminEmails = [
     'waseemhasnain373@gmail.com',
     'maazbin.bscsf21@iba-suk.edu.pk'
-    // Add more if needed
   ];
 
   @override
@@ -46,30 +43,206 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'UNI-verse',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.deepPurple,
       ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
+      home: const CustomSplashScreen(),
+    );
+  }
+}
 
-          if (snapshot.hasData) {
-            final userEmail = snapshot.data?.email?.toLowerCase().trim();
-            final isAdmin = _adminEmails.contains(userEmail);
+class CustomSplashScreen extends StatefulWidget {
+  const CustomSplashScreen({super.key});
 
-            return isAdmin ? const AdminDashboard() : const HomeScreen();
-          } else {
-            return const SignInPage();
-          }
-        },
+  @override
+  State<CustomSplashScreen> createState() => _CustomSplashScreenState();
+}
+
+class _CustomSplashScreenState extends State<CustomSplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Navigate after 5 seconds
+    Timer(const Duration(seconds: 9), () {
+      _goToNextScreen();
+    });
+  }
+
+  void _goToNextScreen() {
+    final user = FirebaseAuth.instance.currentUser;
+    final userEmail = user?.email?.toLowerCase().trim();
+    final isAdmin = MyApp._adminEmails.contains(userEmail);
+
+    if (user != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (_) => isAdmin ? const AdminDashboard() : const HomeScreen()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const SignInPage()),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 245, 247, 255),
+      body: SafeArea(
+        child: SingleChildScrollView( // Make the entire content scrollable
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              // Logo
+              Image.asset(
+                'assets/images/google_logo.png', // Replace with your asset path
+                height: 100,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'UNI-verse',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E1E2F),
+                ),
+              ),
+              const Text(
+                'Your Campus, Connected.',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 40),
+
+              // Features section with 2x2 grid (4 features)
+              SizedBox(
+                // Adjusted height to fit 2x2 grid
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Expanded(
+                          child: _FeatureCard(
+                            icon: Icons.push_pin,
+                            title: 'Bulletin Board',
+                            description: 'Stay updated with events, jobs, and surveys.',
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: _FeatureCard(
+                            icon: Icons.group,
+                            title: 'Peer Help',
+                            description: 'Get advice and support from fellow students.',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Expanded(
+                          child: _FeatureCard(
+                            icon: Icons.notifications,
+                            title: 'Notifications',
+                            description: 'Get real-time updates on events and posts.',
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: _FeatureCard(
+                            icon: Icons.search,
+                            title: 'Search',
+                            description: 'Find posts, events, and more easily.',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              Column(
+                children: const [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 10),
+                  Text('Loading your campus experience...',
+                      style: TextStyle(color: Colors.grey)),
+                  SizedBox(height: 4),
+                  Text('v1.0.0',
+                      style: TextStyle(fontSize: 10, color: Colors.grey)),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
+
+class _FeatureCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _FeatureCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(right: 12,left:12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 32, color: Colors.deepPurple),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: const TextStyle(fontSize: 10, color: Colors.black54),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 3,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ✅ Ensure this function is outside of any class (top-level function)
 //Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   //await Firebase.initializeApp();
@@ -1129,10 +1302,10 @@ class SecureStorage {
 
   Future<void> _write(String key, String value) async {
     if (_secureStorage != null) {
-      await _secureStorage!.write(key: key, value: value);
+      await _secureStorage.write(key: key, value: value);
     }
     if (_sharedPreferences != null) {
-      await _sharedPreferences!.setString(key, value);
+      await _sharedPreferences.setString(key, value);
     }
   }
 
