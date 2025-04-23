@@ -109,7 +109,6 @@ flutter:
     - assets/images/survey.png
     - assets/images/events.png
     - assets/images/google_logo.png  # Corrected indentation here
-    - assets/images/hi.png  # Corrected indentation here
     - assets/universe-123-firebase-adminsdk-dxv5x-586f17d46e.json
     - assets/chatbot-abif-563aa515c5fc.json
   # To add assets to your application, add an assets section, like this:
