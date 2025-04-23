@@ -16,21 +16,12 @@ import 'screens/Home.dart'; // Replace with your actual SignInPage
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  FirebaseAuth.instance.authStateChanges().listen((User? user) {
-    if (user != null) {
-      FCMService().initializeFCM();
-    }
-  });
-
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // Admin emails list (used by splash to check user role)
   static const List<String> _adminEmails = [
     'waseemhasnain373@gmail.com',
     'maazbin.bscsf21@iba-suk.edu.pk'
@@ -60,14 +51,23 @@ class _CustomSplashScreenState extends State<CustomSplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Navigate after 5 seconds
-    Timer(const Duration(seconds: 9), () {
-      _goToNextScreen();
-    });
+    _initializeApp();
   }
 
-  void _goToNextScreen() {
+  Future<void> _initializeApp() async {
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
+
     final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      await FCMService().initializeFCM();
+    }
+
+    _goToNextScreen(user);
+  }
+
+  void _goToNextScreen(User? user) {
     final userEmail = user?.email?.toLowerCase().trim();
     final isAdmin = MyApp._adminEmails.contains(userEmail);
 
@@ -96,7 +96,6 @@ class _CustomSplashScreenState extends State<CustomSplashScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
                 Image.asset(
                   'assets/images/logosplash.png',
                   height: 100,
@@ -119,10 +118,7 @@ class _CustomSplashScreenState extends State<CustomSplashScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
-
-                // Features section with 2x2 grid (4 features)
                 SizedBox(
-                  // Adjusted height to fit 2x2 grid
                   child: Column(
                     children: [
                       Row(
@@ -174,7 +170,6 @@ class _CustomSplashScreenState extends State<CustomSplashScreen> {
                   ),
                 ),
                 const SizedBox(height: 30),
-
                 Column(
                   children: const [
                     CircularProgressIndicator(
@@ -182,11 +177,15 @@ class _CustomSplashScreenState extends State<CustomSplashScreen> {
                           AlwaysStoppedAnimation<Color>(Color(0xFF003A5C)),
                     ),
                     SizedBox(height: 10),
-                    Text('Loading your campus experience...',
-                        style: TextStyle(color: Colors.grey)),
+                    Text(
+                      'Loading your campus experience...',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                     SizedBox(height: 4),
-                    Text('v1.0.0',
-                        style: TextStyle(fontSize: 10, color: Colors.grey)),
+                    Text(
+                      'v1.0.0',
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
                   ],
                 ),
               ],
@@ -685,7 +684,7 @@ class _SignUpPageState extends State<SignUpPage> {
               children: [
                 const SizedBox(height: 15),
                 Image.asset(
-                  'assets/images/hi.png',
+                  'assets/images/logo.png',
                   width: 50,
                   height: 50,
                 ),
@@ -1081,7 +1080,7 @@ class _SignInPageState extends State<SignInPage> {
               children: [
                 const SizedBox(height: 15),
                 Image.asset(
-                  'assets/images/hi.png',
+                  'assets/images/logo.png',
                   width: 50,
                   height: 50,
                 ),
