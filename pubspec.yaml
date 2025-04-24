@@ -143,4 +143,8 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 flutter_native_splash:
-  remove: true
+  color: "#ffffff"
+  
+  android: false
+  ios: false
+  web: false
