@@ -14,7 +14,7 @@ import 'SurveyScreen.dart';
 import 'EventScreen.dart';
 import 'profile_page.dart';
 import 'createpost.dart';
-
+import '../main.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -80,20 +80,25 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _signOut() async {
-    try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId:
-            '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
-      );
-      await googleSignIn.signOut();
-      await FirebaseAuth.instance.signOut();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    }
+ Future<void> _signOut() async {
+  try {
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      clientId:
+          '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
+    );
+    await googleSignIn.signOut();
+    await FirebaseAuth.instance.signOut();
+
+    // Navigate to the sign-in screen and remove all previous routes
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => SignInPage()), // replace with your sign-in screen
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: ${e.toString()}')),
+    );
   }
+}
 
   PreferredSizeWidget _buildAppBar() {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
