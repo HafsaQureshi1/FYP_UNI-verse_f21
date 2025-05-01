@@ -26,9 +26,9 @@
 ## 🚀 Features
 
 ### 🔍 Lost and Found  
-- Report, browse, and track lost/found items  
+- Report, browse, and post lost/found items  
 - Add item details with images  
-- Comment and mark items as resolved  
+- Comment and help others find their items
 - **AI-Based Categorization**: Automatically categorizes items like *electronics, ID cards, clothes, documents*, etc., based on text content  
 
 ### 👥 Peer Assistance  
@@ -38,23 +38,24 @@
 - Builds a supportive student network  
 
 ### 📊 Survey Lounge  
-- Take and create surveys  
-- Get instant feedback and analytics  
-- Supports multiple question types  
+- Post surveys  
+- Get instant feedback from students
+- Supports multiple question types
+- Link included
 
 ### 📢 Event & Job Announcements  
 - Post or explore campus events and job openings  
 - Easy apply or RSVP feature  
-- Smart filtering and search  
+- Smart filtering and search
+- Location included  
 
 ### 🤖 AI Chatbot  
 - Instantly answers campus-related queries  
-- Built using Dialogflow or OpenAI  
-- Available 24/7 for general assistance  
+- Built using    
 
 ### 👤 User Profiles  
 - Google Sign-In and profile customization  
-- Activity tracking and history view  
+- Add degree program , semester and work experience  
 - Profile picture and display name management  
 
 ### ❤️ Like & Comment  
@@ -77,7 +78,6 @@
 
 - **Lost and Found**: Automatically classifies reported items using Natural Language Processing (NLP) into categories like:
   - Electronics
-  - ID Cards
   - Documents
   - Clothing
   - Others
@@ -97,12 +97,9 @@ This helps in better post discovery, organization, and faster response from rele
 |---------------|---------------------------------|
 | Frontend      | Flutter (Dart)                 |
 | Backend       | Firebase (Firestore, Auth, FCM, Storage) |
-| AI/ML         | Dialogflow / OpenAI (Chatbot, NLP Categorization) |
+| AI/ML         |  |
 | Media Storage | Cloudinary                     |
 | Notifications | Firebase Cloud Messaging (FCM)  |
-| Routing       | go_router / auto_route         |
-| State Mgmt    | provider / riverpod / flutter_bloc |
-| UI Components | flutter_svg, carousel_slider, intl |
 
 ---
 
