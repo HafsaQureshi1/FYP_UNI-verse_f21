@@ -1,5 +1,5 @@
 # UNI-verse 📱🎓  
-**Connecting Students,**
+**Connecting Students.**
 
 [![Flutter](https://img.shields.io/badge/Flutter-Framework-blue?logo=flutter)](https://flutter.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-Backend-yellow?logo=firebase)](https://firebase.google.com/)
