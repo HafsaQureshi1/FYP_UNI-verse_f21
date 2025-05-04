@@ -89,7 +89,7 @@ class _CustomSplashScreenState extends State<CustomSplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 245, 247, 255),
+      backgroundColor: const Color.fromARGB(255, 253, 254, 255),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

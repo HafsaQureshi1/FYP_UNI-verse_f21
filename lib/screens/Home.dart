@@ -254,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       appBar: _buildAppBar(),
       // Replace the direct _screens[_selectedIndex] with PageView
       body: PageView(
@@ -358,7 +358,7 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(64, 236, 236, 236),
+      backgroundColor: const Color.fromARGB(255, 245, 245, 245),
       body: Stack(
         children: [
           Column(
@@ -551,7 +551,7 @@ class _CategoryChipsState extends State<CategoryChips> {
             margin: const EdgeInsets.symmetric(vertical: 4.0),
             padding: EdgeInsets.zero,
             decoration: BoxDecoration(
-              color: const Color.fromARGB(5, 0, 0, 0), // Very subtle background
+              color: const Color.fromARGB(5, 255, 255, 255), // Very subtle background
               border: Border(
                 bottom: BorderSide(
                   color: Colors.black.withOpacity(0.05),

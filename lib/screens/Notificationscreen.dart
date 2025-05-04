@@ -282,9 +282,9 @@ class NotificationScreen extends StatelessWidget {
         return 'Lost & Found';
       case 'Peerposts':
         return 'Peer Assistance';
-      case 'Eventposts':
+      case 'Eventposts/All/posts':
         return 'Events & Jobs';
-      case 'Surveyposts':
+      case 'Surveyposts/All/posts':
         return 'Surveys';
       default:
         return collection;
@@ -325,6 +325,7 @@ Future<void> _handleNotificationTap(BuildContext context, String notificationId,
     else if(collectionName == "Peerposts"){
       collectionName = "Peerposts/All/posts";
     }
+    
 print("collection name : $collectionName");
     // If collection name is not provided, determine it
     if (collectionName == null) {

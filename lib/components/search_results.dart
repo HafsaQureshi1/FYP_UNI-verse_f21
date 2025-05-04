@@ -93,21 +93,19 @@ if (match(postContent) || match(location) || match(url)) {
       );
     }
   }
+String _getCollectionDisplayName(String collection) {
+  final normalized = collection.toLowerCase().trim();
+  print("Normalized collection is: $normalized");
 
-  String _getCollectionDisplayName(String collection) {
-    switch (collection) {
-      case 'lostfoundposts':
-        return 'Lost & Found';
-      case 'Peerposts':
-        return 'Peer Assistance';
-      case 'Eventposts':
-        return 'Events & Jobs';
-      case 'Surveyposts':
-        return 'Surveys';
-      default:
-        return collection;
-    }
-  }
+  if (normalized == 'lostfoundposts/all/posts') return 'Lost & Found';
+  if (normalized == 'peerposts/all/posts') return 'Peer Assistance';
+  if (normalized == 'eventposts/all/posts') return 'Events & Jobs';
+  if (normalized == 'surveyposts/all/posts') return 'Surveys';
+
+  print("⚠️ Unmatched collection: $collection");
+  return 'Unknown Collection'; // Fallback
+}
+
 
   void _navigateToPost(BuildContext context, Map<String, dynamic> post) {
     showModalBottomSheet(
@@ -222,6 +220,7 @@ class _PostDetailViewState extends State<PostDetailView> {
     _checkIfUserLiked();
     _fetchCommentCount();
   }
+
 Future<void> _fetchCommentCount() async {
   try {
     final String collectionPath = widget.post['collection'];
@@ -408,6 +407,18 @@ final postRef = collectionName.contains('/')
       print("Error adding comment: $e");
     }
   }
+String _getCollectionDisplayName2(String collection) {
+  final normalized = collection.toLowerCase().trim();
+  print("Normalized collection is: $normalized");
+
+  if (normalized == 'lostfoundposts/all/posts') return 'Lost & Found';
+  if (normalized == 'peerposts/all/posts') return 'Peer Assistance';
+  if (normalized == 'eventposts/all/posts') return 'Events & Jobs';
+  if (normalized == 'surveyposts/all/posts') return 'Surveys';
+
+  print("⚠️ Unmatched collection: $collection");
+  return 'Unknown Collection'; // Fallback
+}
 
   @override
   Widget build(BuildContext context) {
@@ -428,6 +439,7 @@ if (location != null) {
     final timestamp = widget.post['timestamp'] as Timestamp;
     final formattedDate =
         DateFormat('MMM d, yyyy • h:mm a').format(timestamp.toDate());
+print("actual collection value: ${widget.post['collection']}");
 
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.9,
@@ -435,8 +447,10 @@ if (location != null) {
         backgroundColor: Colors.white, // Change background to white
         appBar: AppBar(
           backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+          
           title: Text(
-            _getCollectionDisplayName(widget.post['collection']),
+            
+            _getCollectionDisplayName2(widget.post['collection']),
             style: const TextStyle(color: Colors.white),
           ),
           leading: IconButton(
