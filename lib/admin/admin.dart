@@ -188,7 +188,7 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
         "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
 
     final headers = {
-      "Authorization": "Bearer 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",
+      "Authorization": "Bearer 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",
       "Content-Type": "application/json"
     };
 

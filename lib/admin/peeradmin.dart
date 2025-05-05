@@ -54,9 +54,9 @@ class _PeerAdminState extends State<PeerAdmin> {
 
   Future<String> _classifyPeerAssistancePost(String postText) async {
     final url = Uri.parse(
-        "https://api-inference.huggingface.co/models/MoritzLaurer/deberta-v3-large-zeroshot-v1");
+        "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
     final headers = {
-      "Authorization": "Bearer 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",
+      "Authorization": "Bearer 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",
       "Content-Type": "application/json"
     };
 
