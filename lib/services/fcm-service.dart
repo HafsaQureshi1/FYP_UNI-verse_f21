@@ -218,4 +218,176 @@ class FCMService {
       print("❌ Error sending comment notification: $e");
     }
   }
+  Future<void> sendNotificationOnNewPost(
+    String posterId, String posterName, String collectionName) async {
+  try {
+    // Don't notify the poster themselves
+    if (FirebaseAuth.instance.currentUser?.uid == posterId) {
+      print("🔹 Poster is the current user. No notification sent.");
+      return;
+    }
+
+    // Fetch the FCM token of the poster (you may skip this if not needed)
+    final posterDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(posterId)
+        .get();
+
+    if (!posterDoc.exists) {
+      print("❌ Poster user document not found.");
+      return;
+    }
+
+    // Fetch all users (or a filtered group if needed)
+    final usersSnapshot =
+        await FirebaseFirestore.instance.collection('users').get();
+
+    final String? accessToken = await getAccessToken();
+    if (accessToken == null) {
+      print("❌ Failed to get OAuth token.");
+      return;
+    }
+
+    for (var doc in usersSnapshot.docs) {
+      final String userId = doc.id;
+      final String? fcmToken = doc.data()['fcmToken'];
+
+      if (fcmToken == null || fcmToken.isEmpty || userId == posterId) continue;
+
+      final Map<String, dynamic> notificationPayload = {
+        "message": {
+          "token": fcmToken,
+          "notification": {
+            "title": "New Post in $collectionName 📢",
+            "body": "$posterName added a post in $collectionName",
+          },
+          "data": {
+            "type": "new_post",
+            "collection": collectionName,
+            "posterName": posterName,
+            "posterId": posterId,
+          }
+        }
+      };
+
+      final response = await http.post(
+        Uri.parse(
+            "https://fcm.googleapis.com/v1/projects/universe-123/messages:send"),
+        headers: <String, String>{
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $accessToken",
+        },
+        body: jsonEncode(notificationPayload),
+      );
+
+      if (response.statusCode == 200) {
+        print("✅ Post notification sent to $userId");
+      } else {
+        print("❌ Failed to notify $userId: ${response.body}");
+      }
+    }
+  } catch (e) {
+    print("❌ Error sending new post notification: $e");
+  }
+}
+Future<void> sendNotificationPostApproved(String userId, String collectionName) async {
+  final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+  if (!userDoc.exists) {
+    print("❌ No user found with ID: $userId");
+    return;
+  }
+
+  final String? fcmToken = userDoc.data()?['fcmToken'];
+  if (fcmToken == null || fcmToken.isEmpty) {
+    print("❌ No FCM token found for user.");
+    return;
+  }
+
+  final String? accessToken = await getAccessToken();
+  if (accessToken == null) {
+    print("❌ Failed to get OAuth token.");
+    return;
+  }
+
+  final Map<String, dynamic> notificationPayload = {
+    "message": {
+      "token": fcmToken,
+      "notification": {
+        "title": "✅ Post Approved!",
+        "body": "Your post in $collectionName has been approved by the admin.",
+      },
+      "data": {
+        "type": "approval",
+        "collection": collectionName,
+      }
+    }
+  };
+
+  final response = await http.post(
+    Uri.parse("https://fcm.googleapis.com/v1/projects/universe-123/messages:send"),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $accessToken",
+    },
+    body: jsonEncode(notificationPayload),
+  );
+
+  if (response.statusCode == 200) {
+    print("✅ Approval notification sent.");
+  } else {
+    print("❌ Failed to send approval notification: ${response.body}");
+  }
+}
+Future<void> sendNotificationPostRejected(String userId, String collectionName) async {
+  final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+  if (!userDoc.exists) {
+    print("❌ No user found with ID: $userId");
+    return;
+  }
+
+  final String? fcmToken = userDoc.data()?['fcmToken'];
+  if (fcmToken == null || fcmToken.isEmpty) {
+    print("❌ No FCM token found for user.");
+    return;
+  }
+
+  final String? accessToken = await getAccessToken();
+  if (accessToken == null) {
+    print("❌ Failed to get OAuth token.");
+    return;
+  }
+
+  final Map<String, dynamic> notificationPayload = {
+    "message": {
+      "token": fcmToken,
+      "notification": {
+        "title": "❌ Post Rejected",
+        "body": "Your post in $collectionName was rejected by the admin.",
+      },
+      "data": {
+        "type": "rejection",
+        "collection": collectionName,
+      }
+    }
+  };
+
+  final response = await http.post(
+    Uri.parse("https://fcm.googleapis.com/v1/projects/universe-123/messages:send"),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $accessToken",
+    },
+    body: jsonEncode(notificationPayload),
+  );
+
+  if (response.statusCode == 200) {
+    print("✅ Rejection notification sent.");
+  } else {
+    print("❌ Failed to send rejection notification: ${response.body}");
+  }
+}
+
+
 }

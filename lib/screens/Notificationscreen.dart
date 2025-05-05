@@ -84,17 +84,31 @@ class NotificationScreen extends StatelessWidget {
                   _getCollectionDisplayName(collectionName);
 
               // Create notification message
-              String notificationMessage;
+             String notificationMessage;
+String iconType = data['type'];
 
-              if (data['type'] == 'like') {
-                notificationMessage =
-                    "${data['senderName']} liked your post in $collectionDisplayName";
-              } else if (data['type'] == 'comment') {
-                notificationMessage =
-                    "${data['senderName']} commented on your post in $collectionDisplayName";
-              } else {
-                notificationMessage = data['message'] ?? 'New notification';
-              }
+switch (data['type']) {
+  case 'like':
+    notificationMessage =
+        "${data['senderName']} liked your post in $collectionDisplayName";
+    break;
+  case 'comment':
+    notificationMessage =
+        "${data['senderName']} commented on your post in $collectionDisplayName";
+    break;
+  case 'approval':
+    notificationMessage = "✅ Your post in $collectionDisplayName was approved by admin.";
+    break;
+  case 'rejection':
+    notificationMessage = "❌ Your post in $collectionDisplayName was rejected by admin.";
+    break;
+  case 'newPost':
+    notificationMessage =
+        "${data['senderName']} added a new post in $collectionDisplayName.";
+    break;
+  default:
+    notificationMessage = data['message'] ?? 'New notification';
+}
 
               // Determine background color based on read status
               Color bgColor = data['isRead'] == true
@@ -133,49 +147,40 @@ class NotificationScreen extends StatelessWidget {
                                     Border.all(color: Colors.white, width: 2),
                               ),
                               child: Icon(
-                                data['type'] == 'like'
-                                    ? Icons.favorite
-                                    : Icons.comment,
-                                color: data['type'] == 'like'
-                                    ? Colors.red
-                                    : Colors.blue,
-                                size: 12,
-                              ),
+  iconType == 'like'
+      ? Icons.favorite
+      : iconType == 'comment'
+          ? Icons.comment
+          : iconType == 'approval'
+              ? Icons.check_circle
+              : iconType == 'rejection'
+                  ? Icons.cancel
+                  : Icons.notifications,
+  color: iconType == 'like'
+      ? Colors.red
+      : iconType == 'comment'
+          ? Colors.blue
+          : iconType == 'approval'
+              ? Colors.green
+              : iconType == 'rejection'
+                  ? Colors.redAccent
+                  : Colors.deepPurple,
+  size: 12,
+)
+
                             ),
                           ),
                         ],
                       ),
-                      title: RichText(
-                        text: TextSpan(
-                          style: const TextStyle(
-                            fontSize: 15.0,
-                            color: Colors.black,
-                            height: 1.4, // Increase line height for readability
-                          ),
-                          children: [
-                            TextSpan(
-                              text: data['senderName'],
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                            TextSpan(
-                              text: data['type'] == 'like'
-                                  ? ' liked your post in '
-                                  : ' commented on your post in ',
-                              style: const TextStyle(color: Colors.black87),
-                            ),
-                            TextSpan(
-                              text: collectionDisplayName,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      title: Text(
+  notificationMessage,
+  style: const TextStyle(
+    fontWeight: FontWeight.w500,
+    fontSize: 15.0,
+    color: Colors.black,
+  ),
+),
+
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: Text(
@@ -278,10 +283,22 @@ class NotificationScreen extends StatelessWidget {
   // Get a user-friendly name for collections
   String _getCollectionDisplayName(String collection) {
     switch (collection) {
+      case 'lostfoundposts/All/posts':
+        return 'Lost & Found';
       case 'lostfoundposts':
         return 'Lost & Found';
       case 'Peerposts':
+
         return 'Peer Assistance';
+         case 'Peerposts/All/posts':
+
+        return 'Peer Assistance';
+      case 'Eventposts':
+      
+        return 'Events and Jobs';
+      case 'eventposts':
+      
+        return 'Events and Jobs';
       case 'Eventposts/All/posts':
         return 'Events & Jobs';
       case 'Surveyposts/All/posts':
@@ -325,11 +342,20 @@ Future<void> _handleNotificationTap(BuildContext context, String notificationId,
     else if(collectionName == "Peerposts"){
       collectionName = "Peerposts/All/posts";
     }
-    
+    else if(collectionName == "Eventposts"){
+  collectionName = "Eventposts/All/posts";
+}
+else if(collectionName == "Surveyposts"){
+  collectionName = "Surveyposts/All/posts";
+}
+
+  
 print("collection name : $collectionName");
+
     // If collection name is not provided, determine it
     if (collectionName == null) {
       List<String> collections = ['lostfoundposts/All/posts', 'Peerposts/All/posts', 'Eventposts', 'Surveyposts'];
+print("collection name : $collectionName");
 
       for (String collection in collections) {
         DocumentSnapshot postDoc = await FirebaseFirestore.instance

@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/fcm-service.dart';
 
 class SurveyAdmin extends StatefulWidget {
   const SurveyAdmin({super.key});
@@ -55,6 +56,9 @@ class _SurveyAdminState extends State<SurveyAdmin> {
   Future<void> _approveSurvey(DocumentSnapshot survey) async {
     final surveyData = survey.data() as Map<String, dynamic>;
     final surveyId = survey.id;
+     final posterId = surveyData['userId'];
+
+ final posterName = surveyData['username'] ?? 'Someone'; // Ensure this exists in your postData
 
     final approvedSurveyData = {
       ...surveyData,
@@ -74,8 +78,25 @@ class _SurveyAdminState extends State<SurveyAdmin> {
         .collection("posts")
         .doc(surveyId)
         .delete();
+        final FCMService _fcmService = FCMService();
 
+ await _fcmService.sendNotificationOnNewPost(
+    posterId,
+    posterName,
+    'Surveys',
+  );
     _showToast("Survey approved");
+   await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': posterId, // ✅ correct user ID
+    'senderId': 'admin',
+    'senderName': 'Admin',
+    'postId': surveyId,
+    'collection': 'Surveyposts/All/posts',
+    'message': "✅ Your post was approved by admin",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'approval',
+    'isRead': false,
+  });
   }
 
   Future<void> _rejectSurvey(DocumentSnapshot survey) async {

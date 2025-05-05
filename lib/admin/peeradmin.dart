@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/fcm-service.dart';
 
 class PeerAdmin extends StatefulWidget {
   const PeerAdmin({super.key});
@@ -124,8 +125,9 @@ class _PeerAdminState extends State<PeerAdmin> {
   Future<void> _approvePeerPost(DocumentSnapshot post) async {
     final postData = post.data() as Map<String, dynamic>;
     final postId = post.id;
+     final posterId = postData['userId'];
     final postContent = postData['postContent'] ?? '';
-
+  final posterName = postData['username'] ?? 'Someone'; // Ensure this exists in your postData
     String category = "Uncategorized";
     try {
       category = await _classifyPeerAssistancePost(postContent);
@@ -153,8 +155,28 @@ class _PeerAdminState extends State<PeerAdmin> {
         .collection("posts")
         .doc(postId)
         .delete();
+        final FCMService _fcmService = FCMService();
 
+ await _fcmService.sendNotificationOnNewPost(
+    posterId,
+    posterName,
+    'Peer assistance',
+  );
+   await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': posterId, // ✅ correct user ID
+    'senderId': 'admin',
+    'senderName': 'Admin',
+    'postId': postId,
+    'collection': 'Peerposts',
+    'message': "✅ Your post was approved by admin",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'approval',
+    'isRead': false,
+  });
+   
     _showToast("Peer post approved");
+
+     
   }
 
   Future<void> _rejectPeerPost(DocumentSnapshot post) async {

@@ -9,6 +9,7 @@ import '../main.dart';
 import 'peeradmin.dart';
 import 'eventadmin.dart';
 import 'surveyadmin.dart';
+import '../services/fcm-service.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -251,41 +252,63 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
     );
   }
 
-  Future<void> _approvePost(DocumentSnapshot post) async {
-    final postData = post.data() as Map<String, dynamic>;
-    final postId = post.id;
-    final postContent = postData['postContent'] ?? '';
+Future<void> _approvePost(DocumentSnapshot post) async {
+  final postData = post.data() as Map<String, dynamic>;
+  final postId = post.id;
+  final postContent = postData['postContent'] ?? '';
+  final posterId = postData['userId'] ?? '';
+  final posterName = postData['username'] ?? 'Someone'; // Ensure this exists in your postData
 
-    String category = "Uncategorized";
-    try {
-      category = await _classifyPostWithHuggingFace(postContent);
-      print("AI classification : $category");
-    } catch (e) {
-      print("AI classification failed: $e");
-    }
-
-    final approvedPostData = {
-      ...postData,
-      'approval': 'approved',
-      'category': category,
-    };
-
-    await FirebaseFirestore.instance
-        .collection('lostfoundposts')
-        .doc("All")
-        .collection("posts")
-        .doc(postId)
-        .set(approvedPostData);
-
-    await FirebaseFirestore.instance
-        .collection('lostfoundadmin')
-        .doc("All")
-        .collection("posts")
-        .doc(postId)
-        .delete();
-
-    _showToast("Post approved");
+  String category = "Uncategorized";
+  try {
+    category = await _classifyPostWithHuggingFace(postContent);
+    print("AI classification : $category");
+  } catch (e) {
+    print("AI classification failed: $e");
   }
+
+  final approvedPostData = {
+    ...postData,
+    'approval': 'approved',
+    'category': category,
+  };
+
+  await FirebaseFirestore.instance
+      .collection('lostfoundposts')
+      .doc("All")
+      .collection("posts")
+      .doc(postId)
+      .set(approvedPostData);
+
+  await FirebaseFirestore.instance
+      .collection('lostfoundadmin')
+      .doc("All")
+      .collection("posts")
+      .doc(postId)
+      .delete();
+final FCMService _fcmService = FCMService();
+
+  // 🔔 Send notification to users
+  await _fcmService.sendNotificationOnNewPost(
+    posterId,
+    posterName,
+    'Lost & Found',
+  );
+
+  _showToast("Post approved");
+   await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': posterId, // ✅ correct user ID
+    'senderId': 'admin',
+    'senderName': 'Admin',
+    'postId': postId,
+    'collection': 'lostfoundposts/All/posts',
+    'message': "✅ Your post was approved by admin",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'approval',
+    'isRead': false,
+  });
+}
+
 
   Future<void> _rejectPost(DocumentSnapshot post) async {
     final postId = post.id;

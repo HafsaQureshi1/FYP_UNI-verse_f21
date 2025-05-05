@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import '../services/fcm-service.dart';
 class EventsAdmin extends StatefulWidget {
   const EventsAdmin({super.key});
 
@@ -52,30 +52,61 @@ class _EventsAdminState extends State<EventsAdmin> {
   }
 
   Future<void> _approveEvent(DocumentSnapshot event) async {
-    final eventData = event.data() as Map<String, dynamic>;
-    final eventId = event.id;
-
-    final approvedEventData = {
-      ...eventData,
-      'approval': 'approved',
-    };
-
-    await FirebaseFirestore.instance
-        .collection('Eventposts')
-        .doc("All")
-        .collection("posts")
-        .doc(eventId)
-        .set(approvedEventData);
-
-    await FirebaseFirestore.instance
-        .collection('eventsadmin')
-        .doc("All")
-        .collection("posts")
-        .doc(eventId)
-        .delete();
-
-    _showToast("Event approved");
+  final eventData = event.data() as Map<String, dynamic>;
+  final eventId = event.id;
+  final posterId = eventData['userId']; // Ensure this field exists in your event posts
+  final posterName = eventData['userName'] ?? 'Someone';
+print("poster id $posterId");
+  if (posterId == null) {
+    print("❌ No userId field found in post");
+    return;
   }
+
+  final approvedEventData = {
+    ...eventData,
+    'approval': 'approved',
+  };
+
+  // Move to main approved collection
+  await FirebaseFirestore.instance
+      .collection('Eventposts') // lowercase 'e' to match UI logic
+      .doc("All")
+      .collection("posts")
+      .doc(eventId)
+      .set(approvedEventData);
+
+  // Remove from admin approval list
+  await FirebaseFirestore.instance
+      .collection('eventsadmin')
+      .doc("All")
+      .collection("posts")
+      .doc(eventId)
+      .delete();
+
+  // Send push notification
+  final FCMService _fcmService = FCMService();
+  await _fcmService.sendNotificationOnNewPost(
+    posterId,
+    posterName,
+    'Events & Jobs',
+  );
+
+  // Store in-app notification
+  await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': posterId, // ✅ correct user ID
+    'senderId': 'admin',
+    'senderName': 'Admin',
+    'postId': eventId,
+    'collection': 'Eventposts/All/posts',
+    'message': "✅ Your post was approved by admin",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'approval',
+    'isRead': false,
+  });
+
+  _showToast("Event approved");
+}
+
 
   Future<void> _rejectEvent(DocumentSnapshot event) async {
     final eventId = event.id;
