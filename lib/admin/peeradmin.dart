@@ -51,61 +51,74 @@ class _PeerAdminState extends State<PeerAdmin> {
       return '';
     }
   }
+Future<String> _classifyPeerAssistancePost(String postText) async {
+  final url = Uri.parse(
+      "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
+  final headers = {
+    "Authorization": "Bearer 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",
+    "Content-Type": "application/json; charset=UTF-8" // Correct content-type
+  };
 
-  Future<String> _classifyPeerAssistancePost(String postText) async {
-    final url = Uri.parse(
-        "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
-    final headers = {
-      "Authorization": "Bearer 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",
-      "Content-Type": "application/json"
-    };
-
-    final body = jsonEncode({
-      "inputs": postText,
-      "parameters": {
-        "candidate_labels": [
-          "Computer Science",
-          "Electrical Engineering",
-          "Education & Physical Education",
-          "Business",
-          "Mathematics",
-          "Media",
-          "Miscellaneous"
-        ],
-        "hypothesis_template": "This post is related to {}."
-      }
-    });
-
-    try {
-      final response = await http.post(url, headers: headers, body: body);
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        List<dynamic> labels = responseData["labels"];
-        List<dynamic> scores = responseData["scores"];
-
-        if (labels.isNotEmpty && scores.isNotEmpty) {
-          String bestCategory = "Miscellaneous";
-          double bestConfidence = 0.0;
-
-          for (int i = 0; i < labels.length; i++) {
-            if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
-              bestCategory = labels[i];
-              bestConfidence = scores[i];
-            }
-          }
-
-          if (bestConfidence < 0.2) {
-            bestCategory = "Miscellaneous";
-          }
-
-          return bestCategory;
-        }
-      }
-    } catch (e) {
-      print("Hugging Face API Exception: $e");
+  final body = jsonEncode({
+    "inputs": postText,
+    "parameters": {
+      "candidate_labels": [
+        "Computer Science",
+        "Electrical Engineering",
+        "Education & Physical Education",
+        "Business",
+        "Mathematics",
+        "Media",
+        "Miscellaneous"
+      ],
+      "hypothesis_template": "This post is related to {}."
     }
-    return "Miscellaneous";
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+
+    // Print the response status and body for debugging
+    print("Response Status Code: ${response.statusCode}");
+    print("Response Body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      List<dynamic> labels = responseData["labels"];
+      List<dynamic> scores = responseData["scores"];
+
+      // Print the labels and scores for debugging
+      print("Labels: $labels");
+      print("Scores: $scores");
+
+      if (labels.isNotEmpty && scores.isNotEmpty) {
+        String bestCategory = "Miscellaneous";
+        double bestConfidence = 0.0;
+
+        for (int i = 0; i < labels.length; i++) {
+          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+            bestCategory = labels[i];
+            bestConfidence = scores[i];
+          }
+        }
+
+        if (bestConfidence < 0.2) {
+          bestCategory = "Miscellaneous";
+        }
+
+        return bestCategory;
+      }
+    } else {
+      print("Error: Received non-200 response code: ${response.statusCode}");
+      print("Response body: ${response.body}");
+    }
+  } catch (e) {
+    print("Hugging Face API Exception: $e");
   }
+
+  return "Miscellaneous";
+}
+
 
   // Add toast notification method
   void _showToast(String message) {

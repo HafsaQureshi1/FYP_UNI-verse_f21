@@ -186,7 +186,7 @@ class _PostCardState extends State<PostCard> {
     final url = Uri.parse(
         "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
     final headers = {
-      "Authorization": "Bearer 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",
+      "Authorization": "Bearer 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",
       "Content-Type": "application/json"
     };
 
@@ -226,9 +226,9 @@ class _PostCardState extends State<PostCard> {
 
   Future<String> _classifyPeerAssistancePost(String postText) async {
     final url = Uri.parse(
-        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
+        "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
     final headers = {
-      "Authorization": "Bearer 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",
+      "Authorization": "Bearer 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",
       "Content-Type": "application/json"
     };
 

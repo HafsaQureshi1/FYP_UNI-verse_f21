@@ -320,6 +320,7 @@ switch (data['type']) {
         .collection('notifications')
         .where('receiverId', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
+        .where('receiverId', isEqualTo: null)
         .get();
 
     for (var doc in unreadNotifications.docs) {
