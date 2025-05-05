@@ -127,7 +127,7 @@ class _PeerAdminState extends State<PeerAdmin> {
     final postId = post.id;
      final posterId = postData['userId'];
     final postContent = postData['postContent'] ?? '';
-  final posterName = postData['username'] ?? 'Someone'; // Ensure this exists in your postData
+  final posterName = postData['userName'] ?? 'Someone'; // Ensure this exists in your postData
     String category = "Uncategorized";
     try {
       category = await _classifyPeerAssistancePost(postContent);
@@ -175,7 +175,17 @@ class _PeerAdminState extends State<PeerAdmin> {
   });
    
     _showToast("Peer post approved");
-
+ await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': null, // or leave blank/null if your UI handles public messages
+    'senderId': posterId,
+    'senderName': posterName,
+    'postId': postId,
+    'collection': 'Peerposts/All/posts',
+    'message': "📢 $posterName added a new post in Peer Assistance",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'new_post',
+    'isRead': false,
+  });
      
   }
 

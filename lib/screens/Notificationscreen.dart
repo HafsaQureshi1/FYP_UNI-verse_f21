@@ -38,11 +38,15 @@ class NotificationScreen extends StatelessWidget {
         ],
       ),
       body: StreamBuilder(
-        stream: FirebaseFirestore.instance
-            .collection('notifications')
-            .where('receiverId', isEqualTo: currentUserId)
-            .orderBy('timestamp', descending: true)
-            .snapshots(),
+       stream: FirebaseFirestore.instance
+    .collection('notifications')
+    .where(Filter.or(
+      Filter('receiverId', isEqualTo: currentUserId),
+      Filter('receiverId', isNull: true),
+    ))
+    .orderBy('timestamp', descending: true)
+    .snapshots(),
+
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

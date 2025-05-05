@@ -58,7 +58,7 @@ class _SurveyAdminState extends State<SurveyAdmin> {
     final surveyId = survey.id;
      final posterId = surveyData['userId'];
 
- final posterName = surveyData['username'] ?? 'Someone'; // Ensure this exists in your postData
+ final posterName = surveyData['userName'] ?? 'Someone'; // Ensure this exists in your postData
 
     final approvedSurveyData = {
       ...surveyData,
@@ -85,6 +85,7 @@ class _SurveyAdminState extends State<SurveyAdmin> {
     posterName,
     'Surveys',
   );
+  
     _showToast("Survey approved");
    await FirebaseFirestore.instance.collection('notifications').add({
     'receiverId': posterId, // ✅ correct user ID
@@ -95,6 +96,17 @@ class _SurveyAdminState extends State<SurveyAdmin> {
     'message': "✅ Your post was approved by admin",
     'timestamp': FieldValue.serverTimestamp(),
     'type': 'approval',
+    'isRead': false,
+  });
+  await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': null, // or leave blank/null if your UI handles public messages
+    'senderId': posterId,
+    'senderName': posterName,
+    'postId': surveyId,
+    'collection': 'Surveyposts/All/posts',
+    'message': "📢 $posterName added a new post in Surveys",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'new_post',
     'isRead': false,
   });
   }

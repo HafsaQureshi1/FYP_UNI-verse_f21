@@ -257,7 +257,7 @@ Future<void> _approvePost(DocumentSnapshot post) async {
   final postId = post.id;
   final postContent = postData['postContent'] ?? '';
   final posterId = postData['userId'] ?? '';
-  final posterName = postData['username'] ?? 'Someone'; // Ensure this exists in your postData
+  final posterName = postData['userName'] ?? 'Someone'; // Ensure this exists in your postData
 
   String category = "Uncategorized";
   try {
@@ -307,6 +307,19 @@ final FCMService _fcmService = FCMService();
     'type': 'approval',
     'isRead': false,
   });
+   await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': null, // or leave blank/null if your UI handles public messages
+    'senderId': posterId,
+    'senderName': posterName,
+    'postId': postId,
+    'collection': 'lostfoundposts/All/posts',
+    'message': "📢 $posterName added a new post in Lost & Found",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'new_post',
+    'isRead': false,
+  });
+     
+
 }
 
 

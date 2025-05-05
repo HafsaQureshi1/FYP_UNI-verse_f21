@@ -105,6 +105,19 @@ print("poster id $posterId");
   });
 
   _showToast("Event approved");
+   await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': null, // or leave blank/null if your UI handles public messages
+    'senderId': posterId,
+    'senderName': posterName,
+    'postId': eventId,
+    'collection': 'Eventposts/All/posts',
+    'message': "📢 $posterName added a new post in Events and Jobs",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'new_post',
+    'isRead': false,
+  });
+     
+
 }
 
 
