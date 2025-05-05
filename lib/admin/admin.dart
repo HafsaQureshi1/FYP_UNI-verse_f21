@@ -294,6 +294,8 @@ final FCMService _fcmService = FCMService();
     posterName,
     'Lost & Found',
   );
+  await _fcmService.sendNotificationPostApproved(posterId, 'Lost & Found');
+
 
   _showToast("Post approved");
    await FirebaseFirestore.instance.collection('notifications').add({
@@ -307,6 +309,7 @@ final FCMService _fcmService = FCMService();
     'type': 'approval',
     'isRead': false,
   });
+
    await FirebaseFirestore.instance.collection('notifications').add({
     'receiverId': null, // or leave blank/null if your UI handles public messages
     'senderId': posterId,
@@ -325,15 +328,37 @@ final FCMService _fcmService = FCMService();
 
   Future<void> _rejectPost(DocumentSnapshot post) async {
     final postId = post.id;
+  final postData = post.data() as Map<String, dynamic>;
+ 
+  final postContent = postData['postContent'] ?? '';
+  final posterId = postData['userId'] ?? '';
+  final posterName = postData['userName'] ?? 'Someone'; // Ensure this exists in your postData
+
+
     await FirebaseFirestore.instance
         .collection('lostfoundadmin')
         .doc("All")
         .collection("posts")
         .doc(postId)
         .delete();
+final FCMService _fcmService = FCMService();
 
+await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
     _showToast("Post rejected");
+   await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': posterId, // ✅ correct user ID
+    'senderId': 'admin',
+    'senderName': 'Admin',
+    'postId': postId,
+    'collection': 'lostfoundposts/All/posts',
+    'message': "✅ Your post was rejected by admin",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'approval',
+    'isRead': false,
+  });
+  
   }
+
 
   final ScrollController _scrollController = ScrollController();
 

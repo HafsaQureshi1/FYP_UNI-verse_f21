@@ -90,6 +90,7 @@ print("poster id $posterId");
     posterName,
     'Events & Jobs',
   );
+await _fcmService.sendNotificationPostApproved(posterId, 'Events & Jobs');
 
   // Store in-app notification
   await FirebaseFirestore.instance.collection('notifications').add({
@@ -123,6 +124,13 @@ print("poster id $posterId");
 
   Future<void> _rejectEvent(DocumentSnapshot event) async {
     final eventId = event.id;
+    final postData = event.data() as Map<String, dynamic>;
+ 
+  final postContent = postData['postContent'] ?? '';
+  final posterId = postData['userId'] ?? '';
+  final posterName = postData['userName'] ?? 'Someone'; // Ensure this exists in your postData
+
+
     await FirebaseFirestore.instance
         .collection('eventsadmin')
         .doc("All")
@@ -131,6 +139,23 @@ print("poster id $posterId");
         .delete();
 
     _showToast("Event rejected");
+    
+final FCMService _fcmService = FCMService();
+
+await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
+    _showToast("Post rejected");
+   await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': posterId, // ✅ correct user ID
+    'senderId': 'admin',
+    'senderName': 'Admin',
+    'postId': eventId,
+    'collection': 'Eventposts/All/posts',
+    'message': "✅ Your post was rejected by admin",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'approval',
+    'isRead': false,
+  });
+  
   }
 
   String _formatTimestamp(Timestamp? timestamp) {

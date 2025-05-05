@@ -43,6 +43,7 @@ class NotificationScreen extends StatelessWidget {
     .where(Filter.or(
       Filter('receiverId', isEqualTo: currentUserId),
       Filter('receiverId', isNull: true),
+      
     ))
     .orderBy('timestamp', descending: true)
     .snapshots(),

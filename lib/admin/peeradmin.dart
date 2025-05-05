@@ -162,6 +162,8 @@ class _PeerAdminState extends State<PeerAdmin> {
     posterName,
     'Peer assistance',
   );
+  await _fcmService.sendNotificationPostApproved(posterId, 'Peer Assistance');
+
    await FirebaseFirestore.instance.collection('notifications').add({
     'receiverId': posterId, // ✅ correct user ID
     'senderId': 'admin',
@@ -190,6 +192,13 @@ class _PeerAdminState extends State<PeerAdmin> {
   }
 
   Future<void> _rejectPeerPost(DocumentSnapshot post) async {
+    final postData = post.data() as Map<String, dynamic>;
+ 
+  final postContent = postData['postContent'] ?? '';
+  final posterId = postData['userId'] ?? '';
+  final posterName = postData['userName'] ?? 'Someone'; // Ensure this exists in your postData
+
+
     final postId = post.id;
     await FirebaseFirestore.instance
         .collection('peeradmin')
@@ -199,6 +208,23 @@ class _PeerAdminState extends State<PeerAdmin> {
         .delete();
 
     _showToast("Peer post rejected");
+    
+final FCMService _fcmService = FCMService();
+
+await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
+    _showToast("Post rejected");
+   await FirebaseFirestore.instance.collection('notifications').add({
+    'receiverId': posterId, // ✅ correct user ID
+    'senderId': 'admin',
+    'senderName': 'Admin',
+    'postId': postId,
+    'collection': 'lostfoundposts/All/posts',
+    'message': "✅ Your post was rejected by admin",
+    'timestamp': FieldValue.serverTimestamp(),
+    'type': 'approval',
+    'isRead': false,
+  });
+  
   }
 
   String _formatTimestamp(Timestamp? timestamp) {
