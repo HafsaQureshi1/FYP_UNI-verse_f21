@@ -510,10 +510,22 @@ Future<void> _pickLocation() async {
                     ),
                   ),
                   // URL input field for Surveys or Events
-if (widget.collectionName.startsWith('Surveyposts')|| widget.collectionName.startsWith('Eventposts')) ...[
+if (widget.collectionName.startsWith('Surveyposts')) ...[
   const SizedBox(height: 16),
   const Text(
-    "Enter URL (optional)",
+    "Enter URL (optional) Accepted only  ",
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+  ),
+   const Text(
+    "- form.google.com ",
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+  ),
+   const Text(
+    "- typeform.com ",
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+  ),
+   const Text(
+    "- forms.office.com",
     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
   ),
   const SizedBox(height: 8),
@@ -535,6 +547,31 @@ if (widget.collectionName.startsWith('Surveyposts')|| widget.collectionName.star
   ),
 ]
 ,
+if (widget.collectionName.startsWith('Eventposts')) ...[
+  const SizedBox(height: 16),
+  const Text(
+    "Enter URL (optional)  ",
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+  ),
+   
+  const SizedBox(height: 8),
+  TextField(
+    controller: _urlController,
+    keyboardType: TextInputType.url,
+    decoration: InputDecoration(
+      hintText: "https://example.com",
+      prefixIcon: const Icon(Icons.link),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.grey),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.blue),
+      ),
+    ),
+  ),
+],
 
                   const SizedBox(height: 16),
 

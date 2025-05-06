@@ -190,7 +190,7 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
     "shirt", "pants", "jacket", "bag", "dress", "shoes", "coat", "jeans", "t-shirt", "sweater", "scarf", "suit", "hat", "gloves", "skirt", "shorts", "sweatshirt"
   ],
   "Official Documents": [
-    "ID", "passport", "certificate", "degree", "license", "document", "visa", "contract", "papers", "birth certificate", "government ID", "application form"
+    "Student id ","Student id card","ID", "passport", "certificate", "degree", "license", "document", "visa", "contract", "papers", "birth certificate", "government ID", "application form"
   ],
   "Wallets & Keys": [
     "wallet", "keys", "purse", "credit card", "keychain", "car keys", "house keys", "money", "coin", "billfold", "ID card", "coins"
@@ -281,11 +281,13 @@ String _manualCategorizePost(String postText) {
         return bestCategory;
       }
     } else {
+         return _manualCategorizePost(postText);
       // If response code is not 200, print the error details
       print("Error: Received non-200 response code: ${response.statusCode}");
       print("Response body: ${response.body}");
     }
   } catch (e) {
+       return _manualCategorizePost(postText);
     print("Hugging Face API Exception: $e");
   }
 
@@ -326,6 +328,7 @@ Future<void> _approvePost(DocumentSnapshot post) async {
     ...postData,
     'approval': 'approved',
     'category': category,
+    'timestamp': FieldValue.serverTimestamp(),
   };
 
   await FirebaseFirestore.instance
@@ -406,9 +409,9 @@ await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
     'senderName': 'Admin',
     'postId': postId,
     'collection': 'lostfoundposts/All/posts',
-    'message': "✅ Your post was rejected by admin",
+    'message': "❌ Your post was rejected by admin",
     'timestamp': FieldValue.serverTimestamp(),
-    'type': 'approval',
+    'type': 'rejection',
     'isRead': false,
   });
   

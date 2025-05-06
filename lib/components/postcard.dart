@@ -189,7 +189,7 @@ class _PostCardState extends State<PostCard> {
     "shirt", "pants", "jacket", "bag", "dress", "shoes", "coat", "jeans", "t-shirt", "sweater", "scarf", "suit", "hat", "gloves", "skirt", "shorts", "sweatshirt"
   ],
   "Official Documents": [
-    "ID", "passport", "certificate", "degree", "license", "document", "visa", "contract", "papers", "birth certificate", "government ID", "application form"
+    "Student id ","Student id card","ID", "passport", "certificate", "degree", "license", "document", "visa", "contract", "papers", "birth certificate", "government ID", "application form"
   ],
   "Wallets & Keys": [
     "wallet", "keys", "purse", "credit card", "keychain", "car keys", "house keys", "money", "coin", "billfold", "ID card", "coins"
@@ -273,7 +273,7 @@ String _manualCategorizePost(String postText) {
           }
         }
 
-        if (bestConfidence < 0.2) {
+        if (bestConfidence < 0.3) {
           return _manualCategorizePost(postText);
         }
 
@@ -331,7 +331,7 @@ Future<String> _handleLowConfidence(String postText) async {
   for (var entry in keywordMap.entries) {
     for (var keyword in entry.value) {
       if (lowerText.contains(keyword.toLowerCase())) {
-        print("Keyword match found: '${keyword}' → Category: ${entry.key}");
+        print("Manually Keyword match found: '${keyword}' → Category: ${entry.key}");
         return entry.key;
       }
     }
@@ -392,7 +392,7 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
           }
         }
 
-        if (bestConfidence < 0.2) {
+        if (bestConfidence < 0.3) {
            return await _handleLowConfidence(postText);
         }
 

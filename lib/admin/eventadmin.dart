@@ -65,6 +65,7 @@ print("poster id $posterId");
   final approvedEventData = {
     ...eventData,
     'approval': 'approved',
+    'timestamp': FieldValue.serverTimestamp(),
   };
 
   // Move to main approved collection
@@ -150,9 +151,9 @@ await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
     'senderName': 'Admin',
     'postId': eventId,
     'collection': 'Eventposts/All/posts',
-    'message': "✅ Your post was rejected by admin",
+    'message': "❌ Your post was rejected by admin",
     'timestamp': FieldValue.serverTimestamp(),
-    'type': 'approval',
+    'type': 'rejection',
     'isRead': false,
   });
   

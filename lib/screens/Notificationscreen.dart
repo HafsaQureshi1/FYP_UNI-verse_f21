@@ -1,18 +1,21 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/components/search_results.dart';
 import 'package:intl/intl.dart';
-import '../components/profileimage.dart'; // Add this import for the ProfileAvatar component
-  import 'package:async/async.dart';
-  import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../components/profileimage.dart';
 import 'package:async/async.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
+
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
+  // Keep track of locally marked read notifications
+  final Set<String> _locallyMarkedAsRead = {};
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +50,13 @@ class NotificationScreen extends StatelessWidget {
             message: "Mark all as read",
             child: IconButton(
               icon: const Icon(Icons.done_all),
-              onPressed: () => _markAllAsRead(currentUserId),
+              onPressed: () {
+                _markAllAsRead(currentUserId);
+                // Clear the list and rebuild the UI
+                setState(() {
+                  _locallyMarkedAsRead.clear();
+                });
+              },
             ),
           ),
         ],
@@ -101,6 +110,11 @@ class NotificationScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final doc = allDocs[index];
               final data = doc.data() as Map<String, dynamic>;
+              final notificationId = doc.id;
+
+              // Check if notification should be shown as read locally or from Firestore
+              final isRead = _locallyMarkedAsRead.contains(notificationId) || 
+                            (data['isRead'] == true);
 
               String formattedTime = "Now";
               if (data['timestamp'] != null) {
@@ -110,7 +124,7 @@ class NotificationScreen extends StatelessWidget {
 
               if (!data.containsKey('collection') ||
                   data['collection'] == null) {
-                _updateNotificationWithCollection(doc.id, data['postId']);
+                _updateNotificationWithCollection(notificationId, data['postId']);
               }
 
               final collectionName = data['collection'] ?? 'lostfoundposts';
@@ -145,14 +159,32 @@ class NotificationScreen extends StatelessWidget {
                   notificationMessage = data['message'] ?? 'New notification';
               }
 
-              final bgColor = data['isRead'] == true
+              final bgColor = isRead
                   ? Colors.white
                   : const Color.fromARGB(255, 237, 246, 254);
 
               return Material(
                 color: bgColor,
                 child: InkWell(
-                  onTap: () => _handleNotificationTap(context, doc.id, data),
+ onTap: () async {
+  final docSnap = await FirebaseFirestore.instance
+      .collection('notifications')
+      .doc(notificationId)
+      .get();
+
+  if (!context.mounted) return;
+
+  if (docSnap.exists) {
+    final freshData = docSnap.data() as Map<String, dynamic>;
+
+    // Use Future.delayed to ensure navigation happens after the current frame
+    Future.delayed(Duration(milliseconds: 100), () {
+      _handleNotificationTap(context, notificationId, freshData);
+    });
+  }
+}
+
+,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2.0),
                     child: ListTile(
@@ -220,7 +252,7 @@ class NotificationScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      trailing: data['isRead'] == true
+                      trailing: isRead
                           ? null
                           : Container(
                               width: 12,
@@ -240,30 +272,31 @@ class NotificationScreen extends StatelessWidget {
       ),
     );
   }
-void _updateNotificationWithCollection(String docId, String? postId) async {
-  // If the postId is null, we can't determine the collection
-  if (postId == null) return;
 
-  // Fetch the post from the relevant collection (Lost & Found, Peer Assistance, etc.)
-  final postRef = FirebaseFirestore.instance.collection('posts').doc(postId);
-  final postSnapshot = await postRef.get();
+  void _updateNotificationWithCollection(String docId, String? postId) async {
+    // If the postId is null, we can't determine the collection
+    if (postId == null) return;
 
-  if (!postSnapshot.exists) {
-    return;
+    // Fetch the post from the relevant collection (Lost & Found, Peer Assistance, etc.)
+    final postRef = FirebaseFirestore.instance.collection('posts').doc(postId);
+    final postSnapshot = await postRef.get();
+
+    if (!postSnapshot.exists) {
+      return;
+    }
+
+    // Assuming each post has a 'collection' field to identify its type
+    final postData = postSnapshot.data() as Map<String, dynamic>;
+    final collectionName = postData['collection'];
+
+    if (collectionName != null) {
+      // Update the notification with the collection name if missing
+      FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(docId)
+          .update({'collection': collectionName});
+    }
   }
-
-  // Assuming each post has a 'collection' field to identify its type
-  final postData = postSnapshot.data() as Map<String, dynamic>;
-  final collectionName = postData['collection'];
-
-  if (collectionName != null) {
-    // Update the notification with the collection name if missing
-    FirebaseFirestore.instance
-        .collection('notifications')
-        .doc(docId)
-        .update({'collection': collectionName});
-  }
-}
 
   // Helper function to format timestamp in a user-friendly way
   String _getFormattedTimestamp(DateTime dateTime) {
@@ -306,16 +339,12 @@ void _updateNotificationWithCollection(String docId, String? postId) async {
       case 'lostfoundposts':
         return 'Lost & Found';
       case 'Peerposts':
-
         return 'Peer Assistance';
-         case 'Peerposts/All/posts':
-
+      case 'Peerposts/All/posts':
         return 'Peer Assistance';
       case 'Eventposts':
-      
         return 'Events and Jobs';
       case 'eventposts':
-      
         return 'Events and Jobs';
       case 'Eventposts/All/posts':
         return 'Events & Jobs';
@@ -329,16 +358,39 @@ void _updateNotificationWithCollection(String docId, String? postId) async {
   // Mark all notifications as read
   Future<void> _markAllAsRead(String userId) async {
     final batch = FirebaseFirestore.instance.batch();
-    final unreadNotifications = await FirebaseFirestore.instance
+
+    // Fetch user-specific unread notifications
+    final userNotifications = await FirebaseFirestore.instance
         .collection('notifications')
         .where('receiverId', isEqualTo: userId)
-        .where('receiverId', isEqualTo: null)
         .where('isRead', isEqualTo: false)
-        
         .get();
 
-    for (var doc in unreadNotifications.docs) {
+    for (var doc in userNotifications.docs) {
       batch.update(doc.reference, {'isRead': true});
+      
+      // Add to locally marked as read set
+      setState(() {
+        _locallyMarkedAsRead.add(doc.id);
+      });
+    }
+
+    // Fetch general unread notifications (receiverId == null), excluding those sent by the user
+    final generalNotifications = await FirebaseFirestore.instance
+        .collection('notifications')
+        .where('receiverId', isNull: true)
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    for (var doc in generalNotifications.docs) {
+      if (doc['senderId'] != userId) {
+        batch.update(doc.reference, {'isRead': true});
+        
+        // Add to locally marked as read set
+        setState(() {
+          _locallyMarkedAsRead.add(doc.id);
+        });
+      }
     }
 
     await batch.commit();
@@ -356,6 +408,7 @@ Future<void> _handleNotificationTap(BuildContext context, String notificationId,
 
     String postId = data['postId'];
     String? collectionName = data['collection'];
+
     if(collectionName == "lostfoundposts"){
       collectionName = "lostfoundposts/All/posts";
     }
@@ -363,19 +416,18 @@ Future<void> _handleNotificationTap(BuildContext context, String notificationId,
       collectionName = "Peerposts/All/posts";
     }
     else if(collectionName == "Eventposts"){
-  collectionName = "Eventposts/All/posts";
-}
-else if(collectionName == "Surveyposts"){
-  collectionName = "Surveyposts/All/posts";
-}
+      collectionName = "Eventposts/All/posts";
+    }
+    else if(collectionName == "Surveyposts"){
+      collectionName = "Surveyposts/All/posts";
+    }
 
-  
-print("collection name : $collectionName");
+    print("collection name : $collectionName");
 
     // If collection name is not provided, determine it
     if (collectionName == null) {
       List<String> collections = ['lostfoundposts/All/posts', 'Peerposts/All/posts', 'Eventposts', 'Surveyposts'];
-print("collection name : $collectionName");
+      print("collection name : $collectionName");
 
       for (String collection in collections) {
         DocumentSnapshot postDoc = await FirebaseFirestore.instance
@@ -399,11 +451,14 @@ print("collection name : $collectionName");
     if (collectionName != null) {
       DocumentSnapshot postDoc = await FirebaseFirestore.instance
           .collection(collectionName)
-          
           .doc(postId)
           .get();
 
       if (postDoc.exists) {
+        // Pop the current screen to ensure the notification UI gets updated immediately
+        Navigator.pop(context);
+
+        // Now push the PostDetailView
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -425,4 +480,6 @@ print("collection name : $collectionName");
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error handling notification: $e')));
   }
-}}
+}
+
+}

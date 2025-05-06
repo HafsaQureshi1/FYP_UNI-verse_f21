@@ -63,6 +63,7 @@ class _SurveyAdminState extends State<SurveyAdmin> {
     final approvedSurveyData = {
       ...surveyData,
       'approval': 'approved',
+      'timestamp': FieldValue.serverTimestamp(),
     };
 
     await FirebaseFirestore.instance
@@ -140,9 +141,9 @@ await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
     'senderName': 'Admin',
     'postId': surveyId,
     'collection': 'lostfoundposts/All/posts',
-    'message': "✅ Your post was rejected by admin",
+    'message': "❌ Your post was rejected by admin",
     'timestamp': FieldValue.serverTimestamp(),
-    'type': 'approval',
+    'type': 'rejection',
     'isRead': false,
   });
   

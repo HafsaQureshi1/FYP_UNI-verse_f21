@@ -132,10 +132,12 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
         return bestCategory;
       }
     } else {
+           return await _handleLowConfidence(postText);
       print("Error: Received non-200 response code: ${response.statusCode}");
       print("Response body: ${response.body}");
     }
   } catch (e) {
+         return await _handleLowConfidence(postText);
     print("Hugging Face API Exception: $e");
   }
 
@@ -201,6 +203,7 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
       ...postData,
       'approval': 'approved',
       'category': category,
+      'timestamp': FieldValue.serverTimestamp(),
     };
 
     await FirebaseFirestore.instance
@@ -280,9 +283,9 @@ await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
     'senderName': 'Admin',
     'postId': postId,
     'collection': 'lostfoundposts/All/posts',
-    'message': "✅ Your post was rejected by admin",
+    'message': "❌ Your post was rejected by admin",
     'timestamp': FieldValue.serverTimestamp(),
-    'type': 'approval',
+    'type': 'rejection',
     'isRead': false,
   });
   
