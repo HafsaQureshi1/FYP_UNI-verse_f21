@@ -17,9 +17,9 @@
 ---
 👨‍💻 Developed By
 
-    Maaz Bin Hassan
-
     Hafsa Waseem
+    
+    Maaz Bin Hassan
 
     Sadia Athar
 
