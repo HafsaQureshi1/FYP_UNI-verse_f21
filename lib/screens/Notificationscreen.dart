@@ -5,6 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/components/search_results.dart';
 import 'package:intl/intl.dart';
 import '../components/profileimage.dart'; // Add this import for the ProfileAvatar component
+  import 'package:async/async.dart';
+  import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:async/async.dart';
 
 class NotificationScreen extends StatelessWidget {
   const NotificationScreen({super.key});
@@ -20,13 +25,23 @@ class NotificationScreen extends StatelessWidget {
       );
     }
 
+    final userSpecific = FirebaseFirestore.instance
+        .collection('notifications')
+        .where('receiverId', isEqualTo: currentUserId)
+        .snapshots();
+
+    final general = FirebaseFirestore.instance
+        .collection('notifications')
+        .where('receiverId', isNull: true)
+        .snapshots();
+
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Facebook-like light gray background
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text("Notifications",
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-        backgroundColor: Colors.white, // White app bar like Facebook
-        elevation: 1, // Subtle elevation
+        backgroundColor: Colors.white,
+        elevation: 1,
         actions: [
           Tooltip(
             message: "Mark all as read",
@@ -37,89 +52,102 @@ class NotificationScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: StreamBuilder(
-       stream: FirebaseFirestore.instance
-    .collection('notifications')
-    .where(Filter.or(
-      Filter('receiverId', isEqualTo: currentUserId),
-      Filter('receiverId', isNull: true),
-      
-    ))
-    .orderBy('timestamp', descending: true)
-    .snapshots(),
-
-        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+      body: StreamBuilder<List<QuerySnapshot>>(
+        stream: StreamZip([userSpecific, general]),
+        builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (!snapshot.hasData) {
+            return const Center(child: Text("No notifications yet."));
+          }
+
+          final allDocs = snapshot.data!
+              .expand((qSnap) => qSnap.docs)
+              .where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final receiverId = data['receiverId'];
+                final senderId = data['senderId'];
+
+                // Show general notifications to everyone except the sender
+                if (receiverId == null && senderId != currentUserId) {
+                  return true;
+                }
+
+                // Show user-specific notifications
+                return receiverId == currentUserId;
+              })
+              .toList();
+
+          allDocs.sort((a, b) {
+            final aTime = a['timestamp']?.toDate() ?? DateTime(1970);
+            final bTime = b['timestamp']?.toDate() ?? DateTime(1970);
+            return bTime.compareTo(aTime);
+          });
+
+          if (allDocs.isEmpty) {
             return const Center(child: Text("No notifications yet."));
           }
 
           return ListView.separated(
-            padding: EdgeInsets.zero, // Remove default padding
-            itemCount: snapshot.data!.docs.length,
+            itemCount: allDocs.length,
             separatorBuilder: (context, index) => Divider(
               height: 1,
               thickness: 0.5,
               color: Colors.grey[200],
-              indent: 72, // Indent to align with text, not icon
+              indent: 72,
             ),
             itemBuilder: (context, index) {
-              var doc = snapshot.data!.docs[index];
-              var data = doc.data() as Map<String, dynamic>;
+              final doc = allDocs[index];
+              final data = doc.data() as Map<String, dynamic>;
 
-              // Format the timestamp
               String formattedTime = "Now";
               if (data['timestamp'] != null) {
                 formattedTime =
                     _getFormattedTimestamp(data['timestamp'].toDate());
               }
 
-              // For legacy notifications that don't have collection field
               if (!data.containsKey('collection') ||
                   data['collection'] == null) {
                 _updateNotificationWithCollection(doc.id, data['postId']);
               }
 
-              // Get collection name and display name
-              String collectionName = data['collection'] ?? 'lostfoundposts';
-              String collectionDisplayName =
+              final collectionName = data['collection'] ?? 'lostfoundposts';
+              final collectionDisplayName =
                   _getCollectionDisplayName(collectionName);
 
-              // Create notification message
-             String notificationMessage;
-String iconType = data['type'];
+              String iconType = data['type'];
+              String notificationMessage;
 
-switch (data['type']) {
-  case 'like':
-    notificationMessage =
-        "${data['senderName']} liked your post in $collectionDisplayName";
-    break;
-  case 'comment':
-    notificationMessage =
-        "${data['senderName']} commented on your post in $collectionDisplayName";
-    break;
-  case 'approval':
-    notificationMessage = "✅ Your post in $collectionDisplayName was approved by admin.";
-    break;
-  case 'rejection':
-    notificationMessage = "❌ Your post in $collectionDisplayName was rejected by admin.";
-    break;
-  case 'newPost':
-    notificationMessage =
-        "${data['senderName']} added a new post in $collectionDisplayName.";
-    break;
-  default:
-    notificationMessage = data['message'] ?? 'New notification';
-}
+              switch (iconType) {
+                case 'like':
+                  notificationMessage =
+                      "${data['senderName']} liked your post in $collectionDisplayName";
+                  break;
+                case 'comment':
+                  notificationMessage =
+                      "${data['senderName']} commented on your post in $collectionDisplayName";
+                  break;
+                case 'approval':
+                  notificationMessage =
+                      "✅ Your post in $collectionDisplayName was approved by admin.";
+                  break;
+                case 'rejection':
+                  notificationMessage =
+                      "❌ Your post in $collectionDisplayName was rejected by admin.";
+                  break;
+                case 'newPost':
+                  notificationMessage =
+                      "${data['senderName']} added a new post in $collectionDisplayName.";
+                  break;
+                default:
+                  notificationMessage = data['message'] ?? 'New notification';
+              }
 
-              // Determine background color based on read status
-              Color bgColor = data['isRead'] == true
+              final bgColor = data['isRead'] == true
                   ? Colors.white
-                  : const Color.fromARGB(
-                      255, 237, 246, 254); // Lighter blue for unread
+                  : const Color.fromARGB(255, 237, 246, 254);
 
               return Material(
                 color: bgColor,
@@ -132,19 +160,17 @@ switch (data['type']) {
                           horizontal: 16.0, vertical: 8.0),
                       leading: Stack(
                         children: [
-                          // Profile avatar of the sender
                           ProfileAvatar(
                             userId: data['senderId'] ?? '',
                             radius: 24,
                           ),
-                          // Small icon overlay at bottom right of the avatar
                           Positioned(
                             bottom: 0,
                             right: 0,
                             child: Container(
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: data['type'] == 'like'
+                                color: iconType == 'like'
                                     ? Colors.red.shade100
                                     : Colors.blue.shade100,
                                 shape: BoxShape.circle,
@@ -152,40 +178,38 @@ switch (data['type']) {
                                     Border.all(color: Colors.white, width: 2),
                               ),
                               child: Icon(
-  iconType == 'like'
-      ? Icons.favorite
-      : iconType == 'comment'
-          ? Icons.comment
-          : iconType == 'approval'
-              ? Icons.check_circle
-              : iconType == 'rejection'
-                  ? Icons.cancel
-                  : Icons.notifications,
-  color: iconType == 'like'
-      ? Colors.red
-      : iconType == 'comment'
-          ? Colors.blue
-          : iconType == 'approval'
-              ? Colors.green
-              : iconType == 'rejection'
-                  ? Colors.redAccent
-                  : Colors.deepPurple,
-  size: 12,
-)
-
+                                iconType == 'like'
+                                    ? Icons.favorite
+                                    : iconType == 'comment'
+                                        ? Icons.comment
+                                        : iconType == 'approval'
+                                            ? Icons.check_circle
+                                            : iconType == 'rejection'
+                                                ? Icons.cancel
+                                                : Icons.notifications,
+                                color: iconType == 'like'
+                                    ? Colors.red
+                                    : iconType == 'comment'
+                                        ? Colors.blue
+                                        : iconType == 'approval'
+                                            ? Colors.green
+                                            : iconType == 'rejection'
+                                                ? Colors.redAccent
+                                                : Colors.deepPurple,
+                                size: 12,
+                              ),
                             ),
                           ),
                         ],
                       ),
                       title: Text(
-  notificationMessage,
-  style: const TextStyle(
-    fontWeight: FontWeight.w500,
-    fontSize: 15.0,
-    color: Colors.black,
-  ),
-),
-
+                        notificationMessage,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 15.0,
+                          color: Colors.black,
+                        ),
+                      ),
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: Text(
@@ -216,41 +240,30 @@ switch (data['type']) {
       ),
     );
   }
+void _updateNotificationWithCollection(String docId, String? postId) async {
+  // If the postId is null, we can't determine the collection
+  if (postId == null) return;
 
-  // Helper method to update legacy notifications
-  Future<void> _updateNotificationWithCollection(
-      String notificationId, String? postId) async {
-    if (postId == null) return;
+  // Fetch the post from the relevant collection (Lost & Found, Peer Assistance, etc.)
+  final postRef = FirebaseFirestore.instance.collection('posts').doc(postId);
+  final postSnapshot = await postRef.get();
 
-    try {
-      List<String> collections = [
-        'lostfoundposts',
-        'Peerposts',
-        'Eventposts',
-        'Surveyposts'
-      ];
-
-      for (String collection in collections) {
-        DocumentSnapshot postDoc = await FirebaseFirestore.instance
-    .collection(collection)
-    .doc("All")
-    .collection("posts")
-    .doc(postId)
-    .get();
-
-
-        if (postDoc.exists) {
-          await FirebaseFirestore.instance
-              .collection('notifications')
-              .doc(notificationId)
-              .update({'collection': collection});
-          break;
-        }
-      }
-    } catch (e) {
-      // Silent error handling
-    }
+  if (!postSnapshot.exists) {
+    return;
   }
+
+  // Assuming each post has a 'collection' field to identify its type
+  final postData = postSnapshot.data() as Map<String, dynamic>;
+  final collectionName = postData['collection'];
+
+  if (collectionName != null) {
+    // Update the notification with the collection name if missing
+    FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(docId)
+        .update({'collection': collectionName});
+  }
+}
 
   // Helper function to format timestamp in a user-friendly way
   String _getFormattedTimestamp(DateTime dateTime) {
@@ -319,8 +332,9 @@ switch (data['type']) {
     final unreadNotifications = await FirebaseFirestore.instance
         .collection('notifications')
         .where('receiverId', isEqualTo: userId)
-        .where('isRead', isEqualTo: false)
         .where('receiverId', isEqualTo: null)
+        .where('isRead', isEqualTo: false)
+        
         .get();
 
     for (var doc in unreadNotifications.docs) {

@@ -181,104 +181,233 @@ class _PostCardState extends State<PostCard> {
     }
     super.dispose();
   }
+  Map<String, List<String>> categoryKeywords = {
+  "Electronics": [
+    "phone", "laptop", "charger", "headphones", "camera", "tablet", "tv", "watch", "smartphone", "speaker", "earbuds", "keyboard", "mouse", "monitor", "power bank", "wireless"
+  ],
+  "Clothes & Bags": [
+    "shirt", "pants", "jacket", "bag", "dress", "shoes", "coat", "jeans", "t-shirt", "sweater", "scarf", "suit", "hat", "gloves", "skirt", "shorts", "sweatshirt"
+  ],
+  "Official Documents": [
+    "ID", "passport", "certificate", "degree", "license", "document", "visa", "contract", "papers", "birth certificate", "government ID", "application form"
+  ],
+  "Wallets & Keys": [
+    "wallet", "keys", "purse", "credit card", "keychain", "car keys", "house keys", "money", "coin", "billfold", "ID card", "coins"
+  ],
+  "Books": [
+    "book", "novel", "textbook", "journal", "literature", "e-book", "comics", "story", "guide", "manual", "magazine", "paperback", "hardcover", "dictionary", "encyclopedia"
+  ],
+  "Stationery & Supplies": [
+    "pen", "notebook", "marker", "sticky notes", "eraser", "pencil", "ruler", "stapler", "highlighter", "paper clips", "folder", "calculator", "scissors", "glue", "tape", "post-it", "whiteboard"
+  ],
+  "Miscellaneous": [
+    "found", "misc", "random", "lost", "other", "unique", "special", "unidentified", "unknown", "something", "anything"
+  ]
+};
 
+// Step 2: Create a Function to Manually Categorize the Post
+String _manualCategorizePost(String postText) {
+  postText = postText.toLowerCase(); // Convert to lowercase to make the check case-insensitive
+
+  // Check each category for relevant keywords
+  for (var category in categoryKeywords.keys) {
+    for (var keyword in categoryKeywords[category]!) {
+      if (postText.contains(keyword.toLowerCase())) {
+        return category; // Return the category if a keyword is found
+      }
+    }
+  }
+
+  return "Miscellaneous"; // If no match, return Miscellaneous
+}
+  
   Future<String> _classifyPostWithHuggingFace(String postText) async {
-    final url = Uri.parse(
-        "https://api-inference.huggingface.co/models/facebook/bart-large-mnli");
-    final headers = {
-      "Authorization": "Bearer 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",
-      "Content-Type": "application/json"
-    };
+  final url = Uri.parse("https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
 
-    final body = jsonEncode({
-      "inputs": postText,
-      "parameters": {
-        "candidate_labels": [
-          "Electronics",
-          "Clothes & Bags",
-          "Official Documents",
-          "Books",
-          "Wallets & Keys",
-          "Stationery & Supplies",
-          "Miscellaneous"
-        ]
-      }
-    });
+  final headers = {
+    "Authorization": "Bearer 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",
+    "Content-Type": "application/json; charset=UTF-8" 
+  };
 
-    try {
-      final response = await http.post(url, headers: headers, body: body);
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        List<dynamic> labels = responseData["labels"];
-        List<dynamic> scores = responseData["scores"];
-
-        if (labels.isNotEmpty && scores.isNotEmpty) {
-          String bestCategory = labels[0];
-          double confidence = scores[0];
-          return confidence > 0.3 ? bestCategory : "Miscellaneous";
-        }
-      }
-    } catch (e) {
-      print("Hugging Face API Exception: $e");
+  final body = jsonEncode({
+    "inputs": postText,
+    "parameters": {
+      "candidate_labels": [
+        "Electronics",
+        "Clothes & Bags",
+        "Official Documents",
+        "Wallets & Keys",
+        "Books",
+        "Stationery & Supplies",
+        "Miscellaneous"
+      ],
+      "hypothesis_template": "This item is related to {}."
     }
-    return "Miscellaneous";
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+
+    // Check the response status code
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+
+      // Print the entire response to debug
+      print("Response Data: $responseData");
+
+      List<dynamic> labels = responseData["labels"];
+      List<dynamic> scores = responseData["scores"];
+
+      // Print the labels and scores for debugging
+      print("Labels: $labels");
+      print("Scores: $scores");
+
+      if (labels.isNotEmpty && scores.isNotEmpty) {
+        String bestCategory = "Miscellaneous";
+        double bestConfidence = 0.0;
+
+        for (int i = 0; i < labels.length; i++) {
+          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+            bestCategory = labels[i];
+            bestConfidence = scores[i];
+          }
+        }
+
+        if (bestConfidence < 0.2) {
+          return _manualCategorizePost(postText);
+        }
+
+        return bestCategory;
+      }
+    } else {
+      // If response code is not 200, print the error details
+      print("Error: Received non-200 response code: ${response.statusCode}");
+      print("Response body: ${response.body}");
+    }
+  } catch (e) {
+    print("Hugging Face API Exception: $e");
   }
 
-  Future<String> _classifyPeerAssistancePost(String postText) async {
-    final url = Uri.parse(
-        "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
-    final headers = {
-      "Authorization": "Bearer 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",
-      "Content-Type": "application/json"
-    };
+  return "Miscellaneous";
+}
 
-    final body = jsonEncode({
-      "inputs": postText,
-      "parameters": {
-        "candidate_labels": [
-          "Computer Science",
-          "Electrical Engineering",
-          "Education & Physical Education",
-          "Business",
-          "Mathematics",
-          "Media",
-          "Miscellaneous"
-        ],
-        "hypothesis_template": "This post is related to {}."
+
+final Map<String, List<String>> keywordMap = {
+  "Computer Science": [
+    "programming", "code", "coding", "flutter", "java", "python", "c++", "software",
+    "android", "ios", "web", "database", "sql", "nosql", "API", "frontend", "backend",
+    "AI", "ML", "artificial intelligence", "machine learning", "data science",
+    "devops", "cloud", "firebase", "github", "react", "angular", "docker"
+  ],
+  "Electrical Engineering": [
+    "circuit", "voltage", "current", "resistor", "capacitor", "inductor", "oscilloscope",
+    "power", "transformer", "electricity", "watt", "ampere", "signal", "microcontroller",
+    "arduino", "embedded", "analog", "digital", "transistor", "diode", "sensor", "relay"
+  ],
+  "Education & Physical Education": [
+    "teaching", "teacher", "student", "lecture", "class", "education", "learning", "study",
+    "assignment", "course", "school", "university", "PE", "sports", "exercise", "training",
+    "coaching", "fitness", "health", "activity", "tournament", "competition", "curriculum"
+  ],
+  "Business": [
+    "business", "startup", "entrepreneur", "finance", "marketing", "sales", "customer",
+    "strategy", "investment", "money", "profit", "loss", "budget", "HR", "human resources",
+    "management", "economy", "commerce", "pitch", "project", "advertising", "brand"
+  ],
+  "Mathematics": [
+    "algebra", "calculus", "geometry", "statistics", "math", "mathematics", "equation",
+    "function", "integral", "derivative", "vector", "matrix", "probability", "graph",
+    "set theory", "number", "trigonometry", "logarithm", "theorem", "prime", "formula"
+  ],
+  "Media": [
+    "media", "journalism", "news", "anchor", "editor", "editing", "film", "movie", "cinema",
+    "photography", "camera", "shot", "clip", "video", "recording", "script", "broadcast",
+    "radio", "tv", "advertisement", "press", "social media", "influencer", "interview"
+  ]
+};
+Future<String> _handleLowConfidence(String postText) async {
+  final lowerText = postText.toLowerCase();
+
+  for (var entry in keywordMap.entries) {
+    for (var keyword in entry.value) {
+      if (lowerText.contains(keyword.toLowerCase())) {
+        print("Keyword match found: '${keyword}' → Category: ${entry.key}");
+        return entry.key;
       }
-    });
-
-    try {
-      final response = await http.post(url, headers: headers, body: body);
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        List<dynamic> labels = responseData["labels"];
-        List<dynamic> scores = responseData["scores"];
-
-        if (labels.isNotEmpty && scores.isNotEmpty) {
-          String bestCategory = "Miscellaneous";
-          double bestConfidence = 0.0;
-
-          for (int i = 0; i < labels.length; i++) {
-            if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
-              bestCategory = labels[i];
-              bestConfidence = scores[i];
-            }
-          }
-
-          if (bestConfidence < 0.2) {
-            bestCategory = "Miscellaneous";
-          }
-
-          return bestCategory;
-        }
-      }
-    } catch (e) {
-      print("Hugging Face API Exception: $e");
     }
-    return "Miscellaneous";
   }
 
+  print("No keyword match found. Defaulting to 'Miscellaneous'");
+  return "Miscellaneous";
+}
+
+Future<String> _classifyPeerAssistancePost(String postText) async {
+  final url = Uri.parse(
+      "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
+  final headers = {
+    "Authorization": "Bearer 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",
+    "Content-Type": "application/json; charset=UTF-8" // Correct content-type
+  };
+
+  final body = jsonEncode({
+    "inputs": postText,
+    "parameters": {
+      "candidate_labels": [
+        "Computer Science",
+        "Electrical Engineering",
+        "Education & Physical Education",
+        "Business",
+        "Mathematics",
+        "Media",
+        "Miscellaneous"
+      ],
+      "hypothesis_template": "This post is related to {}."
+    }
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+
+    // Print the response status and body for debugging
+    print("Response Status Code: ${response.statusCode}");
+    print("Response Body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      List<dynamic> labels = responseData["labels"];
+      List<dynamic> scores = responseData["scores"];
+
+      // Print the labels and scores for debugging
+      print("Labels: $labels");
+      print("Scores: $scores");
+
+      if (labels.isNotEmpty && scores.isNotEmpty) {
+        String bestCategory = "Miscellaneous";
+        double bestConfidence = 0.0;
+
+        for (int i = 0; i < labels.length; i++) {
+          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+            bestCategory = labels[i];
+            bestConfidence = scores[i];
+          }
+        }
+
+        if (bestConfidence < 0.2) {
+           return await _handleLowConfidence(postText);
+        }
+
+        return bestCategory;
+      }
+    } else {
+      print("Error: Received non-200 response code: ${response.statusCode}");
+      print("Response body: ${response.body}");
+    }
+  } catch (e) {
+    print("Hugging Face API Exception: $e");
+  }
+
+  return "Miscellaneous";
+}
   void _fetchUsername() {
     final sub = FirebaseFirestore.instance
         .collection('users')

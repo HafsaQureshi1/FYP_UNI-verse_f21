@@ -25,32 +25,55 @@ class _PeerAdminState extends State<PeerAdmin> {
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
+final Map<String, List<String>> keywordMap = {
+  "Computer Science": [
+    "programming", "code", "coding", "flutter", "java", "python", "c++", "software",
+    "android", "ios", "web", "database", "sql", "nosql", "API", "frontend", "backend",
+    "AI", "ML", "artificial intelligence", "machine learning", "data science",
+    "devops", "cloud", "firebase", "github", "react", "angular", "docker"
+  ],
+  "Electrical Engineering": [
+    "circuit", "voltage", "current", "resistor", "capacitor", "inductor", "oscilloscope",
+    "power", "transformer", "electricity", "watt", "ampere", "signal", "microcontroller",
+    "arduino", "embedded", "analog", "digital", "transistor", "diode", "sensor", "relay"
+  ],
+  "Education & Physical Education": [
+    "teaching", "teacher", "student", "lecture", "class", "education", "learning", "study",
+    "assignment", "course", "school", "university", "PE", "sports", "exercise", "training",
+    "coaching", "fitness", "health", "activity", "tournament", "competition", "curriculum"
+  ],
+  "Business": [
+    "business", "startup", "entrepreneur", "finance", "marketing", "sales", "customer",
+    "strategy", "investment", "money", "profit", "loss", "budget", "HR", "human resources",
+    "management", "economy", "commerce", "pitch", "project", "advertising", "brand"
+  ],
+  "Mathematics": [
+    "algebra", "calculus", "geometry", "statistics", "math", "mathematics", "equation",
+    "function", "integral", "derivative", "vector", "matrix", "probability", "graph",
+    "set theory", "number", "trigonometry", "logarithm", "theorem", "prime", "formula"
+  ],
+  "Media": [
+    "media", "journalism", "news", "anchor", "editor", "editing", "film", "movie", "cinema",
+    "photography", "camera", "shot", "clip", "video", "recording", "script", "broadcast",
+    "radio", "tv", "advertisement", "press", "social media", "influencer", "interview"
+  ]
+};
+Future<String> _handleLowConfidence(String postText) async {
+  final lowerText = postText.toLowerCase();
 
-  Map<String, String> categoryMapping = {
-    "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)":
-        "Computer Science & Computer Systems",
-    "Electronics & Circuits (Electrical Engineering)": "Electrical Engineering",
-    "Teaching Methods (Education & Physical Education)":
-        "Education & Physical Education",
-    "Business Strategy (Business Department)": "Business Department",
-    "Statistics & Calculus (Mathematics)": "Mathematics",
-    "Journalism & Broadcasting (Media & Communication)":
-        "Media & Communication",
-    "Miscellaneous": "Miscellaneous"
-  };
-
-  Future<String> _getUserProfilePicture(String userId) async {
-    try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .get();
-      return userDoc.data()?['profilePicture'] ?? '';
-    } catch (e) {
-      print("Error fetching profile picture: $e");
-      return '';
+  for (var entry in keywordMap.entries) {
+    for (var keyword in entry.value) {
+      if (lowerText.contains(keyword.toLowerCase())) {
+        print("Keyword match found: '${keyword}' → Category: ${entry.key}");
+        return entry.key;
+      }
     }
   }
+
+  print("No keyword match found. Defaulting to 'Miscellaneous'");
+  return "Miscellaneous";
+}
+
 Future<String> _classifyPeerAssistancePost(String postText) async {
   final url = Uri.parse(
       "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
@@ -103,7 +126,7 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
         }
 
         if (bestConfidence < 0.2) {
-          bestCategory = "Miscellaneous";
+           return await _handleLowConfidence(postText);
         }
 
         return bestCategory;
@@ -119,6 +142,31 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
   return "Miscellaneous";
 }
 
+  Map<String, String> categoryMapping = {
+    "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)":
+        "Computer Science & Computer Systems",
+    "Electronics & Circuits (Electrical Engineering)": "Electrical Engineering",
+    "Teaching Methods (Education & Physical Education)":
+        "Education & Physical Education",
+    "Business Strategy (Business Department)": "Business Department",
+    "Statistics & Calculus (Mathematics)": "Mathematics",
+    "Journalism & Broadcasting (Media & Communication)":
+        "Media & Communication",
+    "Miscellaneous": "Miscellaneous"
+  };
+
+  Future<String> _getUserProfilePicture(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      return userDoc.data()?['profilePicture'] ?? '';
+    } catch (e) {
+      print("Error fetching profile picture: $e");
+      return '';
+    }
+  }
 
   // Add toast notification method
   void _showToast(String message) {

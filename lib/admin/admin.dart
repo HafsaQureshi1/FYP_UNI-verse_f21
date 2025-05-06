@@ -181,7 +181,48 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
       print("Error fetching profile picture: $e");
       return '';
     }
-  }Future<String> _classifyPostWithHuggingFace(String postText) async {
+  }
+  Map<String, List<String>> categoryKeywords = {
+  "Electronics": [
+    "phone", "laptop", "charger", "headphones", "camera", "tablet", "tv", "watch", "smartphone", "speaker", "earbuds", "keyboard", "mouse", "monitor", "power bank", "wireless"
+  ],
+  "Clothes & Bags": [
+    "shirt", "pants", "jacket", "bag", "dress", "shoes", "coat", "jeans", "t-shirt", "sweater", "scarf", "suit", "hat", "gloves", "skirt", "shorts", "sweatshirt"
+  ],
+  "Official Documents": [
+    "ID", "passport", "certificate", "degree", "license", "document", "visa", "contract", "papers", "birth certificate", "government ID", "application form"
+  ],
+  "Wallets & Keys": [
+    "wallet", "keys", "purse", "credit card", "keychain", "car keys", "house keys", "money", "coin", "billfold", "ID card", "coins"
+  ],
+  "Books": [
+    "book", "novel", "textbook", "journal", "literature", "e-book", "comics", "story", "guide", "manual", "magazine", "paperback", "hardcover", "dictionary", "encyclopedia"
+  ],
+  "Stationery & Supplies": [
+    "pen", "notebook", "marker", "sticky notes", "eraser", "pencil", "ruler", "stapler", "highlighter", "paper clips", "folder", "calculator", "scissors", "glue", "tape", "post-it", "whiteboard"
+  ],
+  "Miscellaneous": [
+    "found", "misc", "random", "lost", "other", "unique", "special", "unidentified", "unknown", "something", "anything"
+  ]
+};
+
+// Step 2: Create a Function to Manually Categorize the Post
+String _manualCategorizePost(String postText) {
+  postText = postText.toLowerCase(); // Convert to lowercase to make the check case-insensitive
+
+  // Check each category for relevant keywords
+  for (var category in categoryKeywords.keys) {
+    for (var keyword in categoryKeywords[category]!) {
+      if (postText.contains(keyword.toLowerCase())) {
+        return category; // Return the category if a keyword is found
+      }
+    }
+  }
+
+  return "Miscellaneous"; // If no match, return Miscellaneous
+}
+  
+  Future<String> _classifyPostWithHuggingFace(String postText) async {
   final url = Uri.parse("https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
 
   final headers = {
@@ -234,7 +275,7 @@ class _LostFoundAdminState extends State<LostFoundAdmin> {
         }
 
         if (bestConfidence < 0.2) {
-          bestCategory = "Miscellaneous";
+          return _manualCategorizePost(postText);
         }
 
         return bestCategory;
