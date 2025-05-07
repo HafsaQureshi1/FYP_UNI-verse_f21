@@ -51,7 +51,7 @@ class FCMService {
   Future<String?> getAccessToken() async {
     try {
       final String serviceAccountJson = await rootBundle.loadString(
-          "assets/universe-123-firebase-adminsdk-dxv5x-586f17d46e.json");
+          "assets/universe-123-0dd7a38c9a54.json");
 
       final Map<String, dynamic> credentials = jsonDecode(serviceAccountJson);
       final accountCredentials =

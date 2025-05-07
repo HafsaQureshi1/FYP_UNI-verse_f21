@@ -8,7 +8,7 @@ class DialogflowService {
   final _projectId = 'chatbot-abif'; // Replace with your Dialogflow project ID
 
   Future<void> init() async {
-    final serviceAccount = await rootBundle.loadString('assets/chatbot-abif-563aa515c5fc.json');
+    final serviceAccount = await rootBundle.loadString('assets/chatbot-abif-e9e7a3b6c2e9.json');
     final credentials = ServiceAccountCredentials.fromJson(serviceAccount);
     _client = await clientViaServiceAccount(credentials, _scopes);
   }
