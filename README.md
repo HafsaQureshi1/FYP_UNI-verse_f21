@@ -17,11 +17,11 @@
 ---
 👨‍💻 Developed By
 
-    Hafsa Waseem
-    
+   **Hafsa Waseem**
+    Sadia Athar
     Maaz Bin Hassan
 
-    Sadia Athar
+  
 
 ## 🚀 Features
 
