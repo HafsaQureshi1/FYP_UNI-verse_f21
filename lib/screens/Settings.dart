@@ -3,7 +3,8 @@ import '../components/profileimage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/theme_provider.dart';
 import 'package:provider/provider.dart';
-import 'profile_page.dart'; // Add this import for ProfilePage
+import 'profile_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Add Firestore import
 
 class SettingsScreen extends StatelessWidget {
   final Function signOutFunction;
@@ -11,12 +12,31 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key, required this.signOutFunction})
       : super(key: key);
 
+  // Function to fetch user profile data
+  Future<String> _getUserName(String userId) async {
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (userDoc.exists) {
+        // Use 'username' field which is consistent with profile_page.dart
+        return userDoc['username'] ?? '';
+      } else {
+        return '';
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
     final userId = currentUser?.uid ?? '';
     final userEmail = currentUser?.email ?? 'User';
-    final userName = currentUser?.displayName ?? userEmail.split('@').first;
 
     // Access theme provider with Consumer instead of direct Provider.of
     return Consumer<ThemeProvider>(
@@ -42,41 +62,56 @@ class SettingsScreen extends StatelessWidget {
           ),
           body: Column(
             children: [
-              // User profile card at top
+              // User profile card at top with FutureBuilder
               Container(
                 color: const Color.fromARGB(255, 0, 58, 92),
                 padding: const EdgeInsets.only(bottom: 20.0),
                 child: Center(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      // Profile image
-                      Hero(
-                        tag: 'profileAvatar',
-                        child: ProfileAvatar(
-                          userId: userId,
-                          radius: 40,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      // User name
-                      Text(
-                        userName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      // User email
-                      Text(
-                        userEmail,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+                  child: FutureBuilder<String>(
+                    future: _getUserName(userId),
+                    builder: (context, snapshot) {
+                      // Default name fallback if data isn't available yet
+                      String displayName = userEmail.split('@').first;
+
+                      // If we have valid data, use the username from profile
+                      if (snapshot.hasData &&
+                          snapshot.data != null &&
+                          snapshot.data!.isNotEmpty) {
+                        displayName = snapshot.data!;
+                      }
+
+                      return Column(
+                        children: [
+                          const SizedBox(height: 10),
+                          // Profile image
+                          Hero(
+                            tag: 'profileAvatar',
+                            child: ProfileAvatar(
+                              userId: userId,
+                              radius: 40,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          // User name from Firestore
+                          Text(
+                            displayName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          // User email
+                          Text(
+                            userEmail,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -330,7 +365,88 @@ class SettingsScreen extends StatelessWidget {
                         ),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                         onTap: () {
-                          // Account settings functionality would go here
+                          // Show dialog with delete account option
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Account Options'),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red[50],
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(
+                                        Icons.delete_forever,
+                                        color: Colors.red,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    title: const Text(
+                                      'Delete Account',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    subtitle: const Text(
+                                      'Permanently delete your account and data',
+                                      style: TextStyle(fontSize: 13),
+                                    ),
+                                    onTap: () {
+                                      // Close the first dialog
+                                      Navigator.pop(context);
+
+                                      // Show confirmation dialog for account deletion
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Delete Account'),
+                                          content: const Text(
+                                              'Are you sure you want to permanently delete your account? This action cannot be undone.'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                // Account deletion logic would go here
+                                                Navigator.pop(context);
+                                                // Show feedback snackbar
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  const SnackBar(
+                                                      content: Text(
+                                                          'Account deletion request submitted')),
+                                                );
+                                              },
+                                              child: const Text('Delete'),
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: Colors.red,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Close'),
+                                ),
+                              ],
+                            ),
+                          );
                         },
                       ),
                     ),

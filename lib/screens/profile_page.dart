@@ -50,27 +50,49 @@ class _ProfilePageState extends State<ProfilePage> {
     user = _auth.currentUser;
 
     if (user != null) {
-      DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(user!.uid).get();
+      try {
+        DocumentSnapshot userDoc =
+            await _firestore.collection('users').doc(user!.uid).get();
 
-      if (userDoc.exists) {
-        String? roleFromDB = userDoc['role'] ?? '';
+        if (userDoc.exists) {
+          // Get data safely with null checks
+          final data = userDoc.data() as Map<String, dynamic>?;
+          if (data == null) return;
 
+          String? roleFromDB = data['role'] as String?;
+
+          if (mounted) {
+            setState(() {
+              // Safely access fields with null checks
+              usernameController.text = data['username'] as String? ?? '';
+              // Only try to access 'bio' if it exists in the document
+              bioController.text =
+                  data.containsKey('bio') ? (data['bio'] as String? ?? '') : '';
+              // Only try to access 'work' if it exists in the document
+              workController.text = data.containsKey('work')
+                  ? (data['work'] as String? ?? '')
+                  : '';
+              // Safely access profileImage
+              profileImageUrl = data['profileImage'] as String?;
+
+              // Set the department dropdown
+              String? deptFromDB = data['department'] as String?;
+              selectedDepartment =
+                  departments.contains(deptFromDB) ? deptFromDB : null;
+
+              List<String> validRoles = ['Student', 'Alumni'];
+              selectedRole =
+                  validRoles.contains(roleFromDB) ? roleFromDB : null;
+            });
+          }
+        }
+      } catch (e) {
+        print('Error fetching user data: $e');
+        // Show error in UI if needed
         if (mounted) {
-          setState(() {
-            usernameController.text = userDoc['username'] ?? '';
-            bioController.text = userDoc['bio'] ?? '';
-            workController.text = userDoc['work'] ?? '';
-            profileImageUrl = userDoc['profileImage'];
-
-            // Set the department dropdown
-            String? deptFromDB = userDoc['department'];
-            selectedDepartment =
-                departments.contains(deptFromDB) ? deptFromDB : null;
-
-            List<String> validRoles = ['Student', 'Alumni'];
-            selectedRole = validRoles.contains(roleFromDB) ? roleFromDB : null;
-          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error loading profile: ${e.toString()}")),
+          );
         }
       }
     }
