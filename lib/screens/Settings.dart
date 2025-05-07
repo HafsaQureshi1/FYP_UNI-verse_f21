@@ -495,6 +495,66 @@ class SettingsScreen extends StatelessWidget {
 
                     const SizedBox(height: 16),
 
+                    // SECURITY section header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 8),
+                      child: Text(
+                        'SECURITY',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[400]
+                              : Colors.grey[600],
+                        ),
+                      ),
+                    ),
+
+                    // Change password card
+                    Card(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      color: Theme.of(context).cardColor,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 6),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(40, 76, 175, 80),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.lock_outline,
+                            color: Color.fromARGB(255, 76, 175, 80),
+                            size: 24,
+                          ),
+                        ),
+                        title: const Text(
+                          'Change Password',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Update your account password',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () {
+                          // Password change functionality will be implemented later
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
                     // Information section header
                     Padding(
                       padding: const EdgeInsets.symmetric(
