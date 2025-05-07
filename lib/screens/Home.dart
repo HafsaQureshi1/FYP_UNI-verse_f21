@@ -1,5 +1,6 @@
-
 import 'package:flutter_application_1/screens/screenui.dart';
+import 'package:flutter_application_1/screens/Settings.dart'
+    as app_settings; // Add prefix to avoid ambiguity
 import 'package:flutter_application_1/components/search_results.dart';
 import 'package:geolocator/geolocator.dart';
 import '../components/postcard.dart';
@@ -15,6 +16,7 @@ import 'EventScreen.dart';
 import 'profile_page.dart';
 import 'createpost.dart';
 import '../main.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -80,25 +82,37 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
- Future<void> _signOut() async {
-  try {
-    final GoogleSignIn googleSignIn = GoogleSignIn(
-      clientId:
-          '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
-    );
-    await googleSignIn.signOut();
-    await FirebaseAuth.instance.signOut();
+  Future<void> _signOut() async {
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId:
+            '267004637492-iugmfvid1ca8prhuvkaflcbrtre7cibs.apps.googleusercontent.com',
+      );
+      await googleSignIn.signOut();
+      await FirebaseAuth.instance.signOut();
 
-    // Navigate to the sign-in screen and remove all previous routes
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => SignInPage()), // replace with your sign-in screen
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: ${e.toString()}')),
+      // Navigate to the sign-in screen and remove all previous routes
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+            builder: (context) =>
+                SignInPage()), // replace with your sign-in screen
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
+
+  void _openSettings() {
+    // Open settings as a full screen page with a simple route
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) =>
+            app_settings.SettingsScreen(signOutFunction: _signOut),
+      ),
     );
   }
-}
 
   PreferredSizeWidget _buildAppBar() {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -228,21 +242,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ProfilePage(),
-                ),
-              );
-            },
-            icon: const Icon(Icons.person, color: Colors.black),
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            constraints: const BoxConstraints(),
-          ),
-          IconButton(
-            onPressed: _signOut,
-            icon: const Icon(Icons.exit_to_app, color: Colors.black),
+            onPressed: _openSettings, // Changed to open settings
+            icon: const Icon(Icons.menu,
+                color: Colors.black), // Changed from settings icon to menu icon
             padding: const EdgeInsets.only(left: 8.0, right: 16.0),
             constraints: const BoxConstraints(),
           ),
@@ -551,7 +553,8 @@ class _CategoryChipsState extends State<CategoryChips> {
             margin: const EdgeInsets.symmetric(vertical: 4.0),
             padding: EdgeInsets.zero,
             decoration: BoxDecoration(
-              color: const Color.fromARGB(5, 255, 255, 255), // Very subtle background
+              color: const Color.fromARGB(
+                  5, 255, 255, 255), // Very subtle background
               border: Border(
                 bottom: BorderSide(
                   color: Colors.black.withOpacity(0.05),
