@@ -210,7 +210,14 @@ await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
               List<dynamic> options = surveyData['options'] ?? [];
               String imageUrl = surveyData['imageUrl'] ?? '';
               Timestamp? timestamp = surveyData['timestamp'];
-String location = surveyData['location'] ?? '';
+               String locationAddress = '';
+              if (surveyData['location'] != null &&
+                  surveyData['location'] is Map) {
+                final locationData =
+                    surveyData['location'] as Map<String, dynamic>;
+                locationAddress = locationData['address'] ?? '';
+              }
+
 String url = surveyData['url'] ?? '';
 
               return FutureBuilder<String>(
@@ -314,7 +321,7 @@ String url = surveyData['url'] ?? '';
                          
                          
                           
-                                                    if (location.isNotEmpty) ...[
+                                                    if (locationAddress.isNotEmpty) ...[
   const SizedBox(height: 8),
   Row(
     children: [
@@ -322,7 +329,7 @@ String url = surveyData['url'] ?? '';
       const SizedBox(width: 6),
       Expanded(
         child: Text(
-          location,
+          locationAddress,
           style: TextStyle(
             fontSize: 14,
             color: Colors.black87,

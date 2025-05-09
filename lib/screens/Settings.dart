@@ -5,7 +5,6 @@ import '../services/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'profile_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Add Firestore import
-
 class SettingsScreen extends StatelessWidget {
   final Function signOutFunction;
 
@@ -38,593 +37,516 @@ class SettingsScreen extends StatelessWidget {
     final userId = currentUser?.uid ?? '';
     final userEmail = currentUser?.email ?? 'User';
 
-    // Access theme provider with Consumer instead of direct Provider.of
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, _) {
-        return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          appBar: AppBar(
-            backgroundColor: const Color.fromARGB(255, 0, 58, 92),
-            elevation: 0,
-            title: const Text(
-              'Settings',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 0, 58, 92),
+        elevation: 0,
+        title: const Text(
+          'Settings',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Column(
+        children: [
+          // User profile card at top with FutureBuilder
+          Container(
+            color: const Color.fromARGB(255, 0, 58, 92),
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: Center(
+              child: FutureBuilder<String>(
+                future: _getUserName(userId),
+                builder: (context, snapshot) {
+                  // Default name fallback if data isn't available yet
+                  String displayName = userEmail.split('@').first;
+
+                  // If we have valid data, use the username from profile
+                  if (snapshot.hasData &&
+                      snapshot.data != null &&
+                      snapshot.data!.isNotEmpty) {
+                    displayName = snapshot.data!;
+                  }
+
+                  return Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      // Profile image
+                      Hero(
+                        tag: 'profileAvatar',
+                        child: ProfileAvatar(
+                          userId: userId,
+                          radius: 40,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      // User name from Firestore
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      // User email
+                      Text(
+                        userEmail,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-            // Removed profile icon from actions
           ),
-          body: Column(
-            children: [
-              // User profile card at top with FutureBuilder
-              Container(
-                color: const Color.fromARGB(255, 0, 58, 92),
-                padding: const EdgeInsets.only(bottom: 20.0),
-                child: Center(
-                  child: FutureBuilder<String>(
-                    future: _getUserName(userId),
-                    builder: (context, snapshot) {
-                      // Default name fallback if data isn't available yet
-                      String displayName = userEmail.split('@').first;
 
-                      // If we have valid data, use the username from profile
-                      if (snapshot.hasData &&
-                          snapshot.data != null &&
-                          snapshot.data!.isNotEmpty) {
-                        displayName = snapshot.data!;
-                      }
+          // Settings list
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const SizedBox(height: 16),
 
-                      return Column(
-                        children: [
-                          const SizedBox(height: 10),
-                          // Profile image
-                          Hero(
-                            tag: 'profileAvatar',
-                            child: ProfileAvatar(
-                              userId: userId,
-                              radius: 40,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          // User name from Firestore
-                          Text(
-                            displayName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          // User email
-                          Text(
-                            userEmail,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
+                // Settings section header - ACCOUNT
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 8),
+                  child: Text(
+                    'ACCOUNT',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+
+                // Profile settings card - Added this card before logout
+                Card(
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  color: Colors.white,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 6),
+                    leading: ProfileAvatar(
+                      userId: userId,
+                      radius: 20,
+                    ),
+                    title: const Text(
+                      'Profile',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'View and edit your profile',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ProfilePage(),
+                        ),
                       );
                     },
                   ),
                 ),
-              ),
 
-              // Settings list
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    const SizedBox(height: 16),
-
-                    // Settings section header - ACCOUNT
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
-                      child: Text(
-                        'ACCOUNT',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
-                        ),
+                // Logout card
+                Card(
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  color: Colors.white,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 6),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.exit_to_app,
+                        color: Colors.red,
+                        size: 24,
                       ),
                     ),
-
-                    // Profile settings card - Added this card before logout
-                    Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    title: const Text(
+                      'Logout',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                       ),
-                      color: Theme.of(context).cardColor,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 6),
-                        leading: ProfileAvatar(
-                          userId: userId,
-                          radius: 20,
-                        ),
-                        title: const Text(
-                          'Profile',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        subtitle: const Text(
-                          'View and edit your profile',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ProfilePage(),
+                    ),
+                    subtitle: const Text(
+                      'Sign out from your account',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () async {
+                      // Confirm logout
+                      final shouldLogout = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Logout'),
+                          content: const Text(
+                              'Are you sure you want to logout?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(context, false),
+                              child: const Text('Cancel'),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-
-                    // Logout card
-                    Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      color: Theme.of(context).cardColor,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 6),
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.red[50],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.exit_to_app,
-                            color: Colors.red,
-                            size: 24,
-                          ),
-                        ),
-                        title: const Text(
-                          'Logout',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        subtitle: const Text(
-                          'Sign out from your account',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () async {
-                          // Confirm logout
-                          final shouldLogout = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Logout'),
-                              content: const Text(
-                                  'Are you sure you want to logout?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Logout'),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.red,
-                                  ),
-                                ),
-                              ],
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Logout'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
                             ),
-                          );
-
-                          if (shouldLogout == true) {
-                            Navigator.pop(context); // Close the settings screen
-                            signOutFunction(); // Call the original logout function
-                          }
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // App preferences section header
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
-                      child: Text(
-                        'APP PREFERENCES',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
+                          ],
                         ),
+                      );
+
+                      if (shouldLogout == true) {
+                        Navigator.pop(context); // Close the settings screen
+                        signOutFunction(); // Call the original logout function
+                      }
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // App preferences section header
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 8),
+                  child: Text(
+                    'APP PREFERENCES',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+
+                // Account settings card
+                Card(
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  color: Colors.white,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 6),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(40, 0, 58, 92),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Color.fromARGB(255, 0, 58, 92),
+                        size: 24,
                       ),
                     ),
-
-                    // Appearance card with dark mode toggle
-                    Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    title: const Text(
+                      'Account',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                       ),
-                      color: Theme.of(context).cardColor,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
+                    ),
+                    subtitle: const Text(
+                      'Manage your account',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      // Show dialog with delete account option
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Account Options'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color:
-                                        const Color.fromARGB(40, 100, 100, 255),
+                                    color: Colors.red[50],
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: const Icon(
-                                    Icons.palette,
-                                    color: Color.fromARGB(255, 100, 100, 255),
+                                    Icons.delete_forever,
+                                    color: Colors.red,
                                     size: 24,
                                   ),
                                 ),
-                                const SizedBox(width: 16),
-                                const Text(
-                                  'Appearance',
+                                title: const Text(
+                                  'Delete Account',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Dark Mode',
-                                  style: TextStyle(fontSize: 15),
+                                subtitle: const Text(
+                                  'Permanently delete your account and data',
+                                  style: TextStyle(fontSize: 13),
                                 ),
-                                Switch(
-                                  value: themeProvider.isDarkMode,
-                                  onChanged: (_) {
-                                    themeProvider.toggleTheme();
-                                  },
-                                  activeColor:
-                                      const Color.fromARGB(255, 0, 58, 92),
-                                ),
-                              ],
+                                onTap: () {
+                                  // Close the first dialog
+                                  Navigator.pop(context);
+
+                                  // Show confirmation dialog for account deletion
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: const Text('Delete Account'),
+                                      content: const Text(
+                                          'Are you sure you want to permanently delete your account? This action cannot be undone.'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            // Account deletion logic would go here
+                                            Navigator.pop(context);
+                                            // Show feedback snackbar
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                  content: Text(
+                                                      'Account deletion request submitted')),
+                                            );
+                                          },
+                                          child: const Text('Delete'),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: Colors.red,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Close'),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-
-                    // Account settings card
-                    Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      color: Theme.of(context).cardColor,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 6),
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(40, 0, 58, 92),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            color: Color.fromARGB(255, 0, 58, 92),
-                            size: 24,
-                          ),
-                        ),
-                        title: const Text(
-                          'Account',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        subtitle: const Text(
-                          'Manage your account',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () {
-                          // Show dialog with delete account option
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Account Options'),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    leading: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red[50],
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(
-                                        Icons.delete_forever,
-                                        color: Colors.red,
-                                        size: 24,
-                                      ),
-                                    ),
-                                    title: const Text(
-                                      'Delete Account',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    subtitle: const Text(
-                                      'Permanently delete your account and data',
-                                      style: TextStyle(fontSize: 13),
-                                    ),
-                                    onTap: () {
-                                      // Close the first dialog
-                                      Navigator.pop(context);
-
-                                      // Show confirmation dialog for account deletion
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text('Delete Account'),
-                                          content: const Text(
-                                              'Are you sure you want to permanently delete your account? This action cannot be undone.'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              child: const Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                // Account deletion logic would go here
-                                                Navigator.pop(context);
-                                                // Show feedback snackbar
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  const SnackBar(
-                                                      content: Text(
-                                                          'Account deletion request submitted')),
-                                                );
-                                              },
-                                              child: const Text('Delete'),
-                                              style: TextButton.styleFrom(
-                                                foregroundColor: Colors.red,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Close'),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-                    // Notifications settings card
-                    Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      color: Theme.of(context).cardColor,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 6),
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(40, 0, 58, 92),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.notifications,
-                            color: Color.fromARGB(255, 0, 58, 92),
-                            size: 24,
-                          ),
-                        ),
-                        title: const Text(
-                          'Notifications',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        subtitle: const Text(
-                          'Customize your notification preferences',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () {
-                          // Notifications settings functionality would go here
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // SECURITY section header
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
-                      child: Text(
-                        'SECURITY',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
-                        ),
-                      ),
-                    ),
-
-                    // Change password card
-                    Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      color: Theme.of(context).cardColor,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 6),
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(40, 76, 175, 80),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.lock_outline,
-                            color: Color.fromARGB(255, 76, 175, 80),
-                            size: 24,
-                          ),
-                        ),
-                        title: const Text(
-                          'Change Password',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        subtitle: const Text(
-                          'Update your account password',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () {
-                          // Password change functionality will be implemented later
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Information section header
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
-                      child: Text(
-                        'INFORMATION',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
-                        ),
-                      ),
-                    ),
-
-                    // About app card
-                    Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      color: Theme.of(context).cardColor,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 6),
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(40, 0, 58, 92),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.info_outline,
-                            color: Color.fromARGB(255, 0, 58, 92),
-                            size: 24,
-                          ),
-                        ),
-                        title: const Text(
-                          'About App',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        subtitle: const Text(
-                          'Version information and details',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () {
-                          // Show about app dialog
-                          showDialog(
-                            context: context,
-                            builder: (context) => const AboutAppDialog(),
-                          );
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-                  ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+
+                // Notifications settings card
+                Card(
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  color: Colors.white,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 6),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(40, 0, 58, 92),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.notifications,
+                        color: Color.fromARGB(255, 0, 58, 92),
+                        size: 24,
+                      ),
+                    ),
+                    title: const Text(
+                      'Notifications',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Customize your notification preferences',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      // Notifications settings functionality would go here
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // SECURITY section header
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 8),
+                  child: Text(
+                    'SECURITY',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+
+                // Change password card
+                Card(
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  color: Colors.white,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 6),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(40, 76, 175, 80),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.lock_outline,
+                        color: Color.fromARGB(255, 76, 175, 80),
+                        size: 24,
+                      ),
+                    ),
+                    title: const Text(
+                      'Change Password',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Update your account password',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      // Password change functionality will be implemented later
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Information section header
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 8),
+                  child: Text(
+                    'INFORMATION',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+
+                // About app card
+                Card(
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  color: Colors.white,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 6),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(40, 0, 58, 92),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.info_outline,
+                        color: Color.fromARGB(255, 0, 58, 92),
+                        size: 24,
+                      ),
+                    ),
+                    title: const Text(
+                      'About App',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Version information and details',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      // Show about app dialog
+                      showDialog(
+                        context: context,
+                        builder: (context) => const AboutAppDialog(),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
@@ -729,7 +651,7 @@ class AboutAppDialog extends StatelessWidget {
                 radius: 38,
                 child: ClipOval(
                   child: Image.asset(
-                    'assets/images/logo.png', // Corrected path to match pubspec.yaml
+                    'assets/images/logo.png',
                     height: 70,
                     width: 70,
                     fit: BoxFit.cover,

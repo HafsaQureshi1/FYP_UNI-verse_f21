@@ -258,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       appBar: _buildAppBar(),
-      // Replace the direct _screens[_selectedIndex] with PageView
+      // Replace the direct _screens[_seldsectedIndex] with PageView
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,

@@ -15,21 +15,13 @@ import 'services/theme_provider.dart';
 // Import this for kIsWeb
 import 'dart:async';
 import 'screens/Home.dart'; // Replace with your actual SignInPage
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   static const List<String> _adminEmails = [
     'waseemhasnain373@gmail.com',
@@ -38,32 +30,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get theme provider
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
     return MaterialApp(
-      title: 'UNI-verse',
       debugShowCheckedModeBanner: false,
-      themeMode: themeProvider.themeMode,
+      title: 'UNI-verse',
       theme: ThemeData(
-        primaryColor: const Color.fromARGB(255, 0, 58, 92),
-        scaffoldBackgroundColor: Colors.grey[100],
-        cardColor: Colors.white,
-        brightness: Brightness.light,
-        // ...existing theme settings...
+        primarySwatch: Colors.deepPurple,
       ),
-      darkTheme: ThemeData(
-        primaryColor: const Color.fromARGB(255, 0, 58, 92),
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        cardColor: const Color(0xFF1E1E1E),
-        brightness: Brightness.dark,
-        // ...dark theme settings...
-      ),
-      home: const SignInPage(),
+      home: const CustomSplashScreen(),
     );
   }
 }
-
 class CustomSplashScreen extends StatefulWidget {
   const CustomSplashScreen({super.key});
 
