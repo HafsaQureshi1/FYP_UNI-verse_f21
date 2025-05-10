@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../components/profileimage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../services/theme_provider.dart';
-import 'package:provider/provider.dart';
 import 'profile_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Add Firestore import
 class SettingsScreen extends StatelessWidget {
@@ -375,48 +373,6 @@ class SettingsScreen extends StatelessWidget {
                           ],
                         ),
                       );
-                    },
-                  ),
-                ),
-
-                // Notifications settings card
-                Card(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 4),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  color: Colors.white,
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 6),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(40, 0, 58, 92),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.notifications,
-                        color: Color.fromARGB(255, 0, 58, 92),
-                        size: 24,
-                      ),
-                    ),
-                    title: const Text(
-                      'Notifications',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    subtitle: const Text(
-                      'Customize your notification preferences',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      // Notifications settings functionality would go here
                     },
                   ),
                 ),
