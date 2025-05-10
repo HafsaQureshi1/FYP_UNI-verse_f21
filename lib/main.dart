@@ -1063,7 +1063,7 @@ ScaffoldMessenger.of(context).showSnackBar(
   if (failedAttempts >= 3) {
     await userDocRef.set({
       'failedAttempts': failedAttempts,
-      'bannedUntil': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 2))),
+      'bannedUntil': Timestamp.fromDate(DateTime.now().add(const Duration(hours: 2))),
     });
   } else {
     await userDocRef.set({

@@ -3,6 +3,7 @@ import '../components/profileimage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'profile_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Add Firestore import
+import 'changepassword.dart';
 class SettingsScreen extends StatelessWidget {
   final Function signOutFunction;
 
@@ -394,47 +395,49 @@ class SettingsScreen extends StatelessWidget {
                 ),
 
                 // Change password card
-                Card(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 4),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  color: Colors.white,
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 6),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color.fromARGB(40, 76, 175, 80),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.lock_outline,
-                        color: Color.fromARGB(255, 76, 175, 80),
-                        size: 24,
-                      ),
-                    ),
-                    title: const Text(
-                      'Change Password',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    subtitle: const Text(
-                      'Update your account password',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      // Password change functionality will be implemented later
-                    },
-                  ),
-                ),
-
+               Card(
+  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+  elevation: 0,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12),
+  ),
+  color: Colors.white,
+  child: ListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+    leading: Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(40, 76, 175, 80),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Icon(
+        Icons.lock_outline,
+        color: Color.fromARGB(255, 76, 175, 80),
+        size: 24,
+      ),
+    ),
+    title: const Text(
+      'Change Password',
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+    subtitle: const Text(
+      'Update your account password',
+      style: TextStyle(fontSize: 13),
+    ),
+    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ChangePasswordScreen(),
+        ),
+      );
+    },
+  ),
+),
                 const SizedBox(height: 16),
 
                 // Information section header
