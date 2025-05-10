@@ -950,28 +950,27 @@ Future<void> _signIn() async {
     _isLoading = true;
   });
 
- final email = _emailController.text.trim();
-final password = _passwordController.text.trim();
+  final email = _emailController.text.trim();
+  final password = _passwordController.text.trim();
 
-// Check: Password must be at least 6 characters
-if (password.length < 6) {
-  setState(() => _isLoading = false);
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Password must be at least 6 characters.')),
-  );
-  return;
-}
+  // Check: Password must be at least 6 characters
+  if (password.length < 6) {
+    setState(() => _isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Password must be at least 6 characters.')),
+    );
+    return;
+  }
 
-// Check: Password must be alphanumeric
-final isAlphanumeric = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$');
-if (!isAlphanumeric.hasMatch(password)) {
-  setState(() => _isLoading = false);
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Password must be alphanumeric.')),
-  );
-  return;
-}
-
+  // Check: Password must be alphanumeric
+  final isAlphanumeric = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$');
+  if (!isAlphanumeric.hasMatch(password)) {
+    setState(() => _isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Password must be alphanumeric.')),
+    );
+    return;
+  }
 
   final userDocRef = FirebaseFirestore.instance.collection('login_attempts').doc(email);
 
@@ -984,11 +983,10 @@ if (!isAlphanumeric.hasMatch(password)) {
 
       if (bannedUntil != null && DateTime.now().isBefore(bannedUntil)) {
         setState(() => _isLoading = false);
-       final formattedTime = DateFormat('hh:mm a').format(bannedUntil);
-ScaffoldMessenger.of(context).showSnackBar(
-  SnackBar(content: Text('Account is banned. Try again after $formattedTime.')),
-);
-
+        final formattedTime = DateFormat('hh:mm a').format(bannedUntil);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Account is banned. Try again after $formattedTime.')),
+        );
         return;
       }
     }
@@ -1030,60 +1028,67 @@ ScaffoldMessenger.of(context).showSnackBar(
       }
     }
   } on FirebaseAuthException catch (e) {
-  String errorMessage;
+    String errorMessage;
 
-  switch (e.code) {
-    case 'user-not-found':
-      errorMessage = 'No account found with this email.';
-      break;
-    case 'wrong-password':
-      errorMessage = 'Incorrect password. Please try again.';
-      break;
-    case 'invalid-email':
-      errorMessage = 'Invalid email address format.';
-      break;
-    case 'user-disabled':
-      errorMessage = 'This account has been disabled.';
-      break;
-    case 'too-many-requests':
-      errorMessage = 'Too many attempts. Please try again later.';
-      break;
-    default:
-      errorMessage = 'Login failed. Please check your credentials.';
+    switch (e.code) {
+      case 'user-not-found':
+        errorMessage = 'No account found with this email.';
+        break;
+      case 'wrong-password':
+        errorMessage = 'Incorrect password. Please try again.';
+        break;
+      case 'invalid-email':
+        errorMessage = 'Invalid email address format.';
+        break;
+      case 'user-disabled':
+        errorMessage = 'This account has been disabled.';
+        break;
+      case 'too-many-requests':
+        errorMessage = 'Too many attempts. Please try again later.';
+        break;
+      default:
+        errorMessage = 'Login failed. Please check your credentials.';
+    }
+
+    // If the user exists, track failed login attempts
+    if (e.code == 'wrong-password') {
+      final snapshot = await userDocRef.get();
+      int failedAttempts = 0;
+
+      if (snapshot.exists) {
+        failedAttempts = snapshot.data()?['failedAttempts'] ?? 0;
+      }
+
+      failedAttempts += 1;
+
+      if (failedAttempts >= 3) {
+        await userDocRef.set({
+          'failedAttempts': failedAttempts,
+          'bannedUntil': Timestamp.fromDate(DateTime.now().add(const Duration(hours: 2))),
+        });
+      } else {
+        await userDocRef.set({
+          'failedAttempts': failedAttempts,
+        }, SetOptions(merge: true));
+      }
+
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$errorMessage (${failedAttempts}/3 attempts)')),
+      );
+    } else {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$errorMessage')),
+      );
+    }
+  } catch (e) {
+    setState(() => _isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('An unexpected error occurred. Please try again.')),
+    );
   }
-
-  // Track failed login attempts
-  final snapshot = await userDocRef.get();
-  int failedAttempts = 0;
-  if (snapshot.exists) {
-    failedAttempts = snapshot.data()?['failedAttempts'] ?? 0;
-  }
-  failedAttempts += 1;
-
-  if (failedAttempts >= 3) {
-    await userDocRef.set({
-      'failedAttempts': failedAttempts,
-      'bannedUntil': Timestamp.fromDate(DateTime.now().add(const Duration(hours: 2))),
-    });
-  } else {
-    await userDocRef.set({
-      'failedAttempts': failedAttempts,
-    }, SetOptions(merge: true));
-  }
-
-  setState(() => _isLoading = false);
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$errorMessage (${failedAttempts}/3 attempts)')),
-  );
-} catch (e) {
-  setState(() => _isLoading = false);
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('An unexpected error occurred. Please try again.')),
-  );
 }
-
-}
-
   void _showAccountSelection() {
     showModalBottomSheet(
       context: context,
