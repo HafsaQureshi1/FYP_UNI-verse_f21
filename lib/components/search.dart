@@ -78,21 +78,22 @@ if (data['location'] is String) {
       );
     }
   }
+String _getCollectionDisplayName2(String collection) {
+  final normalized = collection.toLowerCase().trim();
+  print("Normalized collection is: $normalized");
+if (normalized == 'lostfoundposts') return 'Lost & Found';
+  if (normalized == 'lostfoundposts/all/posts') return 'Lost & Found';
+  if (normalized == 'peerposts/all/posts') return 'Peer Assistance';
+    if (normalized == 'peerposts') return 'Peer Assistance';
+  if (normalized == 'eventposts/all/posts') return 'Events & Jobs';
+    if (normalized == 'eventposts') return 'Events & Jobs';
+  if (normalized == 'surveyposts/all/posts') return 'Surveys';
+    if (normalized == 'surveyposts') return 'Surveys';
 
-  String _getCollectionDisplayName(String collection) {
-    switch (collection) {
-      case 'lostfoundposts':
-        return 'Lost & Found';
-      case 'Peerposts':
-        return 'Peer Assistance';
-      case 'Eventposts':
-        return 'Events & Jobs';
-      case 'Surveyposts':
-        return 'Surveys';
-      default:
-        return collection;
-    }
-  }
+  print("⚠️ Unmatched collection: $collection");
+  return 'nknown Collection'; // Fallback
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +146,7 @@ if (data['location'] is String) {
                             Row(
                               children: [
                                 Text(
-                                  _getCollectionDisplayName(
+                                  _getCollectionDisplayName2(
                                       result['collection']),
                                   style: TextStyle(
                                     color: Theme.of(context).primaryColor,

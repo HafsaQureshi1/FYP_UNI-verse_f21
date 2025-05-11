@@ -1254,7 +1254,7 @@ Future<void> _signIn() async {
                 TextField(
   controller: _passwordController,
   decoration: InputDecoration(
-    labelText: 'Password (must be alphanumeric, contain a letter and a number)',
+    labelText: 'Password ',
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(20.0),
     ),

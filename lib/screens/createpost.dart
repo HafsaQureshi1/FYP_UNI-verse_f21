@@ -29,7 +29,7 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
   LatLng? _selectedLocation;
   String _selectedAddress = "No location selected";
   final TextEditingController _urlController = TextEditingController();
-
+  String? _profileImageUrl;
 
   String _username = '';
   String? _userId;
@@ -284,25 +284,26 @@ Future<void> _pickLocation() async {
     }
   }
   Future<void> _fetchUserInfo() async {
-    final User? currentUser = _auth.currentUser;
-    if (currentUser != null) {
-      setState(() {
-        _userId = currentUser.uid;
-      });
+  final User? currentUser = _auth.currentUser;
+  if (currentUser != null) {
+    setState(() {
+      _userId = currentUser.uid;
+    });
 
-      try {
-        final userDoc =
-            await _firestore.collection('users').doc(currentUser.uid).get();
-        if (userDoc.exists && mounted) {
-          setState(() {
-            _username = userDoc.data()?['username'] ?? 'User';
-          });
-        }
-      } catch (e) {
-        print('Error fetching user info: $e');
+    try {
+      final userDoc = 
+          await _firestore.collection('users').doc(currentUser.uid).get();
+      if (userDoc.exists && mounted) {
+        setState(() {
+          _username = userDoc.data()?['username'] ?? 'User';
+          _profileImageUrl = userDoc.data()?['profilePicture']; // Add this line
+        });
       }
+    } catch (e) {
+      print('Error fetching user info: $e');
     }
   }
+}
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -442,20 +443,23 @@ Future<void> _pickLocation() async {
                     child: Row(
                       children: [
                         // User avatar
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.grey[200],
-                          child: _userId != null
-                              ? ClipOval(
-                                  child: Image.network(
-                                    'https://example.com/profile.jpg', // Replace with actual profile image URL
-                                    fit: BoxFit.cover,
-                                    width: 40,
-                                    height: 40,
-                                  ),
-                                )
-                              : const Icon(Icons.person, color: Colors.grey),
-                        ),
+                       CircleAvatar(
+  radius: 20,
+  backgroundColor: Colors.grey[200],
+  child: _profileImageUrl != null
+      ? ClipOval(
+          child: Image.network(
+            _profileImageUrl!,
+            fit: BoxFit.cover,
+            width: 40,
+            height: 40,
+            errorBuilder: (context, error, stackTrace) {
+              return const Icon(Icons.person, color: Colors.grey);
+            },
+          ),
+        )
+      : const Icon(Icons.person, color: Colors.grey),
+),
                         const SizedBox(width: 12),
 
                         // Username and posting info

@@ -96,28 +96,41 @@ if (match(postContent) || match(location) || match(url)) {
 String _getCollectionDisplayName(String collection) {
   final normalized = collection.toLowerCase().trim();
   print("Normalized collection is: $normalized");
-
+if (normalized == 'lostfoundposts') return 'Lost & Found';
   if (normalized == 'lostfoundposts/all/posts') return 'Lost & Found';
   if (normalized == 'peerposts/all/posts') return 'Peer Assistance';
+    if (normalized == 'peerposts') return 'Peer Assistance';
   if (normalized == 'eventposts/all/posts') return 'Events & Jobs';
+    if (normalized == 'eventposts') return 'Events & Jobs';
   if (normalized == 'surveyposts/all/posts') return 'Surveys';
+    if (normalized == 'surveyposts') return 'Surveys';
 
   print("⚠️ Unmatched collection: $collection");
   return 'Unknown Collection'; // Fallback
 }
 
 
+
   void _navigateToPost(BuildContext context, Map<String, dynamic> post) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
-      ),
-      builder: (context) => PostDetailView(post: post),
-    );
-  }
+  // Ensure 'collection' is present or overridden if needed
+  final modifiedPost = {
+    ...post,
+    'collection': post['collection'] ?? 'unknown collection', // fallback if needed
+  };
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
+    ),
+    builder: (context) => PostDetailView(
+      post: modifiedPost,
+    ),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -410,11 +423,14 @@ final postRef = collectionName.contains('/')
 String _getCollectionDisplayName2(String collection) {
   final normalized = collection.toLowerCase().trim();
   print("Normalized collection is: $normalized");
-
+if (normalized == 'lostfoundposts') return 'Lost & Found';
   if (normalized == 'lostfoundposts/all/posts') return 'Lost & Found';
   if (normalized == 'peerposts/all/posts') return 'Peer Assistance';
+    if (normalized == 'peerposts') return 'Peer Assistance';
   if (normalized == 'eventposts/all/posts') return 'Events & Jobs';
+    if (normalized == 'eventposts') return 'Events & Jobs';
   if (normalized == 'surveyposts/all/posts') return 'Surveys';
+    if (normalized == 'surveyposts') return 'Surveys';
 
   print("⚠️ Unmatched collection: $collection");
   return 'Unknown Collection'; // Fallback

@@ -146,7 +146,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     controller: controller,
     obscureText: obscureText,
     validator: (value) {
-      if (value == null || value.isEmpty) return 'Please enter $label.toLowerCase()';
+      if (value == null || value.isEmpty) return 'Please enter your new password)';
       if (label == 'Confirm New Password' && value != _newPasswordController.text) {
         return 'Passwords do not match';
       }

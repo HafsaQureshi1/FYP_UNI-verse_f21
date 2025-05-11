@@ -226,6 +226,7 @@ String url = surveyData['url'] ?? '';
                   String profileImageUrl = profileSnapshot.data ?? '';
 
                   return Card(
+
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -339,31 +340,78 @@ String url = surveyData['url'] ?? '';
       ),
     ],
   ),
-],
-if (url.isNotEmpty) ...[
-  const SizedBox(height: 8),
-  Row(
+  Column(
     children: [
-      Icon(Icons.link, size: 18, color: _primaryColor),
+      Icon(Icons.location_on, size: 18, color: _primaryColor),
       const SizedBox(width: 6),
       Expanded(
-        child: InkWell(
-          onTap: () {
-            // Optional: You can open this URL using url_launcher if you want
-          },
-          child: Text(
-            url,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.blue,
-              decoration: TextDecoration.underline,
-            ),
+        child: Text(
+          locationAddress,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.black87,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
     ],
   ),
 ],
+const SizedBox(height: 8,),
+if (url.isNotEmpty) ...[
+  const SizedBox(height: 8),
+  Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(Icons.link, size: 18, color: _primaryColor),
+      const SizedBox(width: 6),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: () {
+                // You can open the URL using url_launcher here
+              },
+              child: Text(
+                url,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+                softWrap: true,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Accepted only",
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              "- form.google.com",
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              "- typeform.com",
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              "- forms.office.com",
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+    ],
+  ),
+],
+
 
                           ...options.map((option) => Padding(
                                 padding:
