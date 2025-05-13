@@ -578,10 +578,10 @@ class _SignUpPageState extends State<SignUpPage> {
   final password = _passwordController.text.trim();
 
   // Check: Password must be at least 6 characters
-  if (password.length < 6) {
+  if (password.length < 12) {
     setState(() => _isLoading = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password must be at least 6 characters.')),
+      const SnackBar(content: Text('Password must be at least 12 characters.')),
     );
     return;
   }
@@ -954,10 +954,10 @@ Future<void> _signIn() async {
   final password = _passwordController.text.trim();
 
   // Check: Password must be at least 6 characters
-  if (password.length < 6) {
+  if (password.length < 12) {
     setState(() => _isLoading = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password must be at least 6 characters.')),
+      const SnackBar(content: Text('Password must be at least 12 characters.')),
     );
     return;
   }

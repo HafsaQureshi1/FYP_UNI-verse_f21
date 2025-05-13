@@ -68,10 +68,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       
       // Check if password meets required criteria
       String newPassword = _newPasswordController.text;
-      if (newPassword.length < 6) {
+      if (newPassword.length < 12) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password must be at least 6 characters')),
+          const SnackBar(content: Text('Password must be at least 12 characters')),
         );
         return;
       }
@@ -228,7 +228,7 @@ Widget build(BuildContext context) {
                             controller: _newPasswordController,
                             obscureText: _obscureNewPassword,
                             label: 'New Password',
-                            hintText: 'Min. 6 characters, alphanumeric',
+                            hintText: 'Min. 12 characters, alphanumeric',
                             onToggle: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
                           ),
                           const SizedBox(height: 20),
