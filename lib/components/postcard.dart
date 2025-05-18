@@ -11,6 +11,8 @@ import 'package:intl/intl.dart';
 import 'profileimage.dart';
 import 'image_viewer_screen.dart';
 import '../screens/user_profile_view.dart'; // Make sure this import is correct
+import '../screens/surveyResponseScreen.dart'; // Import the survey response screen
+import '../screens/SurveyResultsScreen.dart'; // Add this import for the results screen
 
 class PostCard extends StatefulWidget {
   final String postId;
@@ -49,6 +51,8 @@ class _PostCardState extends State<PostCard> {
   String? profileImageUrl;
   String currentUsername = '';
   String? imageUrl;
+  int responseCount = 0;
+  bool hasActualForm = false; // Keep track of survey form
 
   // Show user profile in a popup dialog
   void _showUserProfile(BuildContext context) {
@@ -66,6 +70,25 @@ class _PostCardState extends State<PostCard> {
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
     likeCount = widget.likes;
     isOwner = currentUserId == widget.userId;
+
+    // Check if this is a survey form post at initialization
+    if (widget.collectionName.contains("Surveyposts")) {
+      FirebaseFirestore.instance
+          .collection(_getCollectionPath())
+          .doc(widget.postId)
+          .get()
+          .then((doc) {
+        if (doc.exists && mounted) {
+          final data = doc.data()!;
+          setState(() {
+            // Only set hasActualForm to true if it has questions array and isSurveyForm flag
+            hasActualForm = data['isSurveyForm'] == true &&
+                data['questions'] != null &&
+                (data['questions'] as List).isNotEmpty;
+          });
+        }
+      });
+    }
 
     _initializeData();
   }
@@ -105,6 +128,7 @@ class _PostCardState extends State<PostCard> {
         _fetchImageUrl(),
         _fetchCommentCount(),
         _fetchLocation(),
+        _fetchSurveyResponseCount(), // Add this line to fetch response count
       ] as Iterable<Future>);
     } catch (e) {
       print("Error initializing post data: $e");
@@ -114,6 +138,42 @@ class _PostCardState extends State<PostCard> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // Add this new method to fetch survey response count
+  Future<void> _fetchSurveyResponseCount() async {
+    if (!widget.collectionName.contains("Surveyposts")) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection(_getCollectionPath())
+          .doc(widget.postId)
+          .collection('responses')
+          .count()
+          .get();
+
+      if (mounted) {
+        setState(() {
+          responseCount = snapshot.count ?? 0;
+        });
+      }
+    } catch (e) {
+      print("Error fetching survey response count: $e");
+    }
+  }
+
+  // Add this new method to navigate to the survey results screen
+  void _viewSurveyResults(BuildContext context) {
+    if (widget.collectionName.contains("Surveyposts")) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => SurveyResultsScreen(
+            surveyId: widget.postId,
+            collectionPath: _getCollectionPath(),
+          ),
+        ),
+      );
     }
   }
 
@@ -181,233 +241,454 @@ class _PostCardState extends State<PostCard> {
     }
     super.dispose();
   }
+
   Map<String, List<String>> categoryKeywords = {
-  "Electronics": [
-    "phone", "laptop", "charger", "headphones", "camera", "tablet", "tv", "watch", "smartphone", "speaker", "earbuds", "keyboard", "mouse", "monitor", "power bank", "wireless"
-  ],
-  "Clothes & Bags": [
-    "shirt", "pants", "jacket", "bag", "dress", "shoes", "coat", "jeans", "t-shirt", "sweater", "scarf", "suit", "hat", "gloves", "skirt", "shorts", "sweatshirt"
-  ],
-  "Official Documents": [
-    "Student id ","Student id card","ID", "passport", "certificate", "degree", "license", "document", "visa", "contract", "papers", "birth certificate", "government ID", "application form"
-  ],
-  "Wallets & Keys": [
-    "wallet", "keys", "purse", "credit card", "keychain", "car keys", "house keys", "money", "coin", "billfold", "ID card", "coins"
-  ],
-  "Books": [
-    "book", "novel", "textbook", "journal", "literature", "e-book", "comics", "story", "guide", "manual", "magazine", "paperback", "hardcover", "dictionary", "encyclopedia"
-  ],
-  "Stationery & Supplies": [
-    "pen", "notebook", "marker", "sticky notes", "eraser", "pencil", "ruler", "stapler", "highlighter", "paper clips", "folder", "calculator", "scissors", "glue", "tape", "post-it", "whiteboard"
-  ],
-  "Miscellaneous": [
-    "found", "misc", "random", "lost", "other", "unique", "special", "unidentified", "unknown", "something", "anything"
-  ]
-};
+    "Electronics": [
+      "phone",
+      "laptop",
+      "charger",
+      "headphones",
+      "camera",
+      "tablet",
+      "tv",
+      "watch",
+      "smartphone",
+      "speaker",
+      "earbuds",
+      "keyboard",
+      "mouse",
+      "monitor",
+      "power bank",
+      "wireless"
+    ],
+    "Clothes & Bags": [
+      "shirt",
+      "pants",
+      "jacket",
+      "bag",
+      "dress",
+      "shoes",
+      "coat",
+      "jeans",
+      "t-shirt",
+      "sweater",
+      "scarf",
+      "suit",
+      "hat",
+      "gloves",
+      "skirt",
+      "shorts",
+      "sweatshirt"
+    ],
+    "Official Documents": [
+      "Student id ",
+      "Student id card",
+      "ID",
+      "passport",
+      "certificate",
+      "degree",
+      "license",
+      "document",
+      "visa",
+      "contract",
+      "papers",
+      "birth certificate",
+      "government ID",
+      "application form"
+    ],
+    "Wallets & Keys": [
+      "wallet",
+      "keys",
+      "purse",
+      "credit card",
+      "keychain",
+      "car keys",
+      "house keys",
+      "money",
+      "coin",
+      "billfold",
+      "ID card",
+      "coins"
+    ],
+    "Books": [
+      "book",
+      "novel",
+      "textbook",
+      "journal",
+      "literature",
+      "e-book",
+      "comics",
+      "story",
+      "guide",
+      "manual",
+      "magazine",
+      "paperback",
+      "hardcover",
+      "dictionary",
+      "encyclopedia"
+    ],
+    "Stationery & Supplies": [
+      "pen",
+      "notebook",
+      "marker",
+      "sticky notes",
+      "eraser",
+      "pencil",
+      "ruler",
+      "stapler",
+      "highlighter",
+      "paper clips",
+      "folder",
+      "calculator",
+      "scissors",
+      "glue",
+      "tape",
+      "post-it",
+      "whiteboard"
+    ],
+    "Miscellaneous": [
+      "found",
+      "misc",
+      "random",
+      "lost",
+      "other",
+      "unique",
+      "special",
+      "unidentified",
+      "unknown",
+      "something",
+      "anything"
+    ]
+  };
 
 // Step 2: Create a Function to Manually Categorize the Post
-String _manualCategorizePost(String postText) {
-  postText = postText.toLowerCase(); // Convert to lowercase to make the check case-insensitive
+  String _manualCategorizePost(String postText) {
+    postText = postText
+        .toLowerCase(); // Convert to lowercase to make the check case-insensitive
 
-  // Check each category for relevant keywords
-  for (var category in categoryKeywords.keys) {
-    for (var keyword in categoryKeywords[category]!) {
-      if (postText.contains(keyword.toLowerCase())) {
-        return category; // Return the category if a keyword is found
+    // Check each category for relevant keywords
+    for (var category in categoryKeywords.keys) {
+      for (var keyword in categoryKeywords[category]!) {
+        if (postText.contains(keyword.toLowerCase())) {
+          return category; // Return the category if a keyword is found
+        }
       }
     }
+
+    return "Miscellaneous"; // If no match, return Miscellaneous
   }
 
-  return "Miscellaneous"; // If no match, return Miscellaneous
-}
-  
   Future<String> _classifyPostWithHuggingFace(String postText) async {
-  final url = Uri.parse("https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
+    final url = Uri.parse(
+        "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
 
-  final headers = {
-    "Authorization": "Bearer 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",
-    "Content-Type": "application/json; charset=UTF-8" 
-  };
+    final headers = {
+      "Authorization": "Bearer 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",
+      "Content-Type": "application/json; charset=UTF-8"
+    };
 
-  final body = jsonEncode({
-    "inputs": postText,
-    "parameters": {
-      "candidate_labels": [
-        "Electronics",
-        "Clothes & Bags",
-        "Official Documents",
-        "Wallets & Keys",
-        "Books",
-        "Stationery & Supplies",
-        "Miscellaneous"
-      ],
-      "hypothesis_template": "This item is related to {}."
-    }
-  });
+    final body = jsonEncode({
+      "inputs": postText,
+      "parameters": {
+        "candidate_labels": [
+          "Electronics",
+          "Clothes & Bags",
+          "Official Documents",
+          "Wallets & Keys",
+          "Books",
+          "Stationery & Supplies",
+          "Miscellaneous"
+        ],
+        "hypothesis_template": "This item is related to {}."
+      }
+    });
 
-  try {
-    final response = await http.post(url, headers: headers, body: body);
+    try {
+      final response = await http.post(url, headers: headers, body: body);
 
-    // Check the response status code
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
+      // Check the response status code
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
 
-      // Print the entire response to debug
-      print("Response Data: $responseData");
+        // Print the entire response to debug
+        print("Response Data: $responseData");
 
-      List<dynamic> labels = responseData["labels"];
-      List<dynamic> scores = responseData["scores"];
+        List<dynamic> labels = responseData["labels"];
+        List<dynamic> scores = responseData["scores"];
 
-      // Print the labels and scores for debugging
-      print("Labels: $labels");
-      print("Scores: $scores");
+        // Print the labels and scores for debugging
+        print("Labels: $labels");
+        print("Scores: $scores");
 
-      if (labels.isNotEmpty && scores.isNotEmpty) {
-        String bestCategory = "Miscellaneous";
-        double bestConfidence = 0.0;
+        if (labels.isNotEmpty && scores.isNotEmpty) {
+          String bestCategory = "Miscellaneous";
+          double bestConfidence = 0.0;
 
-        for (int i = 0; i < labels.length; i++) {
-          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
-            bestCategory = labels[i];
-            bestConfidence = scores[i];
+          for (int i = 0; i < labels.length; i++) {
+            if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+              bestCategory = labels[i];
+              bestConfidence = scores[i];
+            }
           }
-        }
 
-        if (bestConfidence < 0.3) {
-          return _manualCategorizePost(postText);
-        }
-
-        return bestCategory;
-      }
-    } else {
-      // If response code is not 200, print the error details
-      print("Error: Received non-200 response code: ${response.statusCode}");
-      print("Response body: ${response.body}");
-    }
-  } catch (e) {
-    print("Hugging Face API Exception: $e");
-  }
-
-  return "Miscellaneous";
-}
-
-
-final Map<String, List<String>> keywordMap = {
-  "Computer Science": [
-    "programming", "code", "coding", "flutter", "java", "python", "c++", "software",
-    "android", "ios", "web", "database", "sql", "nosql", "API", "frontend", "backend",
-    "AI", "ML", "artificial intelligence", "machine learning", "data science",
-    "devops", "cloud", "firebase", "github", "react", "angular", "docker"
-  ],
-  "Electrical Engineering": [
-    "circuit", "voltage", "current", "resistor", "capacitor", "inductor", "oscilloscope",
-    "power", "transformer", "electricity", "watt", "ampere", "signal", "microcontroller",
-    "arduino", "embedded", "analog", "digital", "transistor", "diode", "sensor", "relay"
-  ],
-  "Education & Physical Education": [
-    "teaching", "teacher", "student", "lecture", "class", "education", "learning", "study",
-    "assignment", "course", "school", "university", "PE", "sports", "exercise", "training",
-    "coaching", "fitness", "health", "activity", "tournament", "competition", "curriculum"
-  ],
-  "Business": [
-    "business", "startup", "entrepreneur", "finance", "marketing", "sales", "customer",
-    "strategy", "investment", "money", "profit", "loss", "budget", "HR", "human resources",
-    "management", "economy", "commerce", "pitch", "project", "advertising", "brand"
-  ],
-  "Mathematics": [
-    "algebra", "calculus", "geometry", "statistics", "math", "mathematics", "equation",
-    "function", "integral", "derivative", "vector", "matrix", "probability", "graph",
-    "set theory", "number", "trigonometry", "logarithm", "theorem", "prime", "formula"
-  ],
-  "Media": [
-    "media", "journalism", "news", "anchor", "editor", "editing", "film", "movie", "cinema",
-    "photography", "camera", "shot", "clip", "video", "recording", "script", "broadcast",
-    "radio", "tv", "advertisement", "press", "social media", "influencer", "interview"
-  ]
-};
-Future<String> _handleLowConfidence(String postText) async {
-  final lowerText = postText.toLowerCase();
-
-  for (var entry in keywordMap.entries) {
-    for (var keyword in entry.value) {
-      if (lowerText.contains(keyword.toLowerCase())) {
-        print("Manually Keyword match found: '${keyword}' → Category: ${entry.key}");
-        return entry.key;
-      }
-    }
-  }
-
-  print("No keyword match found. Defaulting to 'Miscellaneous'");
-  return "Miscellaneous";
-}
-
-Future<String> _classifyPeerAssistancePost(String postText) async {
-  final url = Uri.parse(
-      "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
-  final headers = {
-    "Authorization": "Bearer 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",
-    "Content-Type": "application/json; charset=UTF-8" // Correct content-type
-  };
-
-  final body = jsonEncode({
-    "inputs": postText,
-    "parameters": {
-      "candidate_labels": [
-        "Computer Science",
-        "Electrical Engineering",
-        "Education & Physical Education",
-        "Business",
-        "Mathematics",
-        "Media",
-        "Miscellaneous"
-      ],
-      "hypothesis_template": "This post is related to {}."
-    }
-  });
-
-  try {
-    final response = await http.post(url, headers: headers, body: body);
-
-    // Print the response status and body for debugging
-    print("Response Status Code: ${response.statusCode}");
-    print("Response Body: ${response.body}");
-
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      List<dynamic> labels = responseData["labels"];
-      List<dynamic> scores = responseData["scores"];
-
-      // Print the labels and scores for debugging
-      print("Labels: $labels");
-      print("Scores: $scores");
-
-      if (labels.isNotEmpty && scores.isNotEmpty) {
-        String bestCategory = "Miscellaneous";
-        double bestConfidence = 0.0;
-
-        for (int i = 0; i < labels.length; i++) {
-          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
-            bestCategory = labels[i];
-            bestConfidence = scores[i];
+          if (bestConfidence < 0.3) {
+            return _manualCategorizePost(postText);
           }
-        }
 
-        if (bestConfidence < 0.3) {
-           return await _handleLowConfidence(postText);
+          return bestCategory;
         }
-
-        return bestCategory;
+      } else {
+        // If response code is not 200, print the error details
+        print("Error: Received non-200 response code: ${response.statusCode}");
+        print("Response body: ${response.body}");
       }
-    } else {
-      print("Error: Received non-200 response code: ${response.statusCode}");
-      print("Response body: ${response.body}");
+    } catch (e) {
+      print("Hugging Face API Exception: $e");
     }
-  } catch (e) {
-    print("Hugging Face API Exception: $e");
+
+    return "Miscellaneous";
   }
 
-  return "Miscellaneous";
-}
+  final Map<String, List<String>> keywordMap = {
+    "Computer Science": [
+      "programming",
+      "code",
+      "coding",
+      "flutter",
+      "java",
+      "python",
+      "c++",
+      "software",
+      "android",
+      "ios",
+      "web",
+      "database",
+      "sql",
+      "nosql",
+      "API",
+      "frontend",
+      "backend",
+      "AI",
+      "ML",
+      "artificial intelligence",
+      "machine learning",
+      "data science",
+      "devops",
+      "cloud",
+      "firebase",
+      "github",
+      "react",
+      "angular",
+      "docker"
+    ],
+    "Electrical Engineering": [
+      "circuit",
+      "voltage",
+      "current",
+      "resistor",
+      "capacitor",
+      "inductor",
+      "oscilloscope",
+      "power",
+      "transformer",
+      "electricity",
+      "watt",
+      "ampere",
+      "signal",
+      "microcontroller",
+      "arduino",
+      "embedded",
+      "analog",
+      "digital",
+      "transistor",
+      "diode",
+      "sensor",
+      "relay"
+    ],
+    "Education & Physical Education": [
+      "teaching",
+      "teacher",
+      "student",
+      "lecture",
+      "class",
+      "education",
+      "learning",
+      "study",
+      "assignment",
+      "course",
+      "school",
+      "university",
+      "PE",
+      "sports",
+      "exercise",
+      "training",
+      "coaching",
+      "fitness",
+      "health",
+      "activity",
+      "tournament",
+      "competition",
+      "curriculum"
+    ],
+    "Business": [
+      "business",
+      "startup",
+      "entrepreneur",
+      "finance",
+      "marketing",
+      "sales",
+      "customer",
+      "strategy",
+      "investment",
+      "money",
+      "profit",
+      "loss",
+      "budget",
+      "HR",
+      "human resources",
+      "management",
+      "economy",
+      "commerce",
+      "pitch",
+      "project",
+      "advertising",
+      "brand"
+    ],
+    "Mathematics": [
+      "algebra",
+      "calculus",
+      "geometry",
+      "statistics",
+      "math",
+      "mathematics",
+      "equation",
+      "function",
+      "integral",
+      "derivative",
+      "vector",
+      "matrix",
+      "probability",
+      "graph",
+      "set theory",
+      "number",
+      "trigonometry",
+      "logarithm",
+      "theorem",
+      "prime",
+      "formula"
+    ],
+    "Media": [
+      "media",
+      "journalism",
+      "news",
+      "anchor",
+      "editor",
+      "editing",
+      "film",
+      "movie",
+      "cinema",
+      "photography",
+      "camera",
+      "shot",
+      "clip",
+      "video",
+      "recording",
+      "script",
+      "broadcast",
+      "radio",
+      "tv",
+      "advertisement",
+      "press",
+      "social media",
+      "influencer",
+      "interview"
+    ]
+  };
+  Future<String> _handleLowConfidence(String postText) async {
+    final lowerText = postText.toLowerCase();
+
+    for (var entry in keywordMap.entries) {
+      for (var keyword in entry.value) {
+        if (lowerText.contains(keyword.toLowerCase())) {
+          print(
+              "Manually Keyword match found: '${keyword}' → Category: ${entry.key}");
+          return entry.key;
+        }
+      }
+    }
+
+    print("No keyword match found. Defaulting to 'Miscellaneous'");
+    return "Miscellaneous";
+  }
+
+  Future<String> _classifyPeerAssistancePost(String postText) async {
+    final url = Uri.parse(
+        "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
+    final headers = {
+      "Authorization": "Bearer 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",
+      "Content-Type": "application/json; charset=UTF-8" // Correct content-type
+    };
+
+    final body = jsonEncode({
+      "inputs": postText,
+      "parameters": {
+        "candidate_labels": [
+          "Computer Science",
+          "Electrical Engineering",
+          "Education & Physical Education",
+          "Business",
+          "Mathematics",
+          "Media",
+          "Miscellaneous"
+        ],
+        "hypothesis_template": "This post is related to {}."
+      }
+    });
+
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+
+      // Print the response status and body for debugging
+      print("Response Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        List<dynamic> labels = responseData["labels"];
+        List<dynamic> scores = responseData["scores"];
+
+        // Print the labels and scores for debugging
+        print("Labels: $labels");
+        print("Scores: $scores");
+
+        if (labels.isNotEmpty && scores.isNotEmpty) {
+          String bestCategory = "Miscellaneous";
+          double bestConfidence = 0.0;
+
+          for (int i = 0; i < labels.length; i++) {
+            if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+              bestCategory = labels[i];
+              bestConfidence = scores[i];
+            }
+          }
+
+          if (bestConfidence < 0.3) {
+            return await _handleLowConfidence(postText);
+          }
+
+          return bestCategory;
+        }
+      } else {
+        print("Error: Received non-200 response code: ${response.statusCode}");
+        print("Response body: ${response.body}");
+      }
+    } catch (e) {
+      print("Hugging Face API Exception: $e");
+    }
+
+    return "Miscellaneous";
+  }
+
   void _fetchUsername() {
     final sub = FirebaseFirestore.instance
         .collection('users')
@@ -788,315 +1069,451 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
     _subscriptions.add(sub);
   }
 
+  // Add this new method to handle survey form taps
+  void _showSurveyForm(BuildContext context) {
+    if (widget.collectionName.contains("Surveyposts")) {
+      FirebaseFirestore.instance
+          .collection(_getCollectionPath())
+          .doc(widget.postId)
+          .get()
+          .then((doc) {
+        if (doc.exists) {
+          final data = doc.data()!;
+
+          // Only show survey form if it's actually a form
+          if (data['isSurveyForm'] == true &&
+              data['questions'] != null &&
+              (data['questions'] as List).isNotEmpty) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => SurveyResponseScreen(
+                  surveyId: widget.postId,
+                  collectionPath: _getCollectionPath(),
+                ),
+              ),
+            );
+          } else {
+            // If it's just a URL post, show message
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text(
+                      'This is an external survey. Please click the URL to access it.')),
+            );
+          }
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    print('Building PostCard with URL: ${widget.url}');
+
+    // Check if this is a survey post
+    bool isSurveyPost = widget.collectionName.contains("Surveyposts");
+
     return Column(
       children: [
-        Card(
-          margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8.0),
-          elevation: 0.0, // Facebook cards have minimal elevation
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            side: BorderSide(
-                color: Colors.grey.shade200,
-                width: 1), // Facebook-like subtle border
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        GestureDetector(
+          // Only enable tap if it's a survey form and not the owner
+          onTap: (isSurveyPost && hasActualForm && !isOwner)
+              ? () => _showSurveyForm(context)
+              : null,
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8.0),
+            elevation: 0.0, // Facebook cards have minimal elevation
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.0),
+              side: BorderSide(
+                  color: Colors.grey.shade200,
+                  width: 1), // Facebook-like subtle border
+            ),
+            child: Stack(
               children: [
-                // User details with options menu for owner
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // User info - make image and name clickable with popup
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => _showUserProfile(context),
-                        child: Row(
-                          children: [
-                            InkWell(
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // User details with options menu for owner
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // User info - make image and name clickable with popup
+                          Expanded(
+                            child: InkWell(
                               onTap: () => _showUserProfile(context),
-                              child: CircleAvatar(
-                                radius: 20.0,
-                                backgroundColor: Colors.grey[300],
-                                child: profileImageUrl == null
-                                    ? const Icon(Icons.person, size: 20.0)
-                                    : ClipOval(
-                                        child: Image.network(
-                                          profileImageUrl!,
-                                          fit: BoxFit.cover,
-                                          width: 40.0,
-                                          height: 40.0,
-                                          errorBuilder:
-                                              (context, error, stackTrace) =>
-                                                  Icon(Icons.person,
-                                                      size: 20.0,
-                                                      color: Colors.grey[600]),
-                                        ),
+                              child: Row(
+                                children: [
+                                  InkWell(
+                                    onTap: () => _showUserProfile(context),
+                                    child: CircleAvatar(
+                                      radius: 20.0,
+                                      backgroundColor: Colors.grey[300],
+                                      child: profileImageUrl == null
+                                          ? const Icon(Icons.person, size: 20.0)
+                                          : ClipOval(
+                                              child: Image.network(
+                                                profileImageUrl!,
+                                                fit: BoxFit.cover,
+                                                width: 40.0,
+                                                height: 40.0,
+                                                errorBuilder: (context, error,
+                                                        stackTrace) =>
+                                                    Icon(Icons.person,
+                                                        size: 20.0,
+                                                        color:
+                                                            Colors.grey[600]),
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 15.0),
+                                  Expanded(
+                                    child: InkWell(
+                                      onTap: () => _showUserProfile(context),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            currentUsername,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(postTime,
+                                              style: const TextStyle(
+                                                  fontSize: 12.0,
+                                                  color: Colors.grey)),
+                                        ],
                                       ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 15.0),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () => _showUserProfile(context),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      currentUsername,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                      overflow: TextOverflow.ellipsis,
+                          ),
+
+                          // Options menu (only visible to post owner)
+                          if (isOwner)
+                            IconButton(
+                              icon: const Icon(Icons
+                                  .more_horiz), // More Facebook-like menu icon
+                              onPressed: _showOptionsMenu,
+                            ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10.0),
+
+                      // Post Content
+                      Text(
+                        widget.content,
+                        style: const TextStyle(fontSize: 16.0),
+                      ),
+
+                      // Check for URL and display it if it's valid
+                      if (widget.url != null &&
+                          widget.url!.trim().isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: InkWell(
+                            onTap: () =>
+                                _launchURL(widget.url!.trim(), context),
+                            child: Text(
+                              widget.url!.trim(),
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      // Image (if available)
+                      if (imageUrl != null && imageUrl!.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ImageViewerScreen(
+                                  imageUrl: imageUrl!,
+                                  heroTag: "post_image_${widget.postId}",
+                                ),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 8.0),
+                            width: double.infinity,
+                            constraints: const BoxConstraints(
+                              maxHeight: 250,
+                            ),
+                            child: Hero(
+                              tag: "post_image_${widget.postId}",
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8.0),
+                                child: FadeInImage(
+                                  image: NetworkImage(imageUrl!),
+                                  placeholder: const AssetImage(
+                                      'assets/images/placeholder.png'),
+                                  fit: BoxFit.contain,
+                                  imageErrorBuilder:
+                                      (context, error, stackTrace) {
+                                    print('Error loading image: $error');
+                                    return Container(
+                                      height: 150,
+                                      color: Colors.grey[200],
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.error_outline,
+                                          color: Colors.grey,
+                                          size: 40,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // Location info (if available)
+                      if (_postLocation != null && _locationAddress.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Location: $_locationAddress'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            margin: const EdgeInsets.only(top: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.location_on,
+                                    size: 20, color: Colors.grey[600]),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _locationAddress,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[800],
                                     ),
-                                    Text(postTime,
-                                        style: const TextStyle(
-                                            fontSize: 12.0,
-                                            color: Colors.grey)),
-                                  ],
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // Divider before like/comment buttons
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12.0),
+                        child: Divider(color: Colors.grey[300], height: 1),
+                      ),
+
+                      // Like and Comment Buttons - Facebook style
+                      Container(
+                        padding: const EdgeInsets.only(top: 2.0),
+                        margin: EdgeInsets.zero,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            // Like button with thumbs up icon
+                            Expanded(
+                              child: TextButton.icon(
+                                onPressed: _toggleLike,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: isLiked
+                                      ? Color.fromARGB(255, 0, 58, 92)
+                                      : Colors.grey[700],
+                                  padding: EdgeInsets.symmetric(
+                                      vertical:
+                                          5.0), // Reduced padding for buttons
+                                  minimumSize: Size
+                                      .zero, // Allow the button to be smaller
+                                ),
+                                icon: Icon(
+                                  isLiked
+                                      ? Icons.thumb_up
+                                      : Icons.thumb_up_outlined,
+                                  size: 20,
+                                  color: isLiked
+                                      ? Color(0xFF0561DD)
+                                      : Colors.grey[700],
+                                ),
+                                label: Text(
+                                  likeCount == 0
+                                      ? 'Like'
+                                      : likeCount == 1
+                                          ? '1 Like'
+                                          : '$likeCount Likes',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: isLiked
+                                        ? Color(0xFF0561DD)
+                                        : Colors.grey[700],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Comment button
+                            Expanded(
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor:
+                                        Colors.white, // Ensure white background
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.vertical(
+                                          top: Radius.circular(16.0)),
+                                    ),
+                                    builder: (context) => CommentSection(
+                                      postId: widget.postId,
+                                      collectionName: widget.collectionName,
+                                    ),
+                                  );
+                                },
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.grey[700],
+                                  padding: EdgeInsets.symmetric(
+                                      vertical:
+                                          8.0), // Increased padding for buttons
+                                  minimumSize: Size.zero,
+                                ),
+                                icon: Icon(
+                                  Icons
+                                      .forum_outlined, // A more modern discussion/comment icon
+                                  size: 20,
+                                  color: Colors.grey[700],
+                                ),
+                                label: Text(
+                                  commentCount == 0
+                                      ? 'Comment'
+                                      : commentCount == 1
+                                          ? '1 Comment'
+                                          : '$commentCount Comments',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[700],
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
 
-                    // Options menu (only visible to post owner)
-                    if (isOwner)
-                      IconButton(
-                        icon: const Icon(
-                            Icons.more_horiz), // More Facebook-like menu icon
-                        onPressed: _showOptionsMenu,
-                      ),
-                  ],
-                ),
-
-                const SizedBox(height: 10.0),
-
-                // Post Content
-                Text(
-                  widget.content,
-                  style: const TextStyle(fontSize: 16.0),
-                ),
-
-                // Check for URL and display it if it's valid
-                if (widget.url != null && widget.url!.trim().isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: InkWell(
-                      onTap: () => _launchURL(widget.url!.trim(), context),
-                      child: Text(
-                        widget.url!.trim(),
-                        style: const TextStyle(
-                          color: Colors.blue,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-
-                // Image (if available)
-                if (imageUrl != null && imageUrl!.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ImageViewerScreen(
-                            imageUrl: imageUrl!,
-                            heroTag: "post_image_${widget.postId}",
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 8.0),
-                      width: double.infinity,
-                      constraints: const BoxConstraints(
-                        maxHeight: 250,
-                      ),
-                      child: Hero(
-                        tag: "post_image_${widget.postId}",
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8.0),
-                          child: Image.network(
-                            imageUrl!,
-                            fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes !=
-                                          null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                      : null,
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 150,
-                                color: Colors.grey[200],
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.error_outline,
-                                    color: Colors.grey,
-                                    size: 40,
+                      // If this is a survey post, show survey info
+                      if (widget.collectionName.contains("Surveyposts")) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Survey indicator badge
+                            Container(
+                              margin: EdgeInsets.only(bottom: 4),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Color.fromARGB(255, 0, 58, 92)
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.assignment,
+                                      size: 16,
+                                      color: Color.fromARGB(255, 0, 58, 92)),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Survey',
+                                    style: TextStyle(
+                                      color: Color.fromARGB(255, 0, 58, 92),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
+                                ],
+                              ),
+                            ),
+                            // REMOVE the response count badge here
+                            // (This was the orange badge with people icon)
+                          ],
                         ),
-                      ),
-                    ),
+                      ],
+                    ],
                   ),
+                ),
 
-                // Location info (if available)
-                if (_postLocation != null && _locationAddress.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Location: $_locationAddress'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
+                // Survey buttons (Take Survey and View Results)
+                // Only show if this is a survey form post with isSurveyForm=true
+                if (widget.collectionName.contains("Surveyposts") &&
+                    hasActualForm)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      margin: const EdgeInsets.only(top: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: EdgeInsets.all(8),
                       child: Row(
                         children: [
-                          Icon(Icons.location_on,
-                              size: 20, color: Colors.grey[600]),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _locationAddress,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[800],
+                          // View results button - only visible to survey creator
+                          if (isOwner)
+                            ElevatedButton.icon(
+                              icon: Icon(Icons.bar_chart,
+                                  size: 16, color: Colors.white),
+                              label: Text('Results'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color.fromARGB(255, 0, 58, 92),
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                textStyle: TextStyle(fontSize: 12),
                               ),
-                              overflow: TextOverflow.ellipsis,
+                              onPressed: () => _viewSurveyResults(context),
                             ),
-                          ),
+                          if (isOwner) SizedBox(width: 8),
+                          // Take Survey button - only visible if not the owner
+                          if (!isOwner)
+                            ElevatedButton.icon(
+                              icon: Icon(Icons.assignment_turned_in,
+                                  size: 16, color: Colors.white),
+                              label: Text('Take Survey'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color.fromARGB(255, 0, 58, 92),
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                textStyle: TextStyle(fontSize: 12),
+                              ),
+                              onPressed: () => _showSurveyForm(context),
+                            ),
                         ],
                       ),
                     ),
                   ),
-
-                // Divider before like/comment buttons
-                Padding(
-                  padding: const EdgeInsets.only(top: 12.0),
-                  child: Divider(color: Colors.grey[300], height: 1),
-                ),
-
-                // Like and Comment Buttons - Facebook style
-                Container(
-                  padding:
-                      const EdgeInsets.only(top: 2.0), // Reduced top padding
-                  margin: EdgeInsets.zero, // No margin
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      // Like button with thumbs up icon
-                      Expanded(
-                        child: TextButton.icon(
-                          onPressed: _toggleLike,
-                          style: TextButton.styleFrom(
-                            foregroundColor: isLiked
-                                ? Color.fromARGB(255, 0, 58, 92)
-                                : Colors.grey[700],
-                            padding: EdgeInsets.symmetric(
-                                vertical: 5.0), // Reduced padding for buttons
-                            minimumSize:
-                                Size.zero, // Allow the button to be smaller
-                          ),
-                          icon: Icon(
-                            isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                            size: 20,
-                            color:
-                                isLiked ? Color(0xFF0561DD) : Colors.grey[700],
-                          ),
-                          label: Text(
-                            likeCount == 0
-                                ? 'Like'
-                                : likeCount == 1
-                                    ? '1 Like'
-                                    : '$likeCount Likes',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: isLiked
-                                  ? Color(0xFF0561DD)
-                                  : Colors.grey[700],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Comment button
-                      Expanded(
-                        child: TextButton.icon(
-                          onPressed: () {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor:
-                                  Colors.white, // Ensure white background
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(16.0)),
-                              ),
-                              builder: (context) => CommentSection(
-                                postId: widget.postId,
-                                collectionName: widget.collectionName,
-                              ),
-                            );
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.grey[700],
-                            padding: EdgeInsets.symmetric(
-                                vertical: 8.0), // Increased padding for buttons
-                            minimumSize: Size.zero,
-                          ),
-                          icon: Icon(
-                            Icons
-                                .forum_outlined, // A more modern discussion/comment icon
-                            size: 20,
-                            color: Colors.grey[700],
-                          ),
-                          label: Text(
-                            commentCount == 0
-                                ? 'Comment'
-                                : commentCount == 1
-                                    ? '1 Comment'
-                                    : '$commentCount Comments',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -1174,7 +1591,7 @@ class _CommentSectionState extends State<CommentSection> {
             .get();
         final String currentUsername =
             userDoc.data()?['username'] ?? 'Unknown User';
-print("collection name in add comment $widget.collectionName");
+        print("collection name in add comment $widget.collectionName");
         // Send notification to the post author
         _fcmService.sendNotificationOnComment(
           widget.postId,

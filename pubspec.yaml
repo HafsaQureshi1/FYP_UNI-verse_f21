@@ -65,6 +65,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   url_launcher: ^6.3.1
   provider: ^6.0.5
+  fl_chart: ^0.55.2 # Use an older compatible version of fl_chart
 dev_dependencies:
 
   flutter_native_splash: ^2.3.10

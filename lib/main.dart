@@ -14,7 +14,8 @@ import 'package:intl/intl.dart';
 
 // Import this for kIsWeb
 import 'dart:async';
-import 'screens/Home.dart'; // Replace with your actual SignInPage
+import 'screens/Home.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -40,6 +41,7 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 class CustomSplashScreen extends StatefulWidget {
   const CustomSplashScreen({super.key});
 
@@ -554,7 +556,7 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-             bool _obscurePassword = true; // Add this in your state
+  bool _obscurePassword = true; // Add this in your state
 
   // Add this at the top of your _SignUpPageState class
   final List<String> _adminEmails = [
@@ -570,78 +572,79 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _usernameController = TextEditingController();
 
   Future<void> _signUp() async {
-  setState(() {
-    _isLoading = true;
-  });
+    setState(() {
+      _isLoading = true;
+    });
 
-  final email = _emailController.text.trim();
-  final password = _passwordController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-  // Check: Password must be at least 6 characters
-  if (password.length < 12) {
-    setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password must be at least 12 characters.')),
-    );
-    return;
-  }
+    // Check: Password must be at least 6 characters
+    if (password.length < 12) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Password must be at least 12 characters.')),
+      );
+      return;
+    }
 
-  // Check: Password must be alphanumeric
-  final isAlphanumeric = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$');
-  if (!isAlphanumeric.hasMatch(password)) {
-    setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password must be alphanumeric.')),
-    );
-    return;
-  }
+    // Check: Password must be alphanumeric
+    final isAlphanumeric = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$');
+    if (!isAlphanumeric.hasMatch(password)) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be alphanumeric.')),
+      );
+      return;
+    }
 
-  try {
-    UserCredential userCredential =
-        await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    try {
+      UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    User? user = userCredential.user;
+      User? user = userCredential.user;
 
-    if (user != null) {
-      await user.sendEmailVerification();
+      if (user != null) {
+        await user.sendEmailVerification();
 
-      // Check if the email is an admin email
-      bool isAdmin = _adminEmails.contains(user.email?.toLowerCase().trim());
+        // Check if the email is an admin email
+        bool isAdmin = _adminEmails.contains(user.email?.toLowerCase().trim());
 
-      // Save user data with role
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'uid': user.uid,
-        'username': _usernameController.text.trim(),
-        'email': user.email,
-        'role': 'student', // Set role based on email
-        'profilePicture': 'https://firebasestorage.googleapis.com/...',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        // Save user data with role
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'username': _usernameController.text.trim(),
+          'email': user.email,
+          'role': 'student', // Set role based on email
+          'profilePicture': 'https://firebasestorage.googleapis.com/...',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
 
+        setState(() {
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Verification email sent. Please verify your email.')),
+        );
+
+        _startEmailVerificationCheck(isAdmin: isAdmin);
+      }
+    } catch (e) {
       setState(() {
         _isLoading = false;
       });
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Verification email sent. Please verify your email.')),
+        SnackBar(content: Text('Error: ${e.toString()}')),
       );
-
-      _startEmailVerificationCheck(isAdmin: isAdmin);
     }
-  } catch (e) {
-    setState(() {
-      _isLoading = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: ${e.toString()}')),
-    );
   }
-}
 
   void _startEmailVerificationCheck({bool isAdmin = false}) {
     showDialog(
@@ -751,30 +754,31 @@ class _SignUpPageState extends State<SignUpPage> {
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 10),
-
-TextField(
-  controller: _passwordController,
-  decoration: InputDecoration(
-    labelText: 'Password (must be alphanumeric, contain a letter and a number)',
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(20.0),
-    ),
-    prefixIcon: const Icon(Icons.lock, color: Colors.grey),
-    suffixIcon: IconButton(
-      icon: Icon(
-        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-        color: Colors.grey,
-      ),
-      onPressed: () {
-        setState(() {
-          _obscurePassword = !_obscurePassword;
-        });
-      },
-    ),
-  ),
-  obscureText: _obscurePassword,
-),
-
+                TextField(
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    labelText:
+                        'Password (must be alphanumeric, contain a letter and a number)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                    prefixIcon: const Icon(Icons.lock, color: Colors.grey),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                  ),
+                  obscureText: _obscurePassword,
+                ),
                 const SizedBox(height: 10),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _signUp,
@@ -856,7 +860,6 @@ class _SignInPageState extends State<SignInPage> {
   bool _rememberMe = false;
   List<Map<String, String>> _savedAccounts = [];
   bool _obscurePassword = true;
-
 
   final List<String> _adminEmails = [
     'waseemhasnain373@gmail.com',
@@ -945,150 +948,162 @@ class _SignInPageState extends State<SignInPage> {
       );
     }
   }
-Future<void> _signIn() async {
-  setState(() {
-    _isLoading = true;
-  });
 
-  final email = _emailController.text.trim();
-  final password = _passwordController.text.trim();
+  Future<void> _signIn() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-  // Check: Password must be at least 6 characters
-  if (password.length < 12) {
-    setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password must be at least 12 characters.')),
-    );
-    return;
-  }
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-  // Check: Password must be alphanumeric
-  final isAlphanumeric = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$');
-  if (!isAlphanumeric.hasMatch(password)) {
-    setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password must be alphanumeric.')),
-    );
-    return;
-  }
-
-  final userDocRef = FirebaseFirestore.instance.collection('login_attempts').doc(email);
-
-  try {
-    final snapshot = await userDocRef.get();
-
-    if (snapshot.exists) {
-      final data = snapshot.data()!;
-      final bannedUntil = data['bannedUntil']?.toDate();
-
-      if (bannedUntil != null && DateTime.now().isBefore(bannedUntil)) {
-        setState(() => _isLoading = false);
-        final formattedTime = DateFormat('hh:mm a').format(bannedUntil);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Account is banned. Try again after $formattedTime.')),
-        );
-        return;
-      }
+    // Check: Password must be at least 6 characters
+    if (password.length < 12) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Password must be at least 12 characters.')),
+      );
+      return;
     }
 
-    // Try to sign in
-    UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    User? user = userCredential.user;
-
-    if (user != null) {
-      await user.reload();
-      user = _auth.currentUser;
-
-      if (user?.emailVerified ?? false) {
-        await _saveAccount(email, password);
-
-        // Reset failed attempts on successful login
-        await userDocRef.set({'failedAttempts': 0}, SetOptions(merge: true));
-
-        bool isAdmin = _adminEmails.contains(user?.email?.toLowerCase().trim());
-        print('Email: ${user?.email}, isAdmin: $isAdmin');
-
-        setState(() => _isLoading = false);
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => isAdmin ? AdminDashboard() : const HomeScreen(),
-          ),
-        );
-      } else {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please verify your email before signing in.')),
-        );
-      }
-    }
-  } on FirebaseAuthException catch (e) {
-    String errorMessage;
-
-    switch (e.code) {
-      case 'user-not-found':
-        errorMessage = 'No account found with this email.';
-        break;
-      case 'wrong-password':
-        errorMessage = 'Incorrect password. Please try again.';
-        break;
-      case 'invalid-email':
-        errorMessage = 'Invalid email address format.';
-        break;
-      case 'user-disabled':
-        errorMessage = 'This account has been disabled.';
-        break;
-      case 'too-many-requests':
-        errorMessage = 'Too many attempts. Please try again later.';
-        break;
-      default:
-        errorMessage = 'Login failed. Please check your credentials.';
+    // Check: Password must be alphanumeric
+    final isAlphanumeric = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$');
+    if (!isAlphanumeric.hasMatch(password)) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be alphanumeric.')),
+      );
+      return;
     }
 
-    // If the user exists, track failed login attempts
-    if (e.code == 'wrong-password') {
+    final userDocRef =
+        FirebaseFirestore.instance.collection('login_attempts').doc(email);
+
+    try {
       final snapshot = await userDocRef.get();
-      int failedAttempts = 0;
 
       if (snapshot.exists) {
-        failedAttempts = snapshot.data()?['failedAttempts'] ?? 0;
+        final data = snapshot.data()!;
+        final bannedUntil = data['bannedUntil']?.toDate();
+
+        if (bannedUntil != null && DateTime.now().isBefore(bannedUntil)) {
+          setState(() => _isLoading = false);
+          final formattedTime = DateFormat('hh:mm a').format(bannedUntil);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text('Account is banned. Try again after $formattedTime.')),
+          );
+          return;
+        }
       }
 
-      failedAttempts += 1;
-
-      if (failedAttempts >= 3) {
-        await userDocRef.set({
-          'failedAttempts': failedAttempts,
-          'bannedUntil': Timestamp.fromDate(DateTime.now().add(const Duration(hours: 2))),
-        });
-      } else {
-        await userDocRef.set({
-          'failedAttempts': failedAttempts,
-        }, SetOptions(merge: true));
-      }
-
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$errorMessage (${failedAttempts}/3 attempts)')),
+      // Try to sign in
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
       );
-    } else {
+
+      User? user = userCredential.user;
+
+      if (user != null) {
+        await user.reload();
+        user = _auth.currentUser;
+
+        if (user?.emailVerified ?? false) {
+          await _saveAccount(email, password);
+
+          // Reset failed attempts on successful login
+          await userDocRef.set({'failedAttempts': 0}, SetOptions(merge: true));
+
+          bool isAdmin =
+              _adminEmails.contains(user?.email?.toLowerCase().trim());
+          print('Email: ${user?.email}, isAdmin: $isAdmin');
+
+          setState(() => _isLoading = false);
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  isAdmin ? AdminDashboard() : const HomeScreen(),
+            ),
+          );
+        } else {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Please verify your email before signing in.')),
+          );
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No account found with this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Invalid email address format.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This account has been disabled.';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many attempts. Please try again later.';
+          break;
+        default:
+          errorMessage = 'Login failed. Please check your credentials.';
+      }
+
+      // If the user exists, track failed login attempts
+      if (e.code == 'wrong-password') {
+        final snapshot = await userDocRef.get();
+        int failedAttempts = 0;
+
+        if (snapshot.exists) {
+          failedAttempts = snapshot.data()?['failedAttempts'] ?? 0;
+        }
+
+        failedAttempts += 1;
+
+        if (failedAttempts >= 3) {
+          await userDocRef.set({
+            'failedAttempts': failedAttempts,
+            'bannedUntil': Timestamp.fromDate(
+                DateTime.now().add(const Duration(hours: 2))),
+          });
+        } else {
+          await userDocRef.set({
+            'failedAttempts': failedAttempts,
+          }, SetOptions(merge: true));
+        }
+
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('$errorMessage (${failedAttempts}/3 attempts)')),
+        );
+      } else {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$errorMessage')),
+        );
+      }
+    } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$errorMessage')),
+        const SnackBar(
+            content: Text('An unexpected error occurred. Please try again.')),
       );
     }
-  } catch (e) {
-    setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('An unexpected error occurred. Please try again.')),
-    );
   }
-}
+
   void _showAccountSelection() {
     showModalBottomSheet(
       context: context,
@@ -1252,29 +1267,31 @@ Future<void> _signIn() async {
 
                 // Password Field
                 TextField(
-  controller: _passwordController,
-  decoration: InputDecoration(
-    labelText: 'Password ',
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(20.0),
-    ),
-    prefixIcon: const Icon(Icons.lock, color: Colors.grey),
-    contentPadding:
-        const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
-    suffixIcon: IconButton(
-      icon: Icon(
-        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-        color: Colors.grey,
-      ),
-      onPressed: () {
-        setState(() {
-          _obscurePassword = !_obscurePassword;
-        });
-      },
-    ),
-  ),
-  obscureText: _obscurePassword,
-),
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    labelText: 'Password ',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                    prefixIcon: const Icon(Icons.lock, color: Colors.grey),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 16.0, horizontal: 20.0),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                  ),
+                  obscureText: _obscurePassword,
+                ),
 
                 const SizedBox(height: 5),
 

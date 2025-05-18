@@ -10,7 +10,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb; // Make sure this import is correct
+import 'package:flutter/foundation.dart'
+    show kIsWeb; // Make sure this import is correct
 
 class CreateNewPostScreen extends StatefulWidget {
   final String collectionName;
@@ -42,24 +43,25 @@ class _CreateNewPostScreenState extends State<CreateNewPostScreen> {
     super.initState();
     _fetchUserInfo();
   }
-Future<void> _pickLocation() async {
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const LocationPickerWithSearch(),
-    ),
-  );
 
-  if (result != null && result is Map<String, dynamic>) {
-    setState(() {
-      _selectedLocation = LatLng(result['latitude'], result['longitude']);
-      _selectedAddress = result['address'] ?? "No address found";
-    });
+  Future<void> _pickLocation() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const LocationPickerWithSearch(),
+      ),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        _selectedLocation = LatLng(result['latitude'], result['longitude']);
+        _selectedAddress = result['address'] ?? "No address found";
+      });
+    }
   }
-}
 
   // Updated location picker function
-  
+
   // Rest of your existing methods remain the same...
   String _ruleBasedClassification(String postText) {
     Map<String, List<String>> categoryKeywords = {
@@ -134,7 +136,7 @@ Future<void> _pickLocation() async {
         if (widget.collectionName.startsWith("lostfoundposts")) {
           // For Lost & Found posts, first send to admin approval
           collectionPath = "lostfoundadmin/All/posts";
-          
+
           final adminRef = _firestore.collection(collectionPath).doc();
           final postData = {
             'userId': user.uid,
@@ -162,10 +164,9 @@ Future<void> _pickLocation() async {
 
           Navigator.of(context).pop();
           return; // Exit here since we don't proceed with AI classification yet
-        } 
-        else if (widget.collectionName.startsWith("Peerposts")) {
+        } else if (widget.collectionName.startsWith("Peerposts")) {
           collectionPath = "peeradmin/All/posts";
-          
+
           final adminRef = _firestore.collection(collectionPath).doc();
           final postData = {
             'userId': user.uid,
@@ -193,30 +194,28 @@ Future<void> _pickLocation() async {
 
           Navigator.of(context).pop();
           return;
-        } 
-        else if (widget.collectionName.startsWith("Eventposts")) {
-        collectionPath = "eventsadmin/All/posts";
-          
+        } else if (widget.collectionName.startsWith("Eventposts")) {
+          collectionPath = "eventsadmin/All/posts";
+
           final adminRef = _firestore.collection(collectionPath).doc();
           final postData = {
-  'userId': user.uid,
-  'userName': username,
-  'userEmail': user.email,
-  'likes': 0,
-  'postContent': postContent,
-  'imageUrl': uploadedImageUrl ?? '',
-  'timestamp': FieldValue.serverTimestamp(),
-  'approval': null,
-  "url": _urlController.text.trim(), // ✅ New field
-  "location": _selectedLocation != null
-      ? {
-          "latitude": _selectedLocation!.latitude,
-          "longitude": _selectedLocation!.longitude,
-          "address": _selectedAddress,
-        }
-      : null,
-};
-
+            'userId': user.uid,
+            'userName': username,
+            'userEmail': user.email,
+            'likes': 0,
+            'postContent': postContent,
+            'imageUrl': uploadedImageUrl ?? '',
+            'timestamp': FieldValue.serverTimestamp(),
+            'approval': null,
+            "url": _urlController.text.trim(), // ✅ New field
+            "location": _selectedLocation != null
+                ? {
+                    "latitude": _selectedLocation!.latitude,
+                    "longitude": _selectedLocation!.longitude,
+                    "address": _selectedAddress,
+                  }
+                : null,
+          };
 
           await adminRef.set(postData);
 
@@ -226,30 +225,30 @@ Future<void> _pickLocation() async {
 
           Navigator.of(context).pop();
           return;
-        } 
-        else if (widget.collectionName.startsWith("Surveyposts")) {
-        collectionPath = "surveyadmin/All/posts";
-          
+        } else if (widget.collectionName.startsWith("Surveyposts")) {
+          collectionPath = "surveyadmin/All/posts";
+
           final adminRef = _firestore.collection(collectionPath).doc();
           final postData = {
-  'userId': user.uid,
-  'userName': username,
-  'userEmail': user.email,
-  'likes': 0,
-  'postContent': postContent,
-  'imageUrl': uploadedImageUrl ?? '',
-  'timestamp': FieldValue.serverTimestamp(),
-  'approval': null,
-  "url": _urlController.text.trim(), // ✅ New field
-  "location": _selectedLocation != null
-      ? {
-          "latitude": _selectedLocation!.latitude,
-          "longitude": _selectedLocation!.longitude,
-          "address": _selectedAddress,
-        }
-      : null,
-};
-
+            'userId': user.uid,
+            'userName': username,
+            'userEmail': user.email,
+            'likes': 0,
+            'postContent': postContent,
+            'imageUrl': uploadedImageUrl ?? '',
+            'timestamp': FieldValue.serverTimestamp(),
+            'approval': null,
+            "url": _urlController.text.trim(),
+            "location": _selectedLocation != null
+                ? {
+                    "latitude": _selectedLocation!.latitude,
+                    "longitude": _selectedLocation!.longitude,
+                    "address": _selectedAddress,
+                  }
+                : null,
+            // Explicitly set isSurveyForm to false for URL-based surveys
+            "isSurveyForm": false,
+          };
 
           await adminRef.set(postData);
 
@@ -259,8 +258,7 @@ Future<void> _pickLocation() async {
 
           Navigator.of(context).pop();
           return;
-        } 
-        else {
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid collection name!')),
           );
@@ -283,27 +281,29 @@ Future<void> _pickLocation() async {
       }
     }
   }
-  Future<void> _fetchUserInfo() async {
-  final User? currentUser = _auth.currentUser;
-  if (currentUser != null) {
-    setState(() {
-      _userId = currentUser.uid;
-    });
 
-    try {
-      final userDoc = 
-          await _firestore.collection('users').doc(currentUser.uid).get();
-      if (userDoc.exists && mounted) {
-        setState(() {
-          _username = userDoc.data()?['username'] ?? 'User';
-          _profileImageUrl = userDoc.data()?['profilePicture']; // Add this line
-        });
+  Future<void> _fetchUserInfo() async {
+    final User? currentUser = _auth.currentUser;
+    if (currentUser != null) {
+      setState(() {
+        _userId = currentUser.uid;
+      });
+
+      try {
+        final userDoc =
+            await _firestore.collection('users').doc(currentUser.uid).get();
+        if (userDoc.exists && mounted) {
+          setState(() {
+            _username = userDoc.data()?['username'] ?? 'User';
+            _profileImageUrl =
+                userDoc.data()?['profilePicture']; // Add this line
+          });
+        }
+      } catch (e) {
+        print('Error fetching user info: $e');
       }
-    } catch (e) {
-      print('Error fetching user info: $e');
     }
   }
-}
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -443,23 +443,24 @@ Future<void> _pickLocation() async {
                     child: Row(
                       children: [
                         // User avatar
-                       CircleAvatar(
-  radius: 20,
-  backgroundColor: Colors.grey[200],
-  child: _profileImageUrl != null
-      ? ClipOval(
-          child: Image.network(
-            _profileImageUrl!,
-            fit: BoxFit.cover,
-            width: 40,
-            height: 40,
-            errorBuilder: (context, error, stackTrace) {
-              return const Icon(Icons.person, color: Colors.grey);
-            },
-          ),
-        )
-      : const Icon(Icons.person, color: Colors.grey),
-),
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: Colors.grey[200],
+                          child: _profileImageUrl != null
+                              ? ClipOval(
+                                  child: Image.network(
+                                    _profileImageUrl!,
+                                    fit: BoxFit.cover,
+                                    width: 40,
+                                    height: 40,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(Icons.person,
+                                          color: Colors.grey);
+                                    },
+                                  ),
+                                )
+                              : const Icon(Icons.person, color: Colors.grey),
+                        ),
                         const SizedBox(width: 12),
 
                         // Username and posting info
@@ -514,68 +515,71 @@ Future<void> _pickLocation() async {
                     ),
                   ),
                   // URL input field for Surveys or Events
-if (widget.collectionName.startsWith('Surveyposts')) ...[
-  const SizedBox(height: 16),
-  const Text(
-    "Enter URL (optional) Accepted only  ",
-    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-  ),
-   const Text(
-    "- form.google.com ",
-    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-  ),
-   const Text(
-    "- typeform.com ",
-    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-  ),
-   const Text(
-    "- forms.office.com",
-    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-  ),
-  const SizedBox(height: 8),
-  TextField(
-    controller: _urlController,
-    keyboardType: TextInputType.url,
-    decoration: InputDecoration(
-      hintText: "https://example.com",
-      prefixIcon: const Icon(Icons.link),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.grey),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.blue),
-      ),
-    ),
-  ),
-]
-,
-if (widget.collectionName.startsWith('Eventposts')) ...[
-  const SizedBox(height: 16),
-  const Text(
-    "Enter URL (optional)  ",
-    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-  ),
-   
-  const SizedBox(height: 8),
-  TextField(
-    controller: _urlController,
-    keyboardType: TextInputType.url,
-    decoration: InputDecoration(
-      hintText: "https://example.com",
-      prefixIcon: const Icon(Icons.link),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.grey),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.blue),
-      ),
-    ),
-  ),
-],
+                  if (widget.collectionName.startsWith('Surveyposts')) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Enter URL (optional) Accepted only  ",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                    const Text(
+                      "- form.google.com ",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                    const Text(
+                      "- typeform.com ",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                    const Text(
+                      "- forms.office.com",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _urlController,
+                      keyboardType: TextInputType.url,
+                      decoration: InputDecoration(
+                        hintText: "https://example.com",
+                        prefixIcon: const Icon(Icons.link),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Colors.blue),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (widget.collectionName.startsWith('Eventposts')) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Enter URL (optional)  ",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _urlController,
+                      keyboardType: TextInputType.url,
+                      decoration: InputDecoration(
+                        hintText: "https://example.com",
+                        prefixIcon: const Icon(Icons.link),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Colors.blue),
+                        ),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 16),
 
@@ -669,19 +673,16 @@ if (widget.collectionName.startsWith('Eventposts')) ...[
 
                   // Add location button
                   Row(
-                    children: [
-                     
-                    ],
+                    children: [],
                   ),
 
                   const SizedBox(height: 12),
-ListTile(
-  leading: const Icon(Icons.location_on),
-  title: Text(_selectedAddress),
-  trailing: const Icon(Icons.edit_location),
-  onTap: _pickLocation,
-)
-,
+                  ListTile(
+                    leading: const Icon(Icons.location_on),
+                    title: Text(_selectedAddress),
+                    trailing: const Icon(Icons.edit_location),
+                    onTap: _pickLocation,
+                  ),
                   // Display selected location
                   if (_selectedLocation != null)
                     Container(
@@ -693,7 +694,8 @@ ListTile(
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.location_on, color: Colors.redAccent),
+                          const Icon(Icons.location_on,
+                              color: Colors.redAccent),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(

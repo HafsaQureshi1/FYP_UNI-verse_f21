@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/fcm-service.dart';
@@ -56,14 +55,20 @@ class _SurveyAdminState extends State<SurveyAdmin> {
   Future<void> _approveSurvey(DocumentSnapshot survey) async {
     final surveyData = survey.data() as Map<String, dynamic>;
     final surveyId = survey.id;
-     final posterId = surveyData['userId'];
-
- final posterName = surveyData['userName'] ?? 'Someone'; // Ensure this exists in your postData
+    final posterId = surveyData['userId'];
+    final posterName = surveyData['userName'] ?? 'Someone';
 
     final approvedSurveyData = {
       ...surveyData,
       'approval': 'approved',
       'timestamp': FieldValue.serverTimestamp(),
+      // Add a field to indicate if this is a form survey or just a URL post
+      // Only set isSurveyForm to true if this was created through the form creator
+      'isSurveyForm': surveyData['questions'] != null &&
+          (surveyData['questions'] as List).isNotEmpty,
+      'postContent': surveyData['title'] ??
+          surveyData['postContent'] ??
+          'New Survey', // Use title or existing content
     };
 
     await FirebaseFirestore.instance
@@ -79,49 +84,48 @@ class _SurveyAdminState extends State<SurveyAdmin> {
         .collection("posts")
         .doc(surveyId)
         .delete();
-        final FCMService _fcmService = FCMService();
 
- await _fcmService.sendNotificationOnNewPost(
-    posterId,
-    posterName,
-    'Surveys',
-  );
-  await _fcmService.sendNotificationPostApproved(posterId, 'Surveys');
+    final FCMService _fcmService = FCMService();
+
+    await _fcmService.sendNotificationOnNewPost(
+      posterId,
+      posterName,
+      'Surveys',
+    );
+    await _fcmService.sendNotificationPostApproved(posterId, 'Surveys');
 
     _showToast("Survey approved");
-   await FirebaseFirestore.instance.collection('notifications').add({
-    'receiverId': posterId, // ✅ correct user ID
-    'senderId': 'admin',
-    'senderName': 'Admin',
-    'postId': surveyId,
-    'collection': 'Surveyposts/All/posts',
-    'message': "✅ Your post was approved by admin",
-    'timestamp': FieldValue.serverTimestamp(),
-    'type': 'approval',
-    'isRead': false,
-  });
-  await FirebaseFirestore.instance.collection('notifications').add({
-    'receiverId': null, // or leave blank/null if your UI handles public messages
-    'senderId': posterId,
-    'senderName': posterName,
-    'postId': surveyId,
-    'collection': 'Surveyposts/All/posts',
-    'message': "📢 $posterName added a new post in Surveys",
-    'timestamp': FieldValue.serverTimestamp(),
-    'type': 'new_post',
-    'isRead': false,
-  });
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'receiverId': posterId,
+      'senderId': 'admin',
+      'senderName': 'Admin',
+      'postId': surveyId,
+      'collection': 'Surveyposts/All/posts',
+      'message': "✅ Your survey was approved by admin",
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': 'approval',
+      'isRead': false,
+    });
+
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'receiverId': null,
+      'senderId': posterId,
+      'senderName': posterName,
+      'postId': surveyId,
+      'collection': 'Surveyposts/All/posts',
+      'message': "📢 $posterName added a new survey",
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': 'new_post',
+      'isRead': false,
+    });
   }
 
   Future<void> _rejectSurvey(DocumentSnapshot survey) async {
     final postData = survey.data() as Map<String, dynamic>;
- 
-  final postContent = postData['postContent'] ?? '';
-  final posterId = postData['userId'] ?? '';
-  final posterName = postData['userName'] ?? 'Someone'; // Ensure this exists in your postData
-
-
+    final posterId = postData['userId'] ?? '';
+    final posterName = postData['userName'] ?? 'Someone';
     final surveyId = survey.id;
+
     await FirebaseFirestore.instance
         .collection('surveyadmin')
         .doc("All")
@@ -129,24 +133,21 @@ class _SurveyAdminState extends State<SurveyAdmin> {
         .doc(surveyId)
         .delete();
 
-    _showToast("Survey rejected");
-    
-final FCMService _fcmService = FCMService();
+    final FCMService _fcmService = FCMService();
+    await _fcmService.sendNotificationPostRejected(posterId, 'Surveys');
 
-await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
-    _showToast("Post rejected");
-   await FirebaseFirestore.instance.collection('notifications').add({
-    'receiverId': posterId, // ✅ correct user ID
-    'senderId': 'admin',
-    'senderName': 'Admin',
-    'postId': surveyId,
-    'collection': 'lostfoundposts/All/posts',
-    'message': "❌ Your post was rejected by admin",
-    'timestamp': FieldValue.serverTimestamp(),
-    'type': 'rejection',
-    'isRead': false,
-  });
-  
+    _showToast("Survey rejected");
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'receiverId': posterId,
+      'senderId': 'admin',
+      'senderName': 'Admin',
+      'postId': surveyId,
+      'collection': 'Surveyposts/All/posts',
+      'message': "❌ Your survey was rejected by admin",
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': 'rejection',
+      'isRead': false,
+    });
   }
 
   String _formatTimestamp(Timestamp? timestamp) {
@@ -206,19 +207,14 @@ await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
               var surveyData = surveys[index].data() as Map<String, dynamic>;
               String userId = surveyData['userId'] ?? '';
               String username = surveyData['userName'] ?? 'Anonymous';
-              String title = surveyData['postContent'] ?? '';
-              List<dynamic> options = surveyData['options'] ?? [];
+              String title = surveyData['title'] ?? '';
+              String description = surveyData['description'] ?? '';
               String imageUrl = surveyData['imageUrl'] ?? '';
+              String url = surveyData['url'] ?? '';
               Timestamp? timestamp = surveyData['timestamp'];
-               String locationAddress = '';
-              if (surveyData['location'] != null &&
-                  surveyData['location'] is Map) {
-                final locationData =
-                    surveyData['location'] as Map<String, dynamic>;
-                locationAddress = locationData['address'] ?? '';
-              }
 
-String url = surveyData['url'] ?? '';
+              // Handle both old and new survey formats
+              List<dynamic> questions = surveyData['questions'] ?? [];
 
               return FutureBuilder<String>(
                 future: _getUserProfilePicture(userId),
@@ -226,12 +222,11 @@ String url = surveyData['url'] ?? '';
                   String profileImageUrl = profileSnapshot.data ?? '';
 
                   return Card(
-
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    color: Colors.white, // Set card background color to white
+                    color: Colors.white,
                     elevation: 2,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -279,15 +274,23 @@ String url = surveyData['url'] ?? '';
                             ],
                           ),
                           const SizedBox(height: 12),
+
+                          // Display survey title and description
                           Text(
                             title,
                             style: TextStyle(
-                              fontSize: 16,
-                            
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                               color: _primaryColor,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          if (description.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(description),
+                          ],
+
+                          const SizedBox(height: 12),
+
                           if (imageUrl.isNotEmpty)
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
@@ -300,10 +303,11 @@ String url = surveyData['url'] ?? '';
                                     (context, child, loadingProgress) {
                                   if (loadingProgress == null) return child;
                                   return Center(
-                                      child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        _primaryColor),
-                                  ));
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          _primaryColor),
+                                    ),
+                                  );
                                 },
                                 errorBuilder: (context, error, stackTrace) =>
                                     Container(
@@ -318,117 +322,74 @@ String url = surveyData['url'] ?? '';
                                 ),
                               ),
                             ),
-                        
-                         
-                         
-                          
-                                                    if (locationAddress.isNotEmpty) ...[
-  const SizedBox(height: 8),
-  Row(
-    children: [
-      Icon(Icons.location_on, size: 18, color: _primaryColor),
-      const SizedBox(width: 6),
-      Expanded(
-        child: Text(
-          locationAddress,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    ],
-  ),
-  Column(
-    children: [
-      Icon(Icons.location_on, size: 18, color: _primaryColor),
-      const SizedBox(width: 6),
-      Expanded(
-        child: Text(
-          locationAddress,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    ],
-  ),
-],
-const SizedBox(height: 8,),
-if (url.isNotEmpty) ...[
-  const SizedBox(height: 8),
-  Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Icon(Icons.link, size: 18, color: _primaryColor),
-      const SizedBox(width: 6),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            InkWell(
-              onTap: () {
-                // You can open the URL using url_launcher here
-              },
-              child: Text(
-                url,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.blue,
-                  decoration: TextDecoration.underline,
-                ),
-                softWrap: true,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "Accepted only",
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              "- form.google.com",
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              "- typeform.com",
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              "- forms.office.com",
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-      ),
-    ],
-  ),
-],
 
-
-                          ...options.map((option) => Padding(
-                                padding:
-                                    const EdgeInsets.only(left: 8.0, top: 4.0),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.circle,
-                                        size: 8, color: _primaryColor),
-                                    const SizedBox(width: 8),
-                                    Text(option),
-                                  ],
+                          if (url.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.link,
+                                    size: 18, color: _primaryColor),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        url,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.blue,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                        softWrap: true,
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 2,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              )),
+                              ],
+                            ),
+                          ],
+
                           const SizedBox(height: 16),
+
+                          // Display survey questions
+                          if (questions.isNotEmpty) ...[
+                            const Text(
+                              'Preview of Questions:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  for (int i = 0;
+                                      i < questions.length;
+                                      i++) ...[
+                                    if (i > 0) const Divider(height: 16),
+                                    _buildQuestionPreview(questions[i], i),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 16),
+
                           Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.center, // Center the buttons
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               ElevatedButton.icon(
                                 onPressed: () => _rejectSurvey(surveys[index]),
@@ -493,6 +454,57 @@ if (url.isNotEmpty) ...[
           );
         },
       ),
+    );
+  }
+
+  Widget _buildQuestionPreview(Map<String, dynamic> questionData, int index) {
+    final String question = questionData['question'] ?? '';
+    final String type = questionData['type'] ?? 'multipleChoice';
+    final List<dynamic> options = questionData['options'] ?? [];
+    final bool isRequired = questionData['isRequired'] ?? false;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              '${index + 1}. $question',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (isRequired)
+              const Text(' *',
+                  style: TextStyle(
+                      color: Colors.red, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+            'Type: ${type == 'multipleChoice' ? 'Multiple Choice' : 'Short Answer'}',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        if (type == 'multipleChoice' && options.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...options.map((option) => Padding(
+                padding: const EdgeInsets.only(left: 16, bottom: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.circle, size: 8, color: _primaryColor),
+                    const SizedBox(width: 8),
+                    Text(option.toString()),
+                  ],
+                ),
+              )),
+        ],
+        if (type == 'shortAnswer')
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 16),
+            child: Text('(Short answer field)',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic)),
+          ),
+      ],
     );
   }
 }
