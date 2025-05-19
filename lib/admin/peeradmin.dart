@@ -16,8 +16,43 @@ class _PeerAdminState extends State<PeerAdmin> {
   // Theme colors - match with Home.dart
   final Color _primaryColor = const Color.fromARGB(255, 0, 58, 92);
   final Color _backgroundColor = const Color.fromARGB(64, 236, 236, 236);
+  final ScrollController _scrollController = ScrollController();
 
-  Stream<QuerySnapshot> _getPeerPostsStream() {
+  final Map<String, List<String>> keywordMap = {
+    "Computer Science": [
+      "programming", "code", "coding", "flutter", "java", "python", "c++", "software",
+      "android", "ios", "web", "database", "sql", "nosql", "API", "frontend", "backend",
+      "AI", "ML", "artificial intelligence", "machine learning", "data science",
+      "devops", "cloud", "firebase", "github", "react", "angular", "docker"
+    ],
+    "Electrical Engineering": [
+      "circuit", "voltage", "current", "resistor", "capacitor", "inductor", "oscilloscope",
+      "power", "transformer", "electricity", "watt", "ampere", "signal", "microcontroller",
+      "arduino", "embedded", "analog", "digital", "transistor", "diode", "sensor", "relay"
+    ],
+    "Education & Physical Education": [
+      "teaching", "teacher", "student", "lecture", "class", "education", "learning", "study",
+      "assignment", "course", "school", "university", "PE", "sports", "exercise", "training",
+      "coaching", "fitness", "health", "activity", "tournament", "competition", "curriculum"
+    ],
+    "Business": [
+      "business", "startup", "entrepreneur", "finance", "marketing", "sales", "customer",
+      "strategy", "investment", "money", "profit", "loss", "budget", "HR", "human resources",
+      "management", "economy", "commerce", "pitch", "project", "advertising", "brand"
+    ],
+    "Mathematics": [
+      "algebra", "calculus", "geometry", "statistics", "math", "mathematics", "equation",
+      "function", "integral", "derivative", "vector", "matrix", "probability", "graph",
+      "set theory", "number", "trigonometry", "logarithm", "theorem", "prime", "formula"
+    ],
+    "Media": [
+      "media", "journalism", "news", "anchor", "editor", "editing", "film", "movie", "cinema",
+      "photography", "camera", "shot", "clip", "video", "recording", "script", "broadcast",
+      "radio", "tv", "advertisement", "press", "social media", "influencer", "interview"
+    ]
+  };
+
+  Stream<QuerySnapshot> _getPendingPostsStream() {
     return FirebaseFirestore.instance
         .collection('peeradmin')
         .doc("All")
@@ -26,137 +61,99 @@ class _PeerAdminState extends State<PeerAdmin> {
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
-final Map<String, List<String>> keywordMap = {
-  "Computer Science": [
-    "programming", "code", "coding", "flutter", "java", "python", "c++", "software",
-    "android", "ios", "web", "database", "sql", "nosql", "API", "frontend", "backend",
-    "AI", "ML", "artificial intelligence", "machine learning", "data science",
-    "devops", "cloud", "firebase", "github", "react", "angular", "docker"
-  ],
-  "Electrical Engineering": [
-    "circuit", "voltage", "current", "resistor", "capacitor", "inductor", "oscilloscope",
-    "power", "transformer", "electricity", "watt", "ampere", "signal", "microcontroller",
-    "arduino", "embedded", "analog", "digital", "transistor", "diode", "sensor", "relay"
-  ],
-  "Education & Physical Education": [
-    "teaching", "teacher", "student", "lecture", "class", "education", "learning", "study",
-    "assignment", "course", "school", "university", "PE", "sports", "exercise", "training",
-    "coaching", "fitness", "health", "activity", "tournament", "competition", "curriculum"
-  ],
-  "Business": [
-    "business", "startup", "entrepreneur", "finance", "marketing", "sales", "customer",
-    "strategy", "investment", "money", "profit", "loss", "budget", "HR", "human resources",
-    "management", "economy", "commerce", "pitch", "project", "advertising", "brand"
-  ],
-  "Mathematics": [
-    "algebra", "calculus", "geometry", "statistics", "math", "mathematics", "equation",
-    "function", "integral", "derivative", "vector", "matrix", "probability", "graph",
-    "set theory", "number", "trigonometry", "logarithm", "theorem", "prime", "formula"
-  ],
-  "Media": [
-    "media", "journalism", "news", "anchor", "editor", "editing", "film", "movie", "cinema",
-    "photography", "camera", "shot", "clip", "video", "recording", "script", "broadcast",
-    "radio", "tv", "advertisement", "press", "social media", "influencer", "interview"
-  ]
-};
-Future<String> _handleLowConfidence(String postText) async {
-  final lowerText = postText.toLowerCase();
 
-  for (var entry in keywordMap.entries) {
-    for (var keyword in entry.value) {
-      if (lowerText.contains(keyword.toLowerCase())) {
-        print("Keyword match found: '${keyword}' → Category: ${entry.key}");
-        return entry.key;
-      }
-    }
+  Stream<QuerySnapshot> _getAllPostsStream() {
+    return FirebaseFirestore.instance
+        .collection('Peerposts')
+        .doc("All")
+        .collection("posts")
+        .orderBy('timestamp', descending: true)
+        .snapshots();
   }
 
-  print("No keyword match found. Defaulting to 'Miscellaneous'");
-  return "Miscellaneous";
-}
+  Future<String> _handleLowConfidence(String postText) async {
+    final lowerText = postText.toLowerCase();
 
-Future<String> _classifyPeerAssistancePost(String postText) async {
-  final url = Uri.parse(
-      "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
-  final headers = {
-    "Authorization": "Bearer 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",
-    "Content-Type": "application/json; charset=UTF-8" // Correct content-type
-  };
-
-  final body = jsonEncode({
-    "inputs": postText,
-    "parameters": {
-      "candidate_labels": [
-        "Computer Science",
-        "Electrical Engineering",
-        "Education & Physical Education",
-        "Business",
-        "Mathematics",
-        "Media",
-        "Miscellaneous"
-      ],
-      "hypothesis_template": "This post is related to {}."
+    for (var entry in keywordMap.entries) {
+      for (var keyword in entry.value) {
+        if (lowerText.contains(keyword.toLowerCase())) {
+          print("Keyword match found: '${keyword}' → Category: ${entry.key}");
+          return entry.key;
+        }
+      }
     }
-  });
 
-  try {
-    final response = await http.post(url, headers: headers, body: body);
+    print("No keyword match found. Defaulting to 'Miscellaneous'");
+    return "Miscellaneous";
+  }
 
-    // Print the response status and body for debugging
-    print("Response Status Code: ${response.statusCode}");
-    print("Response Body: ${response.body}");
+  Future<String> _classifyPeerAssistancePost(String postText) async {
+    final url = Uri.parse(
+        "https://api-inference.huggingface.co/models/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7");
+    final headers = {
+      "Authorization": "Bearer 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",
+      "Content-Type": "application/json; charset=UTF-8"
+    };
 
-    if (response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      List<dynamic> labels = responseData["labels"];
-      List<dynamic> scores = responseData["scores"];
+    final body = jsonEncode({
+      "inputs": postText,
+      "parameters": {
+        "candidate_labels": [
+          "Computer Science",
+          "Electrical Engineering",
+          "Education & Physical Education",
+          "Business",
+          "Mathematics",
+          "Media",
+          "Miscellaneous"
+        ],
+        "hypothesis_template": "This post is related to {}."
+      }
+    });
 
-      // Print the labels and scores for debugging
-      print("Labels: $labels");
-      print("Scores: $scores");
+    try {
+      final response = await http.post(url, headers: headers, body: body);
 
-      if (labels.isNotEmpty && scores.isNotEmpty) {
-        String bestCategory = "Miscellaneous";
-        double bestConfidence = 0.0;
+      // Print the response status and body for debugging
+      print("Response Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
 
-        for (int i = 0; i < labels.length; i++) {
-          if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
-            bestCategory = labels[i];
-            bestConfidence = scores[i];
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        List<dynamic> labels = responseData["labels"];
+        List<dynamic> scores = responseData["scores"];
+
+        // Print the labels and scores for debugging
+        print("Labels: $labels");
+        print("Scores: $scores");
+
+        if (labels.isNotEmpty && scores.isNotEmpty) {
+          String bestCategory = "Miscellaneous";
+          double bestConfidence = 0.0;
+
+          for (int i = 0; i < labels.length; i++) {
+            if (labels[i] != "Miscellaneous" && scores[i] > bestConfidence) {
+              bestCategory = labels[i];
+              bestConfidence = scores[i];
+            }
           }
-        }
 
-        if (bestConfidence < 0.2) {
-           return await _handleLowConfidence(postText);
-        }
+          if (bestConfidence < 0.2) {
+            return await _handleLowConfidence(postText);
+          }
 
-        return bestCategory;
+          return bestCategory;
+        }
+      } else {
+        return await _handleLowConfidence(postText);
       }
-    } else {
-           return await _handleLowConfidence(postText);
-      print("Error: Received non-200 response code: ${response.statusCode}");
-      print("Response body: ${response.body}");
+    } catch (e) {
+      print("Hugging Face API Exception: $e");
+      return await _handleLowConfidence(postText);
     }
-  } catch (e) {
-         return await _handleLowConfidence(postText);
-    print("Hugging Face API Exception: $e");
+
+    return "Miscellaneous";
   }
-
-  return "Miscellaneous";
-}
-
-  Map<String, String> categoryMapping = {
-    "Programming languages & Software & AI & Machine learning & code  (Computer Science & Computer Systems)":
-        "Computer Science & Computer Systems",
-    "Electronics & Circuits (Electrical Engineering)": "Electrical Engineering",
-    "Teaching Methods (Education & Physical Education)":
-        "Education & Physical Education",
-    "Business Strategy (Business Department)": "Business Department",
-    "Statistics & Calculus (Mathematics)": "Mathematics",
-    "Journalism & Broadcasting (Media & Communication)":
-        "Media & Communication",
-    "Miscellaneous": "Miscellaneous"
-  };
 
   Future<String> _getUserProfilePicture(String userId) async {
     try {
@@ -185,32 +182,35 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
       ),
     );
   }
-void _showLoadingDialog(BuildContext context, String message) {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) {
-      return AlertDialog(
-        content: Row(
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(width: 20),
-            Expanded(child: Text(message)),
-          ],
-        ),
-      );
-    },
-  );
-}
+
+  void _showLoadingDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          content: Row(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(width: 20),
+              Expanded(child: Text(message)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _approvePeerPost(DocumentSnapshot post) async {
     final postData = post.data() as Map<String, dynamic>;
     final postId = post.id;
-     final posterId = postData['userId'];
+    final posterId = postData['userId'];
     final postContent = postData['postContent'] ?? '';
-  final posterName = postData['userName'] ?? 'Someone'; // Ensure this exists in your postData
-    String category = "Uncategorized";
-   _showLoadingDialog(context, "Approving post and sending notifications...");
+    final posterName = postData['userName'] ?? 'Someone'; 
 
+    _showLoadingDialog(context, "Approving post and sending notifications...");
+
+    String category = "Uncategorized";
     try {
       category = await _classifyPeerAssistancePost(postContent);
       print("AI classification : $category");
@@ -232,86 +232,94 @@ void _showLoadingDialog(BuildContext context, String message) {
         .doc(postId)
         .set(approvedPostData);
 
-   
-        final FCMService _fcmService = FCMService();
+    final FCMService _fcmService = FCMService();
 
- await _fcmService.sendNotificationOnNewPost(
-    posterId,
-    posterName,
-    'Peer assistance',
-  );
-  await _fcmService.sendNotificationPostApproved(posterId, 'Peer Assistance');
+    await _fcmService.sendNotificationOnNewPost(
+      posterId,
+      posterName,
+      'Peer assistance',
+    );
+    await _fcmService.sendNotificationPostApproved(posterId, 'Peer Assistance');
 
-   await FirebaseFirestore.instance.collection('notifications').add({
-    'receiverId': posterId, // ✅ correct user ID
-    'senderId': 'admin',
-    'senderName': 'Admin',
-    'postId': postId,
-    'collection': 'Peerposts',
-    'message': "✅ Your post was approved by admin",
-    'timestamp': FieldValue.serverTimestamp(),
-    'type': 'approval',
-    'isRead': false,
-  });
-   
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'receiverId': posterId,
+      'senderId': 'admin',
+      'senderName': 'Admin',
+      'postId': postId,
+      'collection': 'Peerposts',
+      'message': "✅ Your post was approved by admin",
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': 'approval',
+      'isRead': false,
+    });
+       
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'receiverId': null,
+      'senderId': posterId,
+      'senderName': posterName,
+      'postId': postId,
+      'collection': 'Peerposts/All/posts',
+      'message': "📢 $posterName added a new post in Peer Assistance",
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': 'new_post',
+      'isRead': false,
+    });
     
- await FirebaseFirestore.instance.collection('notifications').add({
-    'receiverId': null, // or leave blank/null if your UI handles public messages
-    'senderId': posterId,
-    'senderName': posterName,
-    'postId': postId,
-    'collection': 'Peerposts/All/posts',
-    'message': "📢 $posterName added a new post in Peer Assistance",
-    'timestamp': FieldValue.serverTimestamp(),
-    'type': 'new_post',
-    'isRead': false,
-  });
-            Navigator.of(context, rootNavigator: true).pop();
-
-   _showToast("Post approved");
+    Navigator.of(context, rootNavigator: true).pop();
+    _showToast("Post approved");
+    
     await FirebaseFirestore.instance
         .collection('peeradmin')
         .doc("All")
         .collection("posts")
         .doc(postId)
         .delete();
-await FirebaseAuth.instance.signOut();  
   }
 
   Future<void> _rejectPeerPost(DocumentSnapshot post) async {
     final postData = post.data() as Map<String, dynamic>;
- 
-  final postContent = postData['postContent'] ?? '';
-  final posterId = postData['userId'] ?? '';
-  final posterName = postData['userName'] ?? 'Someone'; // Ensure this exists in your postData
-
-
     final postId = post.id;
+    final posterId = postData['userId'] ?? '';
+    final posterName = postData['userName'] ?? 'Someone';
+
     await FirebaseFirestore.instance
         .collection('peeradmin')
         .doc("All")
         .collection("posts")
         .doc(postId)
         .delete();
-
-    _showToast("Peer post rejected");
     
-final FCMService _fcmService = FCMService();
+    final FCMService _fcmService = FCMService();
 
-await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
+    await _fcmService.sendNotificationPostRejected(posterId, 'Peer Assistance');
+    
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'receiverId': posterId,
+      'senderId': 'admin',
+      'senderName': 'Admin',
+      'postId': postId,
+      'collection': 'Peerposts/All/posts',
+      'message': "❌ Your post was rejected by admin",
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': 'rejection',
+      'isRead': false,
+    });
+    
     _showToast("Post rejected");
-   await FirebaseFirestore.instance.collection('notifications').add({
-    'receiverId': posterId, // ✅ correct user ID
-    'senderId': 'admin',
-    'senderName': 'Admin',
-    'postId': postId,
-    'collection': 'lostfoundposts/All/posts',
-    'message': "❌ Your post was rejected by admin",
-    'timestamp': FieldValue.serverTimestamp(),
-    'type': 'rejection',
-    'isRead': false,
-  });
-  
+  }
+
+  Future<void> _deletePost(DocumentSnapshot post) async {
+    final postId = post.id;
+    await FirebaseFirestore.instance
+        .collection('Peerposts')
+        .doc("All")
+        .collection("posts")
+        .doc(postId)
+        .delete();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Post deleted successfully')),
+    );
   }
 
   String _formatTimestamp(Timestamp? timestamp) {
@@ -327,218 +335,277 @@ await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
     return '${date.day}/${date.month}/${date.year} $hour:$minute $period';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _backgroundColor,
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _getPeerPostsStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-              ),
-            );
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.people_outline,
-                      size: 70, color: _primaryColor.withOpacity(0.5)),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No peer posts to approve',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: _primaryColor,
+  Widget _buildPostCard(DocumentSnapshot post, {bool showApproveReject = false}) {
+    final postData = post.data()! as Map<String, dynamic>;
+    final username = postData['userName'] ?? 'Anonymous';
+    final userId = postData['userId'] ?? '';
+    final postContent = postData['postContent'] ?? '';
+    final imageUrl = postData['imageUrl'] ?? '';
+    final timestamp = postData['timestamp'] as Timestamp?;
+
+    return FutureBuilder<String>(
+      future: _getUserProfilePicture(userId),
+      builder: (context, profileSnapshot) {
+        final profileImageUrl = profileSnapshot.data ?? '';
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          color: Colors.white,
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // User info row with profile image
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundImage: profileImageUrl.isNotEmpty
+                          ? NetworkImage(profileImageUrl)
+                          : const AssetImage('assets/default_profile.png') as ImageProvider,
+                      backgroundColor: Colors.grey[200],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          var posts = snapshot.data!.docs;
-
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: posts.length,
-            itemBuilder: (context, index) {
-              var postData = posts[index].data() as Map<String, dynamic>;
-              String userId = postData['userId'] ?? '';
-              String username = postData['userName'] ?? 'Anonymous';
-              String title = postData['postContent'] ?? '';
-              String imageUrl = postData['imageUrl'] ?? '';
-              Timestamp? timestamp = postData['timestamp'];
-
-              return FutureBuilder<String>(
-                future: _getUserProfilePicture(userId),
-                builder: (context, profileSnapshot) {
-                  String profileImageUrl = profileSnapshot.data ?? '';
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    color: Colors.white, // Set card background color to white
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                    const SizedBox(width: 12),
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              if (profileImageUrl.isNotEmpty)
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundImage:
-                                      NetworkImage(profileImageUrl),
-                                )
-                              else
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundColor:
-                                      _primaryColor.withOpacity(0.2),
-                                  child:
-                                      Icon(Icons.person, color: _primaryColor),
-                                ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      username,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatTimestamp(timestamp),
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
                           Text(
-                            title,
-                            style: TextStyle(
-                              fontSize: 18,
+                            username,
+                            style: const TextStyle(
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: _primaryColor,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          if (imageUrl.isNotEmpty)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                imageUrl,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: 200,
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Center(
-                                      child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        _primaryColor),
-                                  ));
-                                },
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Container(
-                                  height: 100,
-                                  color: Colors.grey.shade200,
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.broken_image,
-                                      color: _primaryColor,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                          Text(
+                            _formatTimestamp(timestamp),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
                             ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.center, // Center the buttons
-                            children: [
-                              ElevatedButton.icon(
-                                onPressed: () => _rejectPeerPost(posts[index]),
-                                icon: const Icon(
-                                  Icons.cancel_outlined,
-                                  color: Colors.white,
-                                ),
-                                label: const Text(
-                                  "Reject",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFDC3545),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                  elevation: 2,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              ElevatedButton.icon(
-                                onPressed: () => _approvePeerPost(posts[index]),
-                                icon: const Icon(
-                                  Icons.check_circle_outline,
-                                  color: Colors.white,
-                                ),
-                                label: const Text(
-                                  "Approve",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF28A745),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
-                                  ),
-                                  elevation: 2,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
+                          ),
                         ],
                       ),
                     ),
-                  );
-                },
-              );
-            },
+                    if (!showApproveReject)
+                      IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red[700]),
+                        onPressed: () => _deletePost(post),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                if (imageUrl.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 200,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator());
+                      },
+                      errorBuilder: (context, error, stackTrace) => const Text("Image load failed"),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+
+                Text(
+                  postContent,
+                  style: const TextStyle(fontSize: 15),
+                ),
+
+                if (showApproveReject) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => _rejectPeerPost(post),
+                        icon: const Icon(
+                          Icons.cancel_outlined,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          "Reject",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFDC3545),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => _approvePeerPost(post),
+                        icon: const Icon(
+                          Icons.check_circle_outline,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          "Approve",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF28A745),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPendingPostsTab() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _getPendingPostsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+            ),
           );
-        },
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.people_outline,
+                  size: 70,
+                  color: _primaryColor.withOpacity(0.5),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No peer posts to approve',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: _primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final posts = snapshot.data!.docs;
+
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: posts.length,
+          itemBuilder: (context, index) => _buildPostCard(posts[index], showApproveReject: true),
+        );
+      },
+    );
+  }
+
+  Widget _buildAllPostsTab() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _getAllPostsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.inbox,
+                  size: 70,
+                  color: _primaryColor.withOpacity(0.5),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No peer posts available',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: _primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final posts = snapshot.data!.docs;
+
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: posts.length,
+          itemBuilder: (context, index) => _buildPostCard(posts[index], showApproveReject: false),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        appBar: AppBar(
+          elevation: 0,
+          toolbarHeight: 10,
+          automaticallyImplyLeading: false,
+          backgroundColor: Colors.white,
+          bottom: const TabBar(
+            labelColor: Colors.black,
+            indicatorColor: Color.fromARGB(255, 0, 28, 187),
+            tabs: [
+              Tab(text: 'Pending'),
+              Tab(text: 'All Posts'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _buildPendingPostsTab(),
+            _buildAllPostsTab(),
+          ],
+        ),
       ),
     );
   }
