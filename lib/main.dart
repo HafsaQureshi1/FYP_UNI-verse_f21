@@ -609,7 +609,15 @@ class _SignUpPageState extends State<SignUpPage> {
       User? user = userCredential.user;
 
       if (user != null) {
-        await user.sendEmailVerification();
+        try {
+  await user.sendEmailVerification();
+} catch (e) {
+  print('Error sending email verification: $e');
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Could not send verification email: $e')),
+  );
+}
+
 
         // Check if the email is an admin email
         bool isAdmin = _adminEmails.contains(user.email?.toLowerCase().trim());

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/fcm-service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PeerAdmin extends StatefulWidget {
   const PeerAdmin({super.key});
@@ -184,7 +185,23 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
       ),
     );
   }
-
+void _showLoadingDialog(BuildContext context, String message) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 20),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      );
+    },
+  );
+}
   Future<void> _approvePeerPost(DocumentSnapshot post) async {
     final postData = post.data() as Map<String, dynamic>;
     final postId = post.id;
@@ -192,6 +209,8 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
     final postContent = postData['postContent'] ?? '';
   final posterName = postData['userName'] ?? 'Someone'; // Ensure this exists in your postData
     String category = "Uncategorized";
+   _showLoadingDialog(context, "Approving post and sending notifications...");
+
     try {
       category = await _classifyPeerAssistancePost(postContent);
       print("AI classification : $category");
@@ -213,12 +232,7 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
         .doc(postId)
         .set(approvedPostData);
 
-    await FirebaseFirestore.instance
-        .collection('peeradmin')
-        .doc("All")
-        .collection("posts")
-        .doc(postId)
-        .delete();
+   
         final FCMService _fcmService = FCMService();
 
  await _fcmService.sendNotificationOnNewPost(
@@ -240,7 +254,7 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
     'isRead': false,
   });
    
-    _showToast("Peer post approved");
+    
  await FirebaseFirestore.instance.collection('notifications').add({
     'receiverId': null, // or leave blank/null if your UI handles public messages
     'senderId': posterId,
@@ -252,7 +266,16 @@ Future<String> _classifyPeerAssistancePost(String postText) async {
     'type': 'new_post',
     'isRead': false,
   });
-     
+            Navigator.of(context, rootNavigator: true).pop();
+
+   _showToast("Post approved");
+    await FirebaseFirestore.instance
+        .collection('peeradmin')
+        .doc("All")
+        .collection("posts")
+        .doc(postId)
+        .delete();
+await FirebaseAuth.instance.signOut();  
   }
 
   Future<void> _rejectPeerPost(DocumentSnapshot post) async {

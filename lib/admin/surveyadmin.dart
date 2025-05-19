@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/fcm-service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SurveyAdmin extends StatefulWidget {
   const SurveyAdmin({super.key});
@@ -51,12 +52,29 @@ class _SurveyAdminState extends State<SurveyAdmin> {
       ),
     );
   }
-
+void _showLoadingDialog(BuildContext context, String message) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 20),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      );
+    },
+  );
+}
   Future<void> _approveSurvey(DocumentSnapshot survey) async {
     final surveyData = survey.data() as Map<String, dynamic>;
     final surveyId = survey.id;
     final posterId = surveyData['userId'];
     final posterName = surveyData['userName'] ?? 'Someone';
+   _showLoadingDialog(context, "Approving post and sending notifications...");
 
     final approvedSurveyData = {
       ...surveyData,
@@ -78,12 +96,7 @@ class _SurveyAdminState extends State<SurveyAdmin> {
         .doc(surveyId)
         .set(approvedSurveyData);
 
-    await FirebaseFirestore.instance
-        .collection('surveyadmin')
-        .doc("All")
-        .collection("posts")
-        .doc(surveyId)
-        .delete();
+    
 
     final FCMService _fcmService = FCMService();
 
@@ -94,7 +107,7 @@ class _SurveyAdminState extends State<SurveyAdmin> {
     );
     await _fcmService.sendNotificationPostApproved(posterId, 'Surveys');
 
-    _showToast("Survey approved");
+  
     await FirebaseFirestore.instance.collection('notifications').add({
       'receiverId': posterId,
       'senderId': 'admin',
@@ -118,6 +131,16 @@ class _SurveyAdminState extends State<SurveyAdmin> {
       'type': 'new_post',
       'isRead': false,
     });
+            Navigator.of(context, rootNavigator: true).pop();
+
+    _showToast("Post approved");
+    await FirebaseFirestore.instance
+        .collection('surveyadmin')
+        .doc("All")
+        .collection("posts")
+        .doc(surveyId)
+        .delete();
+await FirebaseAuth.instance.signOut();
   }
 
   Future<void> _rejectSurvey(DocumentSnapshot survey) async {

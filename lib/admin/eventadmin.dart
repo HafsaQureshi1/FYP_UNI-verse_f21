@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/fcm-service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class EventsAdmin extends StatefulWidget {
   const EventsAdmin({super.key});
@@ -51,7 +52,23 @@ class _EventsAdminState extends State<EventsAdmin> {
       ),
     );
   }
-
+void _showLoadingDialog(BuildContext context, String message) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 20),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      );
+    },
+  );
+}
   Future<void> _approveEvent(DocumentSnapshot event) async {
     final eventData = event.data() as Map<String, dynamic>;
     final eventId = event.id;
@@ -63,6 +80,7 @@ class _EventsAdminState extends State<EventsAdmin> {
       print("❌ No userId field found in post");
       return;
     }
+   _showLoadingDialog(context, "Approving post and sending notifications...");
 
     final approvedEventData = {
       ...eventData,
@@ -79,12 +97,7 @@ class _EventsAdminState extends State<EventsAdmin> {
         .set(approvedEventData);
 
     // Remove from admin approval list
-    await FirebaseFirestore.instance
-        .collection('eventsadmin')
-        .doc("All")
-        .collection("posts")
-        .doc(eventId)
-        .delete();
+    
 
     // Send push notification
     final FCMService _fcmService = FCMService();
@@ -108,7 +121,7 @@ class _EventsAdminState extends State<EventsAdmin> {
       'isRead': false,
     });
 
-    _showToast("Event approved");
+    
     await FirebaseFirestore.instance.collection('notifications').add({
       'receiverId':
           null, // or leave blank/null if your UI handles public messages
@@ -121,6 +134,16 @@ class _EventsAdminState extends State<EventsAdmin> {
       'type': 'new_post',
       'isRead': false,
     });
+            Navigator.of(context, rootNavigator: true).pop();
+
+    _showToast("Post approved");
+    await FirebaseFirestore.instance
+        .collection('eventsadmin')
+        .doc("All")
+        .collection("posts")
+        .doc(eventId)
+        .delete();
+await FirebaseAuth.instance.signOut();
   }
 
   Future<void> _rejectEvent(DocumentSnapshot event) async {
