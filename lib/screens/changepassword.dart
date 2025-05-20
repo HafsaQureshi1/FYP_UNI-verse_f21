@@ -85,6 +85,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         );
         return;
       }
+      final hasSpecialChar = RegExp(r'(?=.*[!@#\$%^&*(),.?":{}|<>])');
+if (!hasSpecialChar.hasMatch(newPassword)) {
+  setState(() => _isLoading = false);
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Password must include a special character.')),
+  );
+  return;
+}
 
       // Update password
       await user.updatePassword(newPassword);
@@ -228,7 +236,7 @@ Widget build(BuildContext context) {
                             controller: _newPasswordController,
                             obscureText: _obscureNewPassword,
                             label: 'New Password',
-                            hintText: 'Min. 12 characters, alphanumeric',
+                            hintText: 'Min. 12 characters, alphanumeric special character',
                             onToggle: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
                           ),
                           const SizedBox(height: 20),

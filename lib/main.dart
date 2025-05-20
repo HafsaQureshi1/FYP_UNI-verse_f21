@@ -334,7 +334,12 @@ class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
 
       final GoogleSignInAccount? newGoogleUser = await _googleSignIn.signIn();
       if (newGoogleUser == null) return;
-
+if (newGoogleUser!.email.endsWith('@sukkur.iba.edu.pk') &&
+        !newGoogleUser.email.endsWith('@sukkur.iba')) {
+      // Not allowed domain - sign out and show error
+      await _googleSignIn.signOut();
+      throw Exception('Please sign in with your sukkur.iba email account');
+    }
       final GoogleSignInAuthentication googleAuth =
           await newGoogleUser.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -467,7 +472,6 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
       if (googleUser != null) {
         await _googleSignIn.disconnect(); // Clear cached account
       }
-
       final GoogleSignInAccount? newGoogleUser = await _googleSignIn.signIn();
       if (newGoogleUser == null) return;
 
@@ -580,24 +584,45 @@ class _SignUpPageState extends State<SignUpPage> {
     final password = _passwordController.text.trim();
 
     // Check: Password must be at least 6 characters
-    if (password.length < 12) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Password must be at least 12 characters.')),
-      );
-      return;
-    }
+    // Check: Password must be at least 12 characters
+   if (!email.toLowerCase().endsWith('@iba-suk.edu.pk')) {
+    setState(() => _isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('You must use a valid Sukkur IBA email (ending in @iba-suk.edu.pk).'),
+      ),
+    );
+    return;
+  }
+if (password.length < 12) {
+  setState(() => _isLoading = false);
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+        content: Text('Password must be at least 12 characters.')),
+  );
+  return;
+}
 
-    // Check: Password must be alphanumeric
-    final isAlphanumeric = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$');
-    if (!isAlphanumeric.hasMatch(password)) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password must be alphanumeric.')),
-      );
-      return;
-    }
+// Check: Password must contain letters and digits
+final hasLettersAndDigits = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)');
+if (!hasLettersAndDigits.hasMatch(password)) {
+  setState(() => _isLoading = false);
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Password must include letters and numbers.')),
+  );
+  return;
+}
+
+// Check: Password must contain at least one special character
+final hasSpecialChar = RegExp(r'(?=.*[!@#\$%^&*(),.?":{}|<>])');
+if (!hasSpecialChar.hasMatch(password)) {
+  setState(() => _isLoading = false);
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Password must include a special character.')),
+  );
+  return;
+}
+
 
     try {
       UserCredential userCredential =
@@ -766,7 +791,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   controller: _passwordController,
                   decoration: InputDecoration(
                     labelText:
-                        'Password (must be alphanumeric, contain a letter and a number)',
+                        'Password must contain  alphanumeric and special character.',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
@@ -966,24 +991,43 @@ class _SignInPageState extends State<SignInPage> {
     final password = _passwordController.text.trim();
 
     // Check: Password must be at least 6 characters
-    if (password.length < 12) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Password must be at least 12 characters.')),
-      );
-      return;
-    }
+     if (!email.toLowerCase().endsWith('@iba-suk.edu.pk')) {
+    setState(() => _isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('You must use a valid Sukkur IBA email (ending in @iba-suk.edu.pk).'),
+      ),
+    );
+    return;
+  }
+if (password.length < 12) {
+  setState(() => _isLoading = false);
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+        content: Text('Password must be at least 12 characters.')),
+  );
+  return;
+}
 
-    // Check: Password must be alphanumeric
-    final isAlphanumeric = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$');
-    if (!isAlphanumeric.hasMatch(password)) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password must be alphanumeric.')),
-      );
-      return;
-    }
+// Check: Password must contain letters and digits
+final hasLettersAndDigits = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)');
+if (!hasLettersAndDigits.hasMatch(password)) {
+  setState(() => _isLoading = false);
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Password must include letters and numbers.')),
+  );
+  return;
+}
+
+// Check: Password must contain at least one special character
+final hasSpecialChar = RegExp(r'(?=.*[!@#\$%^&*(),.?":{}|<>])');
+if (!hasSpecialChar.hasMatch(password)) {
+  setState(() => _isLoading = false);
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Password must include a special character.')),
+  );
+  return;
+}
 
     final userDocRef =
         FirebaseFirestore.instance.collection('login_attempts').doc(email);
@@ -1348,24 +1392,40 @@ class _SignInPageState extends State<SignInPage> {
                 const SizedBox(height: 10),
 
                 // Google Sign-In Button
-                GoogleSignInButton(
-                  onSuccess: (UserCredential userCredential) {
-                    final String? email =
-                        userCredential.user?.email?.toLowerCase().trim();
+              GoogleSignInButton(
+  onSuccess: (UserCredential userCredential) {
+    final String? email = userCredential.user?.email?.toLowerCase().trim();
 
-                    if (email != null && _adminEmails.contains(email)) {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                            builder: (context) => AdminDashboard()),
-                      );
-                    } else {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                            builder: (context) => const HomeScreen()),
-                      );
-                    }
-                  },
-                ),
+    if (email == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email not found')),
+      );
+      return;
+    }
+
+    // Check if email ends with IBA Sukkur domain
+    if (!email.endsWith('@sukkur.iba.edu.pk') &&
+        !email.endsWith('@sukkur.iba')) {
+      // Invalid domain — sign out and show error
+      FirebaseAuth.instance.signOut();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please use your Sukkur IBA email to sign in')),
+      );
+      return;
+    }
+
+    // Valid domain — continue navigation
+    if (_adminEmails.contains(email)) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => AdminDashboard()),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
+  },
+),
 
                 const SizedBox(height: 10),
 

@@ -159,7 +159,7 @@ class LostFoundAdmin extends StatefulWidget {
 class _LostFoundAdminState extends State<LostFoundAdmin> {
   // Theme color to match with other admin screens
   final Color _primaryColor = const Color.fromARGB(255, 0, 58, 92);
-
+ 
   Stream<QuerySnapshot> _getPostsStream() {
     return FirebaseFirestore.instance
         .collection('lostfoundadmin')
@@ -455,11 +455,11 @@ await _fcmService.sendNotificationPostRejected(posterId, 'Lost & Found');
   }
   
   Stream<QuerySnapshot> _getPendingPostsStream() {
-    return FirebaseFirestore.instance
-        .collection('lostfoundposts')
+     return FirebaseFirestore.instance
+        .collection('lostfoundadmin')
         .doc("All")
         .collection("posts")
-        .where('approval', isEqualTo: 'pending')
+        .where('approval', isEqualTo: null)
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
