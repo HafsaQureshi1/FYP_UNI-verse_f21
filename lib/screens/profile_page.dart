@@ -73,7 +73,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ? (data['work'] as String? ?? '')
                   : '';
               // Safely access profileImage
-              profileImageUrl = data['profileImage'] as String?;
+              profileImageUrl = data['profilePicture'] as String?;
 
               // Set the department dropdown
               String? deptFromDB = data['department'] as String?;
@@ -182,7 +182,7 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     await _firestore.collection('users').doc(user!.uid).update({
-      'profileImage': imageUrl,
+      'profilePicture': imageUrl,
     });
 
     _fetchUserData();

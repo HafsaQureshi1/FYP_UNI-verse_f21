@@ -48,7 +48,7 @@ class EventsJobsScreen extends StatelessWidget {
                 likes: postData['likes'] ?? 0,
                 userId: postData['userId'],
                 collectionName: collectionName, // ✅ Pass new collection name
-                imageUrl: postData['imageUrl'] ?? '',
+                imageUrl: postData['profilePicture'] ?? '',
                 url: postData['url'], // Pass the event URL if available
               );
             },

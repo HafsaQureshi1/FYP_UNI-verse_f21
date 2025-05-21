@@ -727,7 +727,7 @@ class _PostCardState extends State<PostCard> {
         .listen((postDoc) {
       if (postDoc.exists && mounted) {
         setState(() {
-          imageUrl = postDoc.data()?['imageUrl'];
+          imageUrl = postDoc.data()?['profilePicture'];
         });
       }
     });

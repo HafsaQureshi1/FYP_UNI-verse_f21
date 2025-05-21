@@ -410,7 +410,7 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
                           likes: postData['likes'] ?? 0,
                           userId: postData['userId'],
                           collectionName: 'lostfoundposts',
-                          imageUrl: postData['imageUrl'] ?? '',
+                          imageUrl: postData['profilePicture'] ?? '',
                           url: url,
                         );
                       },

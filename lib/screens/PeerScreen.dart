@@ -98,7 +98,7 @@ class _PeerAssistanceScreenState extends State<PeerAssistanceScreen> {
                           likes: postData['likes'] ?? 0,
                           userId: postData['userId'],
                           collectionName: 'Peerposts',
-                          imageUrl: postData['imageUrl'] ?? '',
+                          imageUrl: postData['profilePicture'] ?? '',
                           url: url,
                         );
                       },
