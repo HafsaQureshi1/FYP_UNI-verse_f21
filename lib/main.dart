@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   static const List<String> _adminEmails = [
-    'waseemhasnain373@gmail.com',
+    'hafsa.bssef21@iba-suk.edu.pk',
     'maazbin.bscsf21@iba-suk.edu.pk'
   ];
 
@@ -334,8 +334,8 @@ class _GoogleSignUpButtonState extends State<GoogleSignUpButton> {
 
       final GoogleSignInAccount? newGoogleUser = await _googleSignIn.signIn();
       if (newGoogleUser == null) return;
-if (newGoogleUser!.email.endsWith('@sukkur.iba.edu.pk') &&
-        !newGoogleUser.email.endsWith('@sukkur.iba')) {
+if (newGoogleUser!.email.endsWith('@iba-suk.edu.pk') &&
+        !newGoogleUser.email.endsWith('@iba-suk.edu.pk')) {
       // Not allowed domain - sign out and show error
       await _googleSignIn.signOut();
       throw Exception('Please sign in with your sukkur.iba email account');
@@ -565,8 +565,8 @@ class _SignUpPageState extends State<SignUpPage> {
   // Add this at the top of your _SignUpPageState class
   final List<String> _adminEmails = [
     'waseemhasnain373@gmail.com',
-    'maazbin.bscsf21@iba-suk.edu.pk'
-        'admin2@university.edu',
+    'maazbin.bscsf21@iba-suk.edu.pk',
+        
     'dean@university.edu'
   ];
   final TextEditingController _emailController = TextEditingController();
@@ -831,8 +831,8 @@ if (!hasSpecialChar.hasMatch(password)) {
                   onSuccess: (UserCredential userCredential) {
                     final List<String> adminEmails = [
                       'waseemhasnain373@gmail.com',
-                      'Maazbin.bscsf21@iba-suk.edu.pk',
-                      'dean@university.edu',
+                      'maazbin.bscsf21@iba-suk.edu.pk',
+                      
                     ];
 
                     final String? email =
@@ -897,7 +897,7 @@ class _SignInPageState extends State<SignInPage> {
   final List<String> _adminEmails = [
     'waseemhasnain373@gmail.com',
     'maazbin.bscsf21@iba-suk.edu.pk',
-    'dean@university.edu',
+    
   ];
 
   @override
@@ -1404,8 +1404,8 @@ if (!hasSpecialChar.hasMatch(password)) {
     }
 
     // Check if email ends with IBA Sukkur domain
-    if (!email.endsWith('@sukkur.iba.edu.pk') &&
-        !email.endsWith('@sukkur.iba')) {
+    if (!email.endsWith('@iba-suk.edu.pk') &&
+        !email.endsWith('@iba-suk.edu.pk')) {
       // Invalid domain — sign out and show error
       FirebaseAuth.instance.signOut();
       ScaffoldMessenger.of(context).showSnackBar(
