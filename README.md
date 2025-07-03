@@ -100,7 +100,7 @@ This helps in better post discovery, organization, and faster response from rele
 |---------------|---------------------------------|
 | Frontend      | Flutter (Dart)                 |
 | Backend       | Firebase (Firestore, Auth, FCM, Storage) |
-| AI/ML         |  |
+| AI/ML         | Pretrained LLMs by Hugging face |
 | Media Storage | Cloudinary                     |
 | Notifications | Firebase Cloud Messaging (FCM)  |
 
