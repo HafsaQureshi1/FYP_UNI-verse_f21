@@ -41,3 +41,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/lib/credentials/universe-123-0dd7a38c9a54.json
+/lib/services/firebaseadmin.js
+/firebase.js
