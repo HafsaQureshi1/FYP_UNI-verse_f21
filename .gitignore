@@ -41,3 +41,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/lib/credentials/universe-123-0dd7a38c9a54.json
+
+/firebase.js
+/assets/chatbot-abif-e9e7a3b6c2e9.json
+/assets/universe-123-0dd7a38c9a54.json
+/assets/universe-123-firebase-adminsdk-dxv5x-586f17d46e.json
+/android/google-services.json
