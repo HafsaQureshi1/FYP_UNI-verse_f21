@@ -108,10 +108,29 @@ This helps in better post discovery, organization, and faster response from rele
 
 ## 🖼️ Screenshots
 
-> *(Add your app screenshots here by uploading to `/assets` or use Cloudinary links)*  
-> `![Screenshot1](link)`  
-> `![Screenshot2](link)`  
+<p float="left">
+ 
+  <img src="screenshots/Login.jpeg" width="30%" />
+   <img src="screenshots/Signup.jpeg" width="30%" />
+       <img src="screenshots/Home.jpeg" width="30%" />
+</p>
 
+<p float="left">
+  <img src="screenshots/Notification.jpeg" width="30%" />
+  <img src="screenshots/Chatbot.jpeg" width="30%" />
+   <img src="screenshots/Admin.jpeg" width="30%" />
+</p>
+
+<p float="left">
+  <img src="screenshots/Setting.jpeg" width="30%" />
+  <img src="screenshots/Profile.jpeg" width="30%" />
+   <img src="screenshots/Changepass.jpeg" width="30%" />
+</p>
+<p float="left">
+  <img src="screenshots/Peer.jpeg" width="30%" />
+  <img src="screenshots/Survey.jpeg" width="30%" />
+   <img src="screenshots/Event.jpeg" width="30%" />
+</p>
 ---
 
 ## 🔧 Setup Instructions
