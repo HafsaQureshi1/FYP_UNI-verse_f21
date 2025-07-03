@@ -183,20 +183,32 @@ flutter run
 
 ---
 
-## 🧪 Testing
-
-- Use Flutter’s built-in test framework
-- Write unit tests and widget tests under `/test`
-- Optionally use Firebase Test Lab for integration testing
-
----
 
 ## 📦 Deployment
 
 - **Android**: Use `flutter build apk --release` or `flutter build appbundle`
-- **iOS**: Build via Xcode and upload to App Store
+
 
 ---
+
+## 👥 Team Contributions
+
+### **Hafsa Waseem**  
+🔹 **Role:** Full-Stack Lead  
+🔹 **Work:**  
+   - Designed and built the entire application  
+   - Implemented frontend, backend, and AI components  
+
+### **Maaz Bin Hassan**  
+🔹 **Role:** Frontend and UI Support  
+🔹 **Work:**  
+   - Helped clean and refine UI elements  
+   - Implemented Survey creation
+     
+### **Sadia Athar**  
+🔹 **Role:** Frontend Helper  
+🔹 **Work:**  
+   - Assisted with basic frontend tasks  
 
 ## 🤝 Contributing
 
