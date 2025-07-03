@@ -15,14 +15,14 @@
 **UNI-verse** is a mobile-first app built to connect university students by providing a centralized platform for information sharing, community support, and engagement. It features social functionalities, AI-powered chatbot support, secure login, and a clean, user-friendly interface. Perfect for universities aiming to enhance campus communication.
 
 ---
-👨‍💻 Developed By
+## 👨‍💻 Developed By
 
 
-    Hafsa Waseem
+  ##  Hafsa Waseem
       
-    Sadia Athar
+## Sadia Athar
     
-    Maaz Bin Hassan
+##  Maaz Bin Hassan
 
   
 
@@ -125,7 +125,7 @@ This helps in better post discovery, organization, and faster response from rele
 ### 🧑‍💻 Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/UNI-verse.git
+git clone https://github.com/HafsaQureshi1/UNI-verse.git
 cd UNI-verse
 ```
 
@@ -139,7 +139,7 @@ flutter pub get
 
 1. Create a Firebase Project  
 2. Enable Google Sign-In, Firestore, FCM, and Storage  
-3. Download and place `google-services.json` (Android) and `GoogleService-Info.plist` (iOS)  
+3. Download and place `google-services.json` (Android) 
 4. Set Firestore security rules
 
 ### 🖼️ Configure Cloudinary
@@ -176,7 +176,6 @@ flutter run
 
 - **Android**: Use `flutter build apk --release` or `flutter build appbundle`
 - **iOS**: Build via Xcode and upload to App Store
-- **Web**: Optional - Deploy with Firebase Hosting
 
 ---
 
