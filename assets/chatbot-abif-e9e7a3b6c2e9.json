@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "chatbot-abif",
+  "private_key_id": "e9e7a3b6c2e9b9ea0c0f3cf0c6a83e9d72d1151a",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDd2+xFIwFUPrJE\nCRntHDYFIAknLxkgbNiZp0JktS9qoBy5I9MBk/MOGMQdmYlItPP44dLV+3Olrosz\nDehjzPCD32VImXBOExfw5GruVFADijMI+Mlr5T+KBF92dpHqCgKP/uyBOk3QK3x3\nT5impK6AmALYUuQDFt0wOw/x9iuM/IwmN3N5wJMvbOfWxOwKwcVc7tNwb7WdAozv\nEf2d15oWDEcw7MAgFXrRxCJ/4O761A9rCfnUUyqwcXuzw0XDFSc2au55af5BAD1j\nYndlOfShEtbIWJy9HlyiaFqPPhtGxJ13D9SYl5s3qJeD3AiMOrX4FD5pW7THIp8f\nVgQ25+pbAgMBAAECggEAIIzgZhG0DjeB/CLBtQd16DFCZodYeRNp1rwILQe67zqS\nkZnvSW9QMnnxEXlcqlgyO1/BM+KdSGpgGJt/xF9lzP39DuEZmGWLa60iVdlKQVqz\nZiuU5x75auHSsmoZumwW4tLqFtkGYEvLtSLuffScza0qgwaWVtsHP3OgQUXML0ul\nwrYuoBVosuFI0mCe62oPUxNRefXVjsqhVGEyaVi6AZJz4sXl7ualA3+sM1dN144s\nUdwvJ3p0DaKKs8XKKpm1yMsBePzEUpywH4rKDKL/59pk+nyETunBR0wf/kgsFDwj\nCvSuJ75BKaJO6n6XzRHXq/2olPmM5blzfxqYJtJMEQKBgQDwGcpkGG+c54uD1NAN\nCplTO/jA+1wzIl34EVJnAowoC6yc12Gxg68ztdaWWbej6RrSGNZLBr6lxRSoKoUN\nn+ESGY06NHHvKQ7ZvL7F4Zl3vDULVIrwD+Eb3UbNvLoPSXOgKvq8nyiGxIssBzv2\nuPWLFtrMEjMC0kE7C2eJLnjWPQKBgQDsjOXc0pwlQX23wimEUV785ihysjk9c+AX\nlOQGSg+O8kaHZ23SnUWIR/tCDcBTvlqn+f3W7P1FZE8h7U0c2KQyA1/joARlOvQR\nTiJdPMdcx8Rfh7bGO7rg3A+7FZGZCIvG61r6pBn7le+F4Ghq1HN908nFDb5qO5Ev\nK3cC4obkdwKBgQDY5UN7BsQVBup2jhHgJhn6IewGUUup+brPtL4uxhNcvacSDFN5\na88itHqEWcnWLWcIMl2raw1gbNfLTpXhh/NnSWPWF7hw5zM+KQ5hbfoYOxHkCVx1\nnrKpXExw4LNnyd/E6e6V5GVU0Uoz3NkjeVR/cIb44NvqCYvZzeSa/Ts1tQKBgQDT\nzs27zrGWAnBJbAe0vQ+qr4OkP8VVKz6Knv0WTJZlzrYsZAZIQh6SirGGUb3Wvml6\nYzRRkF6wFcNtg4g6vhk31yGzNgL5ibIlFKtchSGWCCHj0CdulOkekq1bPVLjjm1q\nLi+Gog3J4lVYsLmOfrDzCAJw+X94q+GyNN8ZrDBQvQKBgCnfceGSNJBaAcOOAvwz\n2vYRG2gxE+nCBqP3/GBJ4Z6e9zcOVK8NWtjMzEd4VIqtUN9d8d+P9cBlhD2paPl8\nGonA+mu/73zobXfHTvzGy3wxpiE08r0WTwaWucWWMmQXMcxLdI7czK0CO1rE3ZAO\nfys8tY1Cyatev36OrfjLgB3g\n-----END PRIVATE KEY-----\n",
+  "client_email": "uni-verse-chatbot-account@chatbot-abif.iam.gserviceaccount.com",
+  "client_id": "115747353084659989704",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/uni-verse-chatbot-account%40chatbot-abif.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
