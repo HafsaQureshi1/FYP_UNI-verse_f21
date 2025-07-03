@@ -18,11 +18,11 @@
 ## 👨‍💻 Developed By
 
 
-  ##  Hafsa Waseem
+  ###  Hafsa Waseem
       
-## Sadia Athar
+### Sadia Athar
     
-##  Maaz Bin Hassan
+###  Maaz Bin Hassan
 
   
 
