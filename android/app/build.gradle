@@ -21,7 +21,7 @@ namespace 'com.example.flutter_application_1' // Namespace specified
     }
 
     defaultConfig {
-        applicationId = "com.example.flutter_application_1"
+        applicationId = "com.universe-app"
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
