@@ -34,7 +34,7 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
         .listen((userDoc) {
       if (userDoc.exists && mounted) {
         setState(() {
-          _imageUrl = userDoc.data()?['profileImage'];
+          _imageUrl = userDoc.data()?['profilePicture']; // Make sure this key matches your Firestore field
           if (_imageUrl != null) {
             _cachedProfileImages[widget.userId] = _imageUrl!; // Cache the image URL
           }
@@ -46,6 +46,7 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
   @override
   Widget build(BuildContext context) {
     return CircleAvatar(
+      key: ValueKey(_imageUrl), // Forces rebuild when image URL changes
       radius: widget.radius,
       backgroundColor: Colors.grey[300],
       backgroundImage: _imageUrl != null ? NetworkImage(_imageUrl!) : null,

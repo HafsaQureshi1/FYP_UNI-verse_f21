@@ -1,4 +1,4 @@
-# UNI-verse 📱🎓  
+# UNI-verse : AI Powered Student Communication App📱🎓  
 **Connecting Students.**
 
 [![Flutter](https://img.shields.io/badge/Flutter-Framework-blue?logo=flutter)](https://flutter.dev/)
@@ -15,14 +15,14 @@
 **UNI-verse** is a mobile-first app built to connect university students by providing a centralized platform for information sharing, community support, and engagement. It features social functionalities, AI-powered chatbot support, secure login, and a clean, user-friendly interface. Perfect for universities aiming to enhance campus communication.
 
 ---
-👨‍💻 Developed By
+## 👨‍💻 Developed By
 
 
-    Hafsa Waseem
+  ###  Hafsa Waseem
       
-    Sadia Athar
+### Sadia Athar
     
-    Maaz Bin Hassan
+###  Maaz Bin Hassan
 
   
 
@@ -100,7 +100,7 @@ This helps in better post discovery, organization, and faster response from rele
 |---------------|---------------------------------|
 | Frontend      | Flutter (Dart)                 |
 | Backend       | Firebase (Firestore, Auth, FCM, Storage) |
-| AI/ML         |  |
+| AI/ML         | Pretrained LLMs by Hugging face |
 | Media Storage | Cloudinary                     |
 | Notifications | Firebase Cloud Messaging (FCM)  |
 
@@ -108,10 +108,29 @@ This helps in better post discovery, organization, and faster response from rele
 
 ## 🖼️ Screenshots
 
-> *(Add your app screenshots here by uploading to `/assets` or use Cloudinary links)*  
-> `![Screenshot1](link)`  
-> `![Screenshot2](link)`  
+<p float="left">
+ 
+  <img src="screenshots/Login.jpeg" width="30%" />
+   <img src="screenshots/Signup.jpeg" width="30%" />
+       <img src="screenshots/Home.jpeg" width="30%" />
+</p>
 
+<p float="left">
+  <img src="screenshots/Notification.jpeg" width="30%" />
+  <img src="screenshots/Chatbot.jpeg" width="30%" />
+   <img src="screenshots/Admin.jpeg" width="30%" />
+</p>
+
+<p float="left">
+  <img src="screenshots/Setting.jpeg" width="30%" />
+  <img src="screenshots/Profile.jpeg" width="30%" />
+   <img src="screenshots/Changepass.jpeg" width="30%" />
+</p>
+<p float="left">
+  <img src="screenshots/Peer.jpeg" width="30%" />
+  <img src="screenshots/Survey.jpeg" width="30%" />
+   <img src="screenshots/Event.jpeg" width="30%" />
+</p>
 ---
 
 ## 🔧 Setup Instructions
@@ -125,7 +144,7 @@ This helps in better post discovery, organization, and faster response from rele
 ### 🧑‍💻 Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/UNI-verse.git
+git clone https://github.com/HafsaQureshi1/UNI-verse.git
 cd UNI-verse
 ```
 
@@ -139,7 +158,7 @@ flutter pub get
 
 1. Create a Firebase Project  
 2. Enable Google Sign-In, Firestore, FCM, and Storage  
-3. Download and place `google-services.json` (Android) and `GoogleService-Info.plist` (iOS)  
+3. Download and place `google-services.json` (Android) 
 4. Set Firestore security rules
 
 ### 🖼️ Configure Cloudinary
@@ -164,21 +183,32 @@ flutter run
 
 ---
 
-## 🧪 Testing
-
-- Use Flutter’s built-in test framework
-- Write unit tests and widget tests under `/test`
-- Optionally use Firebase Test Lab for integration testing
-
----
 
 ## 📦 Deployment
 
 - **Android**: Use `flutter build apk --release` or `flutter build appbundle`
-- **iOS**: Build via Xcode and upload to App Store
-- **Web**: Optional - Deploy with Firebase Hosting
+
 
 ---
+
+## 👥 Team Contributions
+
+### **Hafsa Waseem**  
+🔹 **Role:** Full-Stack Lead  
+🔹 **Work:**  
+   - Designed and built the entire application  
+   - Implemented frontend, backend, and AI components  
+
+### **Maaz Bin Hassan**  
+🔹 **Role:** Frontend and UI Support  
+🔹 **Work:**  
+   - Helped clean and refine UI elements  
+   - Implemented Survey creation
+     
+### **Sadia Athar**  
+🔹 **Role:** Frontend Helper  
+🔹 **Work:**  
+   - Assisted with basic frontend tasks  
 
 ## 🤝 Contributing
 

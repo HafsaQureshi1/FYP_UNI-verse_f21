@@ -493,6 +493,7 @@ class AboutAppDialog extends StatelessWidget {
                     height: 70,
                     width: 70,
                     fit: BoxFit.cover,
+                    
                   ),
                 ),
               ),
