@@ -1,4 +1,4 @@
-# UNI-verse 📱🎓  
+# UNI-verse : AI Powered Student Communication App📱🎓  
 **Connecting Students.**
 
 [![Flutter](https://img.shields.io/badge/Flutter-Framework-blue?logo=flutter)](https://flutter.dev/)
