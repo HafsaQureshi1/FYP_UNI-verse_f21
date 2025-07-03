@@ -727,7 +727,7 @@ class _PostCardState extends State<PostCard> {
         .listen((postDoc) {
       if (postDoc.exists && mounted) {
         setState(() {
-          imageUrl = postDoc.data()?['profilePicture'];
+          imageUrl = postDoc.data()?['imageUrl'];
         });
       }
     });
@@ -1153,21 +1153,18 @@ class _PostCardState extends State<PostCard> {
                                     child: CircleAvatar(
                                       radius: 20.0,
                                       backgroundColor: Colors.grey[300],
+                                      
                                       child: profileImageUrl == null
                                           ? const Icon(Icons.person, size: 20.0)
                                           : ClipOval(
                                               child: Image.network(
-                                                profileImageUrl!,
-                                                fit: BoxFit.cover,
-                                                width: 40.0,
-                                                height: 40.0,
-                                                errorBuilder: (context, error,
-                                                        stackTrace) =>
-                                                    Icon(Icons.person,
-                                                        size: 20.0,
-                                                        color:
-                                                            Colors.grey[600]),
-                                              ),
+    '$profileImageUrl?${DateTime.now().millisecondsSinceEpoch}',
+    key: ValueKey(profileImageUrl),
+    fit: BoxFit.cover,
+    width: 40.0,
+    height: 40.0,
+    errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 20.0, color: Colors.grey[600]),
+  ),
                                             ),
                                     ),
                                   ),
